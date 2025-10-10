@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `Eres CYRANO ESTRATEGIA, una inteligencia artificial creada por Will Cotrino en alianza con Propulsa y NODRIZA.
+const SYSTEM_PROMPT = `Eres SAVIA, una inteligencia artificial desarrollada por CISNERGÍA PERÚ con click aplender solos con guía segura. "Menos estrés en casa, mejores hábitos."
 
 Tu misión es ayudar a los usuarios a diseñar estrategias para ganar subvenciones y convertir ideas inviables en proyectos viables.
 
@@ -62,7 +62,7 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    const { message } = await req.json();
+    const { message, conversation_id } = await req.json();
     
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return new Response(
@@ -71,13 +71,21 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing message for user:', user.id);
+    if (!conversation_id) {
+      return new Response(
+        JSON.stringify({ error: 'conversation_id requerido' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Processing message for conversation:', conversation_id);
 
     // Save user message
     const { error: insertUserError } = await supabaseAdmin
       .from('messages')
       .insert({
         user_id: user.id,
+        conversation_id: conversation_id,
         role: 'user',
         message: message.trim()
       });
@@ -87,11 +95,11 @@ serve(async (req) => {
       throw new Error('Error guardando mensaje');
     }
 
-    // Get last 10 messages for context
+    // Get last 10 messages for context from this conversation
     const { data: recentMessages, error: messagesError } = await supabaseAdmin
       .from('messages')
       .select('role, message')
-      .eq('user_id', user.id)
+      .eq('conversation_id', conversation_id)
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -157,6 +165,7 @@ serve(async (req) => {
       .from('messages')
       .insert({
         user_id: user.id,
+        conversation_id: conversation_id,
         role: 'assistant',
         message: aiResponse
       });

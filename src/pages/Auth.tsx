@@ -130,7 +130,7 @@ const Auth = () => {
             </div>
             <div>
               <CardTitle className="text-3xl font-semibold">
-                Cyrano Estrategia
+                SAVIA
               </CardTitle>
               <CardDescription className="text-base mt-3 leading-relaxed">
                 Tu asistente de IA para estrategias ganadoras en subvenciones

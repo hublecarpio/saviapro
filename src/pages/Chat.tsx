@@ -6,13 +6,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Send, LogOut, Sparkles, Loader2, BookOpen, Target, Lightbulb, TrendingUp } from "lucide-react";
 import { User } from "@supabase/supabase-js";
-import cyranoLogo from "@/assets/cyrano-logo.png";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   message: string;
   created_at: string;
+  conversation_id: string;
 }
 
 const promptSuggestions = [
@@ -44,6 +46,7 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -65,7 +68,6 @@ const Chat = () => {
       }
       
       setUser(session.user);
-      loadMessages(session.user.id);
     };
 
     checkAuth();
@@ -84,17 +86,17 @@ const Chat = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !currentConversationId) return;
 
     const channel = supabase
-      .channel('messages')
+      .channel('messages-changes')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `user_id=eq.${user.id}`,
+          filter: `conversation_id=eq.${currentConversationId}`,
         },
         (payload) => {
           setMessages((prev) => [...prev, payload.new as Message]);
@@ -105,21 +107,59 @@ const Chat = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, currentConversationId]);
 
-  const loadMessages = async (userId: string) => {
+  const loadMessages = async (conversationId: string) => {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
-      .eq('user_id', userId)
+      .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
     if (error) {
       toast.error("Error cargando mensajes");
+      console.error('Error loading messages:', error);
       return;
     }
 
     setMessages((data || []) as Message[]);
+  };
+
+  const createNewConversation = async (firstMessage?: string) => {
+    if (!user) return null;
+
+    const title = firstMessage 
+      ? firstMessage.substring(0, 50) + (firstMessage.length > 50 ? '...' : '')
+      : 'Nueva conversación';
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .insert({
+        user_id: user.id,
+        title: title
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Error creando conversación");
+      console.error('Error creating conversation:', error);
+      return null;
+    }
+
+    return data.id;
+  };
+
+  const handleNewConversation = () => {
+    setCurrentConversationId(null);
+    setMessages([]);
+    setInput("");
+  };
+
+  const handleConversationSelect = (conversationId: string) => {
+    setCurrentConversationId(conversationId);
+    setMessages([]);
+    loadMessages(conversationId);
   };
 
   const handleSignOut = async () => {
@@ -131,12 +171,24 @@ const Chat = () => {
     const textToSend = messageText || input.trim();
     if (!textToSend || !user || isLoading) return;
 
+    let conversationId = currentConversationId;
+    
+    // Create new conversation if needed
+    if (!conversationId) {
+      conversationId = await createNewConversation(textToSend);
+      if (!conversationId) return;
+      setCurrentConversationId(conversationId);
+    }
+
     setInput("");
     setIsLoading(true);
 
     try {
       const { error } = await supabase.functions.invoke('chat', {
-        body: { message: textToSend }
+        body: { 
+          message: textToSend,
+          conversation_id: conversationId
+        }
       });
 
       if (error) throw error;
@@ -162,147 +214,161 @@ const Chat = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header minimalista */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">
-                Cyrano Estrategia
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                {user?.email}
-              </p>
-            </div>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={handleSignOut}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Salir
-          </Button>
-        </div>
-      </header>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AppSidebar 
+          user={user}
+          currentConversationId={currentConversationId}
+          onConversationSelect={handleConversationSelect}
+          onNewConversation={handleNewConversation}
+        />
 
-      {/* Messages Area con diseño minimalista */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
-          {messages.length === 0 ? (
-            <div className="space-y-8 py-12">
-              <div className="text-center space-y-3">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-4">
-                  <Sparkles className="h-8 w-8 text-primary" />
-                </div>
-                <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
-                  Bienvenido a Cyrano Estrategia
-                </h2>
-                <p className="text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                  Soy tu asistente de IA especializado en diseñar estrategias ganadoras
-                  para subvenciones y convertir ideas en proyectos viables.
-                </p>
-              </div>
-
-              {/* Suggestion cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl mx-auto">
-                {promptSuggestions.map((suggestion, idx) => {
-                  const Icon = suggestion.icon;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleSuggestionClick(suggestion.prompt)}
-                      className="group p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-card/80 transition-all duration-200 text-left"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                          <Icon className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-foreground mb-1 group-hover:text-primary transition-colors">
-                            {suggestion.title}
-                          </h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                            {suggestion.prompt}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {messages.map((msg, idx) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm'
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap break-words leading-relaxed text-[15px]">
-                      {msg.message}
+        <div className="flex flex-col flex-1">
+          {/* Header */}
+          <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger className="-ml-2" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-semibold text-foreground">
+                      SAVIA
+                    </h1>
+                    <p className="text-xs text-muted-foreground">
+                      {user?.email}
                     </p>
                   </div>
                 </div>
-              ))}
-              
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-2xl px-5 py-4 flex items-center gap-3 shadow-sm">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Cyrano está analizando...</span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleSignOut}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Salir
+              </Button>
+            </div>
+          </header>
+
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
+              {messages.length === 0 ? (
+                <div className="space-y-8 py-12">
+                  <div className="text-center space-y-3">
+                    <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-4">
+                      <Sparkles className="h-8 w-8 text-primary" />
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
+                      Bienvenido a SAVIA
+                    </h2>
+                    <p className="text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                      Soy tu asistente de IA especializado en diseñar estrategias ganadoras
+                      para subvenciones y convertir ideas en proyectos viables.
+                    </p>
+                  </div>
+
+                  {/* Suggestion cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl mx-auto">
+                    {promptSuggestions.map((suggestion, idx) => {
+                      const Icon = suggestion.icon;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleSuggestionClick(suggestion.prompt)}
+                          className="group p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-card/80 transition-all duration-200 text-left"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                              <Icon className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-foreground mb-1 group-hover:text-primary transition-colors">
+                                {suggestion.title}
+                              </h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                                {suggestion.prompt}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+              ) : (
+                <div className="space-y-6">
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 ${
+                          msg.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap break-words leading-relaxed text-[15px]">
+                          {msg.message}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-2xl px-5 py-4 flex items-center gap-3 shadow-sm">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-sm text-muted-foreground">SAVIA está analizando...</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div ref={messagesEndRef} />
+                </div>
               )}
-              
-              <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Input Area minimalista */}
-      <div className="border-t bg-card/50 backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
-          <div className="flex gap-3 items-end">
-            <div className="flex-1 relative">
-              <Textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Escribe tu consulta sobre estrategias y subvenciones..."
-                className="min-h-[56px] max-h-[200px] resize-none rounded-xl border-border bg-background pr-12 text-[15px] leading-relaxed placeholder:text-muted-foreground/60 focus:border-primary/40"
-                disabled={isLoading}
-              />
-            </div>
-            <Button
-              onClick={() => handleSend()}
-              disabled={!input.trim() || isLoading}
-              size="lg"
-              className="h-[56px] w-[56px] rounded-xl shrink-0 bg-primary hover:bg-primary-hover"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
           </div>
-          <p className="text-xs text-muted-foreground/70 text-center mt-3">
-            Presiona Enter para enviar • Shift+Enter para nueva línea
-          </p>
+
+          {/* Input Area */}
+          <div className="border-t bg-card/50 backdrop-blur-sm">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 relative">
+                  <Textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Escribe tu consulta sobre estrategias y subvenciones..."
+                    className="min-h-[56px] max-h-[200px] resize-none rounded-xl border-border bg-background pr-12 text-[15px] leading-relaxed placeholder:text-muted-foreground/60 focus:border-primary/40"
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button
+                  onClick={() => handleSend()}
+                  disabled={!input.trim() || isLoading}
+                  size="lg"
+                  className="h-[56px] w-[56px] rounded-xl shrink-0 bg-primary hover:bg-primary-hover"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground/70 text-center mt-3">
+                Presiona Enter para enviar • Shift+Enter para nueva línea
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
