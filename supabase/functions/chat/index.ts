@@ -26,25 +26,41 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    
-    if (authError || !user) {
-      console.error('Auth error:', authError);
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header');
       return new Response(
-        JSON.stringify({ error: 'No autorizado' }),
+        JSON.stringify({ error: 'No autorizado - falta token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Create Supabase client with service role for admin access
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Verify the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Auth verification error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'No autorizado - token inválido' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User authenticated:', user.id);
 
     const { message } = await req.json();
     
@@ -58,7 +74,7 @@ serve(async (req) => {
     console.log('Processing message for user:', user.id);
 
     // Save user message
-    const { error: insertUserError } = await supabaseClient
+    const { error: insertUserError } = await supabaseAdmin
       .from('messages')
       .insert({
         user_id: user.id,
@@ -72,7 +88,7 @@ serve(async (req) => {
     }
 
     // Get last 10 messages for context
-    const { data: recentMessages, error: messagesError } = await supabaseClient
+    const { data: recentMessages, error: messagesError } = await supabaseAdmin
       .from('messages')
       .select('role, message')
       .eq('user_id', user.id)
@@ -88,7 +104,7 @@ serve(async (req) => {
       { role: 'system', content: SYSTEM_PROMPT }
     ];
 
-    if (recentMessages) {
+    if (recentMessages && recentMessages.length > 0) {
       const orderedMessages = recentMessages.reverse();
       orderedMessages.forEach(msg => {
         conversationHistory.push({
@@ -101,6 +117,7 @@ serve(async (req) => {
     // Call DeepSeek API
     const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
     if (!deepseekApiKey) {
+      console.error('DeepSeek API key not configured');
       throw new Error('DeepSeek API key not configured');
     }
 
@@ -129,13 +146,14 @@ serve(async (req) => {
     const aiResponse = deepseekData.choices?.[0]?.message?.content;
 
     if (!aiResponse) {
+      console.error('No response from DeepSeek');
       throw new Error('No response from DeepSeek');
     }
 
     console.log('DeepSeek response received, saving to database...');
 
     // Save assistant response
-    const { error: insertAssistantError } = await supabaseClient
+    const { error: insertAssistantError } = await supabaseAdmin
       .from('messages')
       .insert({
         user_id: user.id,
