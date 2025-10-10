@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
@@ -7,8 +8,17 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `Eres CYRANO ESTRATEGIA, una inteligencia artificial creada por Will Cotrino en alianza con Propulsa y NODRIZA.
+
 Tu misión es ayudar a los usuarios a diseñar estrategias para ganar subvenciones y convertir ideas inviables en proyectos viables.
-Habla en tono profesional, motivador y directo. Proporciona consejos prácticos y accionables.`;
+
+Características de tu personalidad:
+- Hablas en tono profesional, motivador y directo
+- Proporcionas consejos prácticos y accionables
+- Te enfocas en la estrategia y la viabilidad del proyecto
+- Ayudas a identificar oportunidades de financiación
+- Guías en la preparación de propuestas ganadoras
+
+Siempre mantén respuestas claras, estructuradas y orientadas a la acción.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -29,6 +39,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(
         JSON.stringify({ error: 'No autorizado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -60,48 +71,68 @@ serve(async (req) => {
       throw new Error('Error guardando mensaje');
     }
 
-    // Get last 5 messages for context
+    // Get last 10 messages for context
     const { data: recentMessages, error: messagesError } = await supabaseClient
       .from('messages')
       .select('role, message')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(5);
+      .limit(10);
 
     if (messagesError) {
       console.error('Error fetching messages:', messagesError);
     }
 
-    const context = recentMessages
-      ?.reverse()
-      .map(m => `${m.role}: ${m.message}`)
-      .join('\n') || '';
+    // Build conversation history for DeepSeek
+    const conversationHistory = [
+      { role: 'system', content: SYSTEM_PROMPT }
+    ];
 
-    // TODO: Replace with actual external API call
-    // For now, using a mock response
-    // const response = await fetch('https://api-del-cliente.com/agent', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${Deno.env.get('AGENT_API_KEY')}`
-    //   },
-    //   body: JSON.stringify({
-    //     prompt: SYSTEM_PROMPT,
-    //     message: message,
-    //     user_id: user.id,
-    //     context: context
-    //   })
-    // });
+    if (recentMessages) {
+      const orderedMessages = recentMessages.reverse();
+      orderedMessages.forEach(msg => {
+        conversationHistory.push({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.message
+        });
+      });
+    }
 
-    // Mock response for now
-    const aiResponse = `Gracias por tu mensaje. Como Cyrano Estrategia, estoy aquí para ayudarte a diseñar estrategias ganadoras para subvenciones.
+    // Call DeepSeek API
+    const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    if (!deepseekApiKey) {
+      throw new Error('DeepSeek API key not configured');
+    }
 
-Para poder asistirte mejor, necesito que me proporciones más detalles sobre:
-1. El tipo de proyecto o idea que quieres desarrollar
-2. El sector o área de actuación
-3. Las subvenciones específicas que te interesan
+    console.log('Calling DeepSeek API...');
+    const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${deepseekApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: conversationHistory,
+        temperature: 0.7,
+        max_tokens: 2000,
+      }),
+    });
 
-Con esta información, podré ayudarte a crear una estrategia sólida y aumentar tus posibilidades de éxito.`;
+    if (!deepseekResponse.ok) {
+      const errorText = await deepseekResponse.text();
+      console.error('DeepSeek API error:', deepseekResponse.status, errorText);
+      throw new Error(`DeepSeek API error: ${deepseekResponse.status}`);
+    }
+
+    const deepseekData = await deepseekResponse.json();
+    const aiResponse = deepseekData.choices?.[0]?.message?.content;
+
+    if (!aiResponse) {
+      throw new Error('No response from DeepSeek');
+    }
+
+    console.log('DeepSeek response received, saving to database...');
 
     // Save assistant response
     const { error: insertAssistantError } = await supabaseClient
@@ -117,6 +148,8 @@ Con esta información, podré ayudarte a crear una estrategia sólida y aumentar
       throw new Error('Error guardando respuesta');
     }
 
+    console.log('Message saved successfully');
+
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -125,7 +158,10 @@ Con esta información, podré ayudarte a crear una estrategia sólida y aumentar
   } catch (error) {
     console.error('Error in chat function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Error desconocido' }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Error desconocido',
+        details: error instanceof Error ? error.stack : undefined
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

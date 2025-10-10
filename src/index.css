@@ -8,92 +8,100 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Cyrano Estrategia Design System */
-    --background: 210 17% 98%;
-    --foreground: 210 22% 12%;
+    /* Cyrano Estrategia - Mar Sereno Design System */
+    /* Paleta: 70% fondo neutro, 20% superficies, 10% acentos */
+    
+    /* Base colors from #F3F7FA */
+    --background: 204 50% 97%;
+    --foreground: 205 25% 25%;
 
+    /* Surface colors - 20% del diseño */
     --card: 0 0% 100%;
-    --card-foreground: 210 22% 12%;
+    --card-foreground: 205 25% 25%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 22% 12%;
+    --popover-foreground: 205 25% 25%;
 
-    /* Brand colors - Cyrano blue */
-    --primary: 207 70% 33%;
+    /* Primary - #2E6F95 */
+    --primary: 200 54% 38%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 207 70% 28%;
+    --primary-hover: 200 54% 32%;
 
-    --secondary: 210 17% 96%;
-    --secondary-foreground: 210 22% 12%;
+    /* Secondary - #6FB1BF */
+    --secondary: 190 38% 60%;
+    --secondary-foreground: 205 25% 25%;
 
-    --muted: 210 17% 95%;
-    --muted-foreground: 210 12% 45%;
+    /* Accent warm - #F5B971 para éxito/avance */
+    --accent: 35 87% 70%;
+    --accent-foreground: 205 25% 25%;
 
-    --accent: 207 70% 33%;
-    --accent-foreground: 0 0% 100%;
+    /* Estado/Información - #537A8F */
+    --muted: 202 26% 44%;
+    --muted-foreground: 202 20% 65%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 17% 90%;
-    --input: 210 17% 90%;
-    --ring: 207 70% 33%;
+    /* Borders - divisores sutiles #E6EBF2 */
+    --border: 210 33% 93%;
+    --input: 210 33% 93%;
+    --ring: 200 54% 38%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    /* Chat-specific colors */
-    --chat-user-bubble: 207 70% 33%;
+    /* Chat-specific colors - diseño minimalista */
+    --chat-user-bubble: 200 54% 38%;
     --chat-user-foreground: 0 0% 100%;
     --chat-assistant-bubble: 0 0% 100%;
-    --chat-assistant-foreground: 210 22% 12%;
-    --chat-assistant-border: 210 17% 85%;
+    --chat-assistant-foreground: 205 25% 25%;
+    --chat-assistant-border: 210 33% 90%;
 
-    /* Gradients and effects */
-    --gradient-primary: linear-gradient(135deg, hsl(207 70% 33%), hsl(207 70% 43%));
-    --shadow-subtle: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-medium: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    /* Subtle textures - opacidad 3-6% */
+    --texture-pattern: 200 54% 38% / 0.04;
     
-    /* Animations */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Shadows suaves */
+    --shadow-soft: 0 2px 8px rgb(46 111 149 / 0.08);
+    --shadow-medium: 0 4px 16px rgb(46 111 149 / 0.12);
+    
+    /* Transitions suaves */
+    --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 210 22% 12%;
-    --foreground: 210 17% 98%;
+    --background: 205 30% 12%;
+    --foreground: 204 50% 97%;
 
-    --card: 210 20% 16%;
-    --card-foreground: 210 17% 98%;
+    --card: 205 25% 16%;
+    --card-foreground: 204 50% 97%;
 
-    --popover: 210 20% 16%;
-    --popover-foreground: 210 17% 98%;
+    --popover: 205 25% 16%;
+    --popover-foreground: 204 50% 97%;
 
-    --primary: 207 70% 45%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 207 70% 50%;
+    --primary: 190 38% 60%;
+    --primary-foreground: 205 25% 15%;
+    --primary-hover: 190 38% 65%;
 
-    --secondary: 210 20% 20%;
-    --secondary-foreground: 210 17% 98%;
+    --secondary: 202 26% 35%;
+    --secondary-foreground: 204 50% 97%;
 
-    --muted: 210 20% 20%;
-    --muted-foreground: 210 12% 65%;
+    --muted: 202 26% 25%;
+    --muted-foreground: 202 20% 65%;
 
-    --accent: 207 70% 45%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 35 87% 65%;
+    --accent-foreground: 205 25% 15%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 20% 25%;
-    --input: 210 20% 25%;
-    --ring: 207 70% 45%;
+    --border: 205 25% 25%;
+    --input: 205 25% 25%;
+    --ring: 190 38% 60%;
 
-    --chat-user-bubble: 207 70% 45%;
-    --chat-user-foreground: 0 0% 100%;
-    --chat-assistant-bubble: 210 20% 20%;
-    --chat-assistant-foreground: 210 17% 98%;
-    --chat-assistant-border: 210 20% 30%;
-
-    --gradient-primary: linear-gradient(135deg, hsl(207 70% 45%), hsl(207 70% 55%));
+    --chat-user-bubble: 190 38% 60%;
+    --chat-user-foreground: 205 25% 15%;
+    --chat-assistant-bubble: 205 25% 20%;
+    --chat-assistant-foreground: 204 50% 97%;
+    --chat-assistant-border: 205 25% 30%;
   }
 }
 
@@ -103,6 +111,25 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-inter;
+    letter-spacing: 0.01em;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-lexend;
+    letter-spacing: 0.02em;
+  }
+
+  h1 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl;
   }
 }
