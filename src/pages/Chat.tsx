@@ -607,24 +607,59 @@ const Chat = () => {
                 </div>
               ) : (
                 <div className="space-y-3 md:space-y-6">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
+                  {messages.map((msg) => {
+                    // Detectar si el mensaje contiene una URL de video/audio
+                    const urlMatch = msg.message.match(/(https?:\/\/[^\s]+)/);
+                    const hasMedia = urlMatch && (
+                      msg.message.includes('Video resumen') || 
+                      msg.message.includes('Podcast resumen')
+                    );
+                    const isVideo = msg.message.includes('Video resumen');
+                    
+                    return (
                       <div
-                        className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 ${
-                          msg.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm'
-                        }`}
+                        key={msg.id}
+                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
-                        <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                          {msg.message}
-                        </p>
+                        <div
+                          className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 ${
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm'
+                          }`}
+                        >
+                          {hasMedia && urlMatch ? (
+                            <div className="space-y-3">
+                              <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                {msg.message.split(urlMatch[0])[0]}
+                              </p>
+                              {isVideo ? (
+                                <video 
+                                  controls 
+                                  className="w-full rounded-lg max-h-[400px]"
+                                  src={urlMatch[0]}
+                                >
+                                  Tu navegador no soporta video HTML5.
+                                </video>
+                              ) : (
+                                <audio 
+                                  controls 
+                                  className="w-full"
+                                  src={urlMatch[0]}
+                                >
+                                  Tu navegador no soporta audio HTML5.
+                                </audio>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                              {msg.message}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   
                   {isLoading && (
                     <div className="flex justify-start">
