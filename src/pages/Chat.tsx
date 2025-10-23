@@ -191,7 +191,8 @@ const Chat = () => {
       const { error } = await supabase.functions.invoke('chat', {
         body: { 
           message: textToSend,
-          conversation_id: conversationId
+          conversation_id: conversationId,
+          user_id: user.id
         }
       });
 
@@ -434,7 +435,8 @@ const Chat = () => {
           const { error: chatError } = await supabase.functions.invoke('chat', {
             body: { 
               message: transcription,
-              conversation_id: conversationId
+              conversation_id: conversationId,
+              user_id: user.id
             }
           });
           

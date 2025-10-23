@@ -26,16 +26,6 @@ serve(async (req) => {
   }
 
   try {
-    // Get authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('No authorization header');
-      return new Response(
-        JSON.stringify({ error: 'No autorizado - falta token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Create admin client for database operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -48,21 +38,7 @@ serve(async (req) => {
       }
     );
 
-    // Verify JWT token to get user
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      console.error('Auth verification error:', authError);
-      return new Response(
-        JSON.stringify({ error: 'No autorizado - token inválido' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('User authenticated:', user.id);
-
-    const { message, conversation_id } = await req.json();
+    const { message, conversation_id, user_id } = await req.json();
     
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return new Response(
@@ -71,9 +47,9 @@ serve(async (req) => {
       );
     }
 
-    if (!conversation_id) {
+    if (!conversation_id || !user_id) {
       return new Response(
-        JSON.stringify({ error: 'conversation_id requerido' }),
+        JSON.stringify({ error: 'conversation_id y user_id requeridos' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -84,7 +60,7 @@ serve(async (req) => {
     const { error: insertUserError } = await supabaseAdmin
       .from('messages')
       .insert({
-        user_id: user.id,
+        user_id: user_id,
         conversation_id: conversation_id,
         role: 'user',
         message: message.trim()
@@ -167,7 +143,7 @@ serve(async (req) => {
     const { error: insertAssistantError } = await supabaseAdmin
       .from('messages')
       .insert({
-        user_id: user.id,
+        user_id: user_id,
         conversation_id: conversation_id,
         role: 'assistant',
         message: cleanResponse

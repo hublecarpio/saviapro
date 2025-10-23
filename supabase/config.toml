@@ -1,7 +1,7 @@
 project_id = "hxvjibdsldkvnaccfgah"
 
 [functions.chat]
-verify_jwt = true
+verify_jwt = false
 
 [functions.webhook-integration]
-verify_jwt = true
+verify_jwt = false
