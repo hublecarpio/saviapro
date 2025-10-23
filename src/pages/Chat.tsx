@@ -250,7 +250,7 @@ const Chat = () => {
         if (error) throw error;
 
         // Manejar diferentes formatos de respuesta del webhook
-        const responseText = data?.respuesta || data?.response?.respuesta || data?.response?.text || data?.response?.message;
+        const responseText = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
         
         if (responseText) {
           await supabase.from('messages').insert({
@@ -339,7 +339,7 @@ const Chat = () => {
         if (error) throw error;
 
         // Manejar diferentes formatos de respuesta del webhook
-        const responseText = data?.respuesta || data?.response?.respuesta || data?.response?.text || data?.response?.message;
+        const responseText = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
         
         if (responseText) {
           await supabase.from('messages').insert({
