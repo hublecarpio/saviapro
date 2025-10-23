@@ -314,13 +314,38 @@ const Chat = () => {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      // Detectar el tipo MIME soportado por el navegador
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        mimeType = 'audio/ogg;codecs=opus';
+      }
+      
+      console.log('Using MIME type:', mimeType);
+      
+      const recorder = new MediaRecorder(stream, { mimeType });
       const chunks: Blob[] = [];
 
-      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+      
       recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const blob = new Blob(chunks, { type: mimeType });
+        console.log('Audio blob created:', blob.size, 'bytes, type:', blob.type);
         await processAudio(blob);
         stream.getTracks().forEach(track => track.stop());
       };
@@ -331,7 +356,7 @@ const Chat = () => {
       toast.info("Grabando audio...");
     } catch (error) {
       console.error('Error starting recording:', error);
-      toast.error("Error accediendo al micrófono");
+      toast.error("Error accediendo al micrófono. Verifica los permisos en Configuración > Safari > Micrófono");
     }
   };
 
@@ -356,6 +381,10 @@ const Chat = () => {
     toast.info("Procesando audio...");
 
     try {
+      // Extraer el formato del audio (webm, mp4, ogg, etc.)
+      const audioFormat = audioBlob.type.split('/')[1].split(';')[0];
+      console.log('Processing audio format:', audioFormat, 'size:', audioBlob.size);
+      
       const reader = new FileReader();
       reader.onload = async (event) => {
         const base64Data = event.target?.result as string;
@@ -364,7 +393,7 @@ const Chat = () => {
           body: {
             type: 'audio',
             data: {
-              audioFormat: 'webm',
+              audioFormat: audioFormat,
               content: base64Data.split(',')[1],
             }
           }
