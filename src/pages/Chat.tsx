@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, BookOpen, Target, Lightbulb, TrendingUp, Paperclip, Mic, MicOff } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, BookOpen, Target, Lightbulb, TrendingUp, Paperclip, Mic, MicOff, Video, Podcast } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -402,6 +402,50 @@ const Chat = () => {
     }
   };
 
+  const handleGenerateResumen = async (type: 'video' | 'podcast') => {
+    if (!currentConversationId || messages.length === 0 || isLoading) {
+      toast.error("No hay conversación para resumir");
+      return;
+    }
+
+    setIsLoading(true);
+    toast.info(`Generando resumen en ${type}...`);
+
+    try {
+      // Crear resumen de la conversación
+      const conversationSummary = messages.map(msg => 
+        `${msg.role === 'user' ? 'Usuario' : 'Asistente'}: ${msg.message}`
+      ).join('\n\n');
+
+      const response = await fetch('https://webhook.hubleconsulting.com/webhook/1fba6f6e-3c2f-4c50-bfbe-488df7c7eebc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type,
+          data: {
+            conversation_id: currentConversationId,
+            resumen: conversationSummary,
+            total_mensajes: messages.length,
+            timestamp: new Date().toISOString()
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en webhook: ${response.status}`);
+      }
+
+      toast.success(`Solicitud de resumen en ${type} enviada exitosamente`);
+    } catch (error) {
+      console.error('Error generating resumen:', error);
+      toast.error("Error al generar el resumen");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
@@ -540,6 +584,36 @@ const Chat = () => {
             </div>
           </div>
 
+          {/* Resumen Buttons */}
+          {messages.length > 0 && (
+            <div className="border-t bg-card/30 backdrop-blur-sm">
+              <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handleGenerateResumen('video')}
+                    disabled={isLoading}
+                    className="gap-2 hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Video className="h-5 w-5" />
+                    Generar video resumen
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handleGenerateResumen('podcast')}
+                    disabled={isLoading}
+                    className="gap-2 hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Podcast className="h-5 w-5" />
+                    Generar podcast resumen
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Input Area */}
           <div className="border-t bg-card/50 backdrop-blur-sm">
             <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
@@ -593,6 +667,9 @@ const Chat = () => {
               </div>
               <p className="text-xs text-muted-foreground/70 text-center mt-3">
                 Adjunta archivos o graba audio • Presiona Enter para enviar • Shift+Enter para nueva línea
+              </p>
+              <p className="text-xs text-muted-foreground/50 text-center mt-2">
+                Desarrollado por Huble Consulting
               </p>
             </div>
           </div>
