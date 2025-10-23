@@ -36,17 +36,11 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with the user's token
-    const token = authHeader.replace('Bearer ', '');
-    const supabaseClient = createClient(
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
-        global: {
-          headers: {
-            Authorization: authHeader
-          }
-        },
         auth: {
           autoRefreshToken: false,
           persistSession: false
@@ -54,8 +48,9 @@ serve(async (req) => {
       }
     );
 
-    // Verify the user
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    // Verify JWT token to get user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
       console.error('Auth verification error:', authError);
@@ -86,7 +81,7 @@ serve(async (req) => {
     console.log('Processing message for conversation:', conversation_id);
 
     // Save user message
-    const { error: insertUserError } = await supabaseClient
+    const { error: insertUserError } = await supabaseAdmin
       .from('messages')
       .insert({
         user_id: user.id,
@@ -101,7 +96,7 @@ serve(async (req) => {
     }
 
     // Get last 10 messages for context from this conversation
-    const { data: recentMessages, error: messagesError } = await supabaseClient
+    const { data: recentMessages, error: messagesError } = await supabaseAdmin
       .from('messages')
       .select('role, message')
       .eq('conversation_id', conversation_id)
@@ -169,7 +164,7 @@ serve(async (req) => {
     const cleanResponse = aiResponse.replace(/\*\*/g, '');
 
     // Save assistant response
-    const { error: insertAssistantError } = await supabaseClient
+    const { error: insertAssistantError } = await supabaseAdmin
       .from('messages')
       .insert({
         user_id: user.id,
