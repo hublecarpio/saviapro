@@ -249,17 +249,29 @@ const Chat = () => {
 
         if (error) throw error;
 
-        // Manejar diferentes formatos de respuesta del webhook
-        const responseText = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
+        // Extraer la transcripción del webhook
+        const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
         
-        if (responseText) {
+        if (transcription) {
+          // Insertar la transcripción como mensaje del usuario
           await supabase.from('messages').insert({
             user_id: user.id,
             conversation_id: conversationId,
-            role: 'assistant',
-            message: responseText,
+            role: 'user',
+            message: transcription,
           });
-          toast.success("Archivo procesado correctamente");
+          
+          toast.success("Archivo transcrito, generando respuesta...");
+          
+          // Enviar al agente para que responda
+          const { error: chatError } = await supabase.functions.invoke('chat', {
+            body: { 
+              message: transcription,
+              conversation_id: conversationId
+            }
+          });
+          
+          if (chatError) throw chatError;
         } else {
           console.error('Respuesta del webhook sin texto:', data);
           toast.error("El webhook respondió pero sin contenido de texto");
@@ -338,17 +350,29 @@ const Chat = () => {
 
         if (error) throw error;
 
-        // Manejar diferentes formatos de respuesta del webhook
-        const responseText = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
+        // Extraer la transcripción del webhook
+        const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
         
-        if (responseText) {
+        if (transcription) {
+          // Insertar la transcripción como mensaje del usuario
           await supabase.from('messages').insert({
             user_id: user.id,
             conversation_id: conversationId,
-            role: 'assistant',
-            message: responseText,
+            role: 'user',
+            message: transcription,
           });
-          toast.success("Audio procesado correctamente");
+          
+          toast.success("Audio transcrito, generando respuesta...");
+          
+          // Enviar al agente para que responda
+          const { error: chatError } = await supabase.functions.invoke('chat', {
+            body: { 
+              message: transcription,
+              conversation_id: conversationId
+            }
+          });
+          
+          if (chatError) throw chatError;
         } else {
           console.error('Respuesta del webhook sin texto:', data);
           toast.error("El webhook respondió pero sin contenido de texto");
