@@ -451,33 +451,50 @@ const Chat = () => {
       }
 
       const webhookData = await response.json();
-      const mediaUrl = webhookData?.response;
+      console.log('Respuesta del webhook:', webhookData);
+
+      // Verificar diferentes estructuras posibles de respuesta
+      const mediaUrl = webhookData?.response || webhookData?.url || webhookData?.data?.url || webhookData?.data?.response;
 
       if (!mediaUrl) {
-        throw new Error("No se recibió URL del webhook");
+        // Si no hay URL, mostrar mensaje de que está en proceso
+        await supabase
+          .from('messages')
+          .delete()
+          .eq('id', loadingMessage.id);
+
+        await supabase
+          .from('messages')
+          .insert({
+            conversation_id: currentConversationId,
+            user_id: user!.id,
+            role: 'assistant',
+            message: `✅ Solicitud de ${type === 'video' ? 'video' : 'podcast'} enviada. El proceso puede tomar algunos minutos. Te notificaremos cuando esté listo.`
+          });
+
+        toast.success("Solicitud enviada exitosamente");
+      } else {
+        // Si hay URL, mostrar el resultado
+        await supabase
+          .from('messages')
+          .delete()
+          .eq('id', loadingMessage.id);
+
+        const resultMessage = type === 'video' 
+          ? `✅ Video resumen generado:\n\n${mediaUrl}`
+          : `✅ Podcast resumen generado:\n\n${mediaUrl}`;
+
+        await supabase
+          .from('messages')
+          .insert({
+            conversation_id: currentConversationId,
+            user_id: user!.id,
+            role: 'assistant',
+            message: resultMessage
+          });
+
+        toast.success(`${type === 'video' ? 'Video' : 'Podcast'} generado exitosamente`);
       }
-
-      // Eliminar mensaje de carga
-      await supabase
-        .from('messages')
-        .delete()
-        .eq('id', loadingMessage.id);
-
-      // Insertar mensaje con el resultado
-      const resultMessage = type === 'video' 
-        ? `✅ Video resumen generado:\n\n${mediaUrl}`
-        : `✅ Podcast resumen generado:\n\n${mediaUrl}`;
-
-      await supabase
-        .from('messages')
-        .insert({
-          conversation_id: currentConversationId,
-          user_id: user!.id,
-          role: 'assistant',
-          message: resultMessage
-        });
-
-      toast.success(`${type === 'video' ? 'Video' : 'Podcast'} generado exitosamente`);
     } catch (error) {
       console.error('Error generating resumen:', error);
       toast.error("Error al generar el resumen");
