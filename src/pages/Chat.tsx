@@ -409,9 +409,22 @@ const Chat = () => {
     }
 
     setIsLoading(true);
-    toast.info(`Generando resumen en ${type}...`);
-
+    
     try {
+      // Insertar mensaje de carga en el chat
+      const { data: loadingMessage, error: loadingError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: currentConversationId,
+          user_id: user!.id,
+          role: 'assistant',
+          message: `⏳ Generando ${type === 'video' ? 'video' : 'podcast'} resumen... Por favor espera.`
+        })
+        .select()
+        .single();
+
+      if (loadingError) throw loadingError;
+
       // Crear resumen de la conversación
       const conversationSummary = messages.map(msg => 
         `${msg.role === 'user' ? 'Usuario' : 'Asistente'}: ${msg.message}`
@@ -437,7 +450,34 @@ const Chat = () => {
         throw new Error(`Error en webhook: ${response.status}`);
       }
 
-      toast.success(`Solicitud de resumen en ${type} enviada exitosamente`);
+      const webhookData = await response.json();
+      const mediaUrl = webhookData?.response;
+
+      if (!mediaUrl) {
+        throw new Error("No se recibió URL del webhook");
+      }
+
+      // Eliminar mensaje de carga
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('id', loadingMessage.id);
+
+      // Insertar mensaje con el resultado
+      const resultMessage = type === 'video' 
+        ? `✅ Video resumen generado:\n\n${mediaUrl}`
+        : `✅ Podcast resumen generado:\n\n${mediaUrl}`;
+
+      await supabase
+        .from('messages')
+        .insert({
+          conversation_id: currentConversationId,
+          user_id: user!.id,
+          role: 'assistant',
+          message: resultMessage
+        });
+
+      toast.success(`${type === 'video' ? 'Video' : 'Podcast'} generado exitosamente`);
     } catch (error) {
       console.error('Error generating resumen:', error);
       toast.error("Error al generar el resumen");
