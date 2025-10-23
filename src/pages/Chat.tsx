@@ -353,7 +353,6 @@ const Chat = () => {
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
-      toast.info("Grabando audio...");
     } catch (error) {
       console.error('Error starting recording:', error);
       toast.error("Error accediendo al micrófono. Verifica los permisos en Configuración > Safari > Micrófono");
@@ -378,7 +377,6 @@ const Chat = () => {
     }
 
     setIsLoading(true);
-    toast.info("Procesando audio...");
 
     try {
       // Extraer el formato del audio (webm, mp4, ogg, etc.)
@@ -405,8 +403,6 @@ const Chat = () => {
         const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
         
         if (transcription) {
-          toast.success("Audio transcrito, generando respuesta...");
-          
           // Enviar directamente al agente (él se encargará de guardar el mensaje del usuario)
           const { error: chatError } = await supabase.functions.invoke('chat', {
             body: { 
