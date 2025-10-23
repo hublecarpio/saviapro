@@ -249,14 +249,20 @@ const Chat = () => {
 
         if (error) throw error;
 
-        if (data?.response?.text) {
+        // Manejar diferentes formatos de respuesta del webhook
+        const responseText = data?.respuesta || data?.response?.respuesta || data?.response?.text || data?.response?.message;
+        
+        if (responseText) {
           await supabase.from('messages').insert({
             user_id: user.id,
             conversation_id: conversationId,
             role: 'assistant',
-            message: data.response.text,
+            message: responseText,
           });
           toast.success("Archivo procesado correctamente");
+        } else {
+          console.error('Respuesta del webhook sin texto:', data);
+          toast.error("El webhook respondió pero sin contenido de texto");
         }
       };
       
@@ -332,14 +338,20 @@ const Chat = () => {
 
         if (error) throw error;
 
-        if (data?.response?.text) {
+        // Manejar diferentes formatos de respuesta del webhook
+        const responseText = data?.respuesta || data?.response?.respuesta || data?.response?.text || data?.response?.message;
+        
+        if (responseText) {
           await supabase.from('messages').insert({
             user_id: user.id,
             conversation_id: conversationId,
             role: 'assistant',
-            message: data.response.text,
+            message: responseText,
           });
           toast.success("Audio procesado correctamente");
+        } else {
+          console.error('Respuesta del webhook sin texto:', data);
+          toast.error("El webhook respondió pero sin contenido de texto");
         }
       };
       
