@@ -253,17 +253,9 @@ const Chat = () => {
         const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
         
         if (transcription) {
-          // Insertar la transcripción como mensaje del usuario
-          await supabase.from('messages').insert({
-            user_id: user.id,
-            conversation_id: conversationId,
-            role: 'user',
-            message: transcription,
-          });
-          
           toast.success("Archivo transcrito, generando respuesta...");
           
-          // Enviar al agente para que responda
+          // Enviar directamente al agente (él se encargará de guardar el mensaje del usuario)
           const { error: chatError } = await supabase.functions.invoke('chat', {
             body: { 
               message: transcription,
@@ -354,17 +346,9 @@ const Chat = () => {
         const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
         
         if (transcription) {
-          // Insertar la transcripción como mensaje del usuario
-          await supabase.from('messages').insert({
-            user_id: user.id,
-            conversation_id: conversationId,
-            role: 'user',
-            message: transcription,
-          });
-          
           toast.success("Audio transcrito, generando respuesta...");
           
-          // Enviar al agente para que responda
+          // Enviar directamente al agente (él se encargará de guardar el mensaje del usuario)
           const { error: chatError } = await supabase.functions.invoke('chat', {
             body: { 
               message: transcription,

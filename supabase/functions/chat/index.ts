@@ -160,6 +160,9 @@ serve(async (req) => {
 
     console.log('DeepSeek response received, saving to database...');
 
+    // Limpiar formato markdown excesivo (quitar asteriscos dobles)
+    const cleanResponse = aiResponse.replace(/\*\*/g, '');
+
     // Save assistant response
     const { error: insertAssistantError } = await supabaseAdmin
       .from('messages')
@@ -167,7 +170,7 @@ serve(async (req) => {
         user_id: user.id,
         conversation_id: conversation_id,
         role: 'assistant',
-        message: aiResponse
+        message: cleanResponse
       });
 
     if (insertAssistantError) {
