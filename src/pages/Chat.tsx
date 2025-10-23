@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, BookOpen, Target, Lightbulb, TrendingUp } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, BookOpen, Target, Lightbulb, TrendingUp, Paperclip, Mic, MicOff } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -47,8 +47,11 @@ const Chat = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -213,6 +216,142 @@ const Chat = () => {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || isLoading) return;
+
+    let conversationId = currentConversationId;
+    if (!conversationId) {
+      conversationId = await createNewConversation(`Archivo: ${file.name}`);
+      if (!conversationId) return;
+      setCurrentConversationId(conversationId);
+    }
+
+    setIsLoading(true);
+    toast.info(`Procesando archivo: ${file.name}`);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Data = event.target?.result as string;
+        
+        const { data, error } = await supabase.functions.invoke('webhook-integration', {
+          body: {
+            type: 'file',
+            data: {
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+              content: base64Data.split(',')[1],
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        if (data?.response?.text) {
+          await supabase.from('messages').insert({
+            user_id: user.id,
+            conversation_id: conversationId,
+            role: 'assistant',
+            message: data.response.text,
+          });
+          toast.success("Archivo procesado correctamente");
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast.error("Error procesando el archivo");
+    } finally {
+      setIsLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        await processAudio(blob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      toast.info("Grabando audio...");
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast.error("Error accediendo al micrófono");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const processAudio = async (audioBlob: Blob) => {
+    if (!user || isLoading) return;
+
+    let conversationId = currentConversationId;
+    if (!conversationId) {
+      conversationId = await createNewConversation('Mensaje de audio');
+      if (!conversationId) return;
+      setCurrentConversationId(conversationId);
+    }
+
+    setIsLoading(true);
+    toast.info("Procesando audio...");
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Data = event.target?.result as string;
+        
+        const { data, error } = await supabase.functions.invoke('webhook-integration', {
+          body: {
+            type: 'audio',
+            data: {
+              audioFormat: 'webm',
+              content: base64Data.split(',')[1],
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        if (data?.response?.text) {
+          await supabase.from('messages').insert({
+            user_id: user.id,
+            conversation_id: conversationId,
+            role: 'assistant',
+            message: data.response.text,
+          });
+          toast.success("Audio procesado correctamente");
+        }
+      };
+      
+      reader.readAsDataURL(audioBlob);
+    } catch (error) {
+      console.error('Error processing audio:', error);
+      toast.error("Error procesando el audio");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
@@ -341,6 +480,33 @@ const Chat = () => {
           <div className="border-t bg-card/50 backdrop-blur-sm">
             <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
               <div className="flex gap-3 items-end">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  accept="*/*"
+                />
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  className="h-[56px] w-[56px] rounded-xl shrink-0"
+                  title="Adjuntar archivo"
+                >
+                  <Paperclip className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant={isRecording ? "destructive" : "outline"}
+                  size="lg"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isLoading && !isRecording}
+                  className="h-[56px] w-[56px] rounded-xl shrink-0"
+                  title={isRecording ? "Detener grabación" : "Grabar audio"}
+                >
+                  {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                </Button>
                 <div className="flex-1 relative">
                   <Textarea
                     ref={textareaRef}
@@ -362,7 +528,7 @@ const Chat = () => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground/70 text-center mt-3">
-                Presiona Enter para enviar • Shift+Enter para nueva línea
+                Adjunta archivos o graba audio • Presiona Enter para enviar • Shift+Enter para nueva línea
               </p>
             </div>
           </div>
