@@ -184,7 +184,7 @@ export function AppSidebar({
         {sidebarOpen && (
           <div className="mt-auto p-4 border-t">
             <p className="text-xs text-muted-foreground text-center">
-              Desarrollado por <span className="font-semibold">nodriza</span>
+              Desarrollado por <span className="font-semibold">Huble .Ing</span>
             </p>
           </div>
         )}
