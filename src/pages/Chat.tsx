@@ -314,6 +314,13 @@ const Chat = () => {
 
   const startRecording = async () => {
     try {
+      // Verificar si el navegador soporta getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Tu navegador no soporta grabación de audio');
+      }
+
+      console.log('Requesting microphone access...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -321,6 +328,8 @@ const Chat = () => {
           sampleRate: 44100
         } 
       });
+      
+      console.log('Microphone access granted');
       
       // Detectar el tipo MIME soportado por el navegador
       let mimeType = 'audio/webm';
@@ -353,9 +362,27 @@ const Chat = () => {
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting recording:', error);
-      toast.error("Error accediendo al micrófono. Verifica los permisos en Configuración > Safari > Micrófono");
+      
+      // Mostrar mensaje específico según el tipo de error
+      let errorMessage = "No se pudo acceder al micrófono";
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMessage = "Permiso denegado. Por favor, permite el acceso al micrófono en la configuración de tu navegador";
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMessage = "No se encontró ningún micrófono en tu dispositivo";
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorMessage = "El micrófono está siendo usado por otra aplicación";
+      } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+        errorMessage = "Tu dispositivo no cumple con los requisitos de audio";
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = "Tu navegador no soporta grabación de audio";
+      } else if (error.name === 'TypeError') {
+        errorMessage = "Error de configuración de audio";
+      }
+      
+      toast.error(errorMessage);
     }
   };
 
