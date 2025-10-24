@@ -232,46 +232,59 @@ const Chat = () => {
     toast.info(`Procesando archivo: ${file.name}`);
 
     try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const base64Data = event.target?.result as string;
-        
-        const { data, error } = await supabase.functions.invoke('webhook-integration', {
-          body: {
-            type: 'file',
-            data: {
-              fileName: file.name,
-              fileType: file.type,
-              fileSize: file.size,
-              content: base64Data.split(',')[1],
-            }
-          }
+      // Subir archivo a Supabase Storage
+      const fileName = `${conversationId}/${Date.now()}-${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('chat-files')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
         });
 
-        if (error) throw error;
+      if (uploadError) throw uploadError;
 
-        // Extraer la transcripción del webhook
-        const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
-        
-        if (transcription) {
-          toast.success("Archivo transcrito, generando respuesta...");
-          
-          // Enviar directamente al agente (él se encargará de guardar el mensaje del usuario)
-          const { error: chatError } = await supabase.functions.invoke('chat', {
-            body: { 
-              message: transcription,
-              conversation_id: conversationId
-            }
-          });
-          
-          if (chatError) throw chatError;
-        } else {
-          console.error('Respuesta del webhook sin texto:', data);
-          toast.error("El webhook respondió pero sin contenido de texto");
+      // Obtener URL temporal (válida por 1 hora)
+      const { data: urlData } = await supabase.storage
+        .from('chat-files')
+        .createSignedUrl(fileName, 3600);
+
+      if (!urlData?.signedUrl) throw new Error('No se pudo generar URL del archivo');
+
+      // Enviar URL a webhook
+      const { data, error } = await supabase.functions.invoke('webhook-integration', {
+        body: {
+          type: 'file',
+          data: {
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            url: urlData.signedUrl,
+          }
         }
-      };
+      });
+
+      if (error) throw error;
+
+      // Extraer respuesta del webhook
+      const response = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message || data?.response?.content;
       
-      reader.readAsDataURL(file);
+      if (response) {
+        toast.success("Archivo procesado, generando respuesta...");
+        
+        // Enviar al agente
+        const { error: chatError } = await supabase.functions.invoke('chat', {
+          body: { 
+            message: response,
+            conversation_id: conversationId,
+            user_id: user.id
+          }
+        });
+        
+        if (chatError) throw chatError;
+      } else {
+        console.error('Respuesta del webhook sin contenido:', data);
+        toast.error("El webhook respondió pero sin contenido");
+      }
     } catch (error) {
       console.error('Error processing file:', error);
       toast.error("Error procesando el archivo");
