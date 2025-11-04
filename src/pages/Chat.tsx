@@ -111,6 +111,33 @@ const Chat = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Cargar automáticamente la última conversación al entrar
+  useEffect(() => {
+    const loadLatestConversation = async () => {
+      if (!user || currentConversationId) return;
+
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading latest conversation:', error);
+        return;
+      }
+
+      if (data) {
+        setCurrentConversationId(data.id);
+        await loadMessages(data.id);
+      }
+    };
+
+    loadLatestConversation();
+  }, [user]);
+
   useEffect(() => {
     if (!user || !currentConversationId) return;
 
