@@ -69,9 +69,14 @@ export function AppSidebar({
   }, [user]);
 
   const loadConversations = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user found, skipping conversations load');
+      return;
+    }
     
+    console.log('Loading conversations for user:', user.id);
     setLoading(true);
+    
     const { data, error } = await supabase
       .from('conversations')
       .select('*')
@@ -82,6 +87,7 @@ export function AppSidebar({
       console.error('Error loading conversations:', error);
       toast.error("Error cargando conversaciones");
     } else {
+      console.log('Conversations loaded:', data?.length || 0);
       setConversations(data || []);
     }
     setLoading(false);

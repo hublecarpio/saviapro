@@ -512,6 +512,28 @@ const Chat = () => {
     }
   };
 
+  const pollForMediaUrl = async (webhookUrl: string, maxAttempts: number = 20, interval: number = 3000): Promise<string | null> => {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch(webhookUrl);
+        if (!response.ok) continue;
+        
+        const data = await response.json();
+        const mediaUrl = data?.response || data?.url || data?.data?.url || data?.data?.response;
+        
+        if (mediaUrl) {
+          return mediaUrl;
+        }
+        
+        // Esperar antes del siguiente intento
+        await new Promise(resolve => setTimeout(resolve, interval));
+      } catch (error) {
+        console.error('Error polling for media URL:', error);
+      }
+    }
+    return null;
+  };
+
   const handleGenerateResumen = async (type: 'video' | 'podcast') => {
     if (!currentConversationId || messages.length === 0 || isLoading) {
       toast.error("No hay conversación para resumir");
@@ -561,35 +583,38 @@ const Chat = () => {
       }
 
       const webhookData = await response.json();
-      console.log('Respuesta del webhook:', webhookData);
+      console.log('Respuesta inicial del webhook:', webhookData);
 
       // Verificar diferentes estructuras posibles de respuesta
-      const mediaUrl = webhookData?.response || webhookData?.url || webhookData?.data?.url || webhookData?.data?.response;
+      let mediaUrl = webhookData?.response || webhookData?.url || webhookData?.data?.url || webhookData?.data?.response;
+      const pollUrl = webhookData?.poll_url || webhookData?.data?.poll_url;
+
+      // Si no hay URL pero hay una URL de polling, consultar periódicamente
+      if (!mediaUrl && pollUrl) {
+        toast.info("Procesando... esto puede tardar un momento");
+        mediaUrl = await pollForMediaUrl(pollUrl);
+      }
+
+      // Eliminar mensaje de carga
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('id', loadingMessage.id);
 
       if (!mediaUrl) {
-        // Si no hay URL, mostrar mensaje de que está en proceso
-        await supabase
-          .from('messages')
-          .delete()
-          .eq('id', loadingMessage.id);
-
+        // Si después del polling no hay URL, mostrar mensaje de error
         await supabase
           .from('messages')
           .insert({
             conversation_id: currentConversationId,
             user_id: user!.id,
             role: 'assistant',
-            message: `✅ Solicitud de ${type === 'video' ? 'video' : 'podcast'} enviada. El proceso puede tomar algunos minutos. Te notificaremos cuando esté listo.`
+            message: `⚠️ La generación del ${type === 'video' ? 'video' : 'podcast'} está tomando más tiempo del esperado. Por favor intenta de nuevo más tarde.`
           });
 
-        toast.success("Solicitud enviada exitosamente");
+        toast.error("Tiempo de espera agotado");
       } else {
         // Si hay URL, mostrar el resultado
-        await supabase
-          .from('messages')
-          .delete()
-          .eq('id', loadingMessage.id);
-
         const resultMessage = type === 'video' 
           ? `✅ Video resumen generado:\n\n${mediaUrl}`
           : `✅ Podcast resumen generado:\n\n${mediaUrl}`;
