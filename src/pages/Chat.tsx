@@ -195,14 +195,25 @@ const Chat = () => {
 
   const handleSend = async (messageText?: string) => {
     const textToSend = messageText || input.trim();
-    if (!textToSend || !user || isLoading) return;
+    
+    console.log('handleSend called with:', { textToSend, hasUser: !!user, isLoading });
+    
+    if (!textToSend || !user || isLoading) {
+      console.log('Blocked: no text, no user, or loading');
+      return;
+    }
 
     let conversationId = currentConversationId;
     
     // Create new conversation if needed
     if (!conversationId) {
+      console.log('Creating new conversation...');
       conversationId = await createNewConversation(textToSend);
-      if (!conversationId) return;
+      if (!conversationId) {
+        console.error('Failed to create conversation');
+        toast.error("Error creando conversación");
+        return;
+      }
       setCurrentConversationId(conversationId);
     }
 
@@ -210,7 +221,9 @@ const Chat = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.functions.invoke('chat', {
+      console.log('Calling chat function with:', { conversationId, userId: user.id });
+      
+      const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
           message: textToSend,
           conversation_id: conversationId,
@@ -218,11 +231,19 @@ const Chat = () => {
         }
       });
 
-      if (error) throw error;
+      console.log('Chat function response:', { data, error });
+
+      if (error) {
+        console.error('Chat function error:', error);
+        throw error;
+      }
+      
+      console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error("El asistente está temporalmente fuera de servicio.");
+      toast.error("Error enviando mensaje. Por favor intenta nuevamente.");
     } finally {
+      console.log('Resetting loading state');
       setIsLoading(false);
       textareaRef.current?.focus();
     }
