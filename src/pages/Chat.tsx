@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, BookOpen, Target, Lightbulb, TrendingUp, Paperclip, Mic, MicOff, Video, Podcast } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -16,29 +16,6 @@ interface Message {
   created_at: string;
   conversation_id: string;
 }
-
-const promptSuggestions = [
-  {
-    icon: BookOpen,
-    title: "Analizar convocatoria",
-    prompt: "Necesito ayuda para analizar una convocatoria de subvención y entender sus requisitos clave."
-  },
-  {
-    icon: Target,
-    title: "Diseñar estrategia",
-    prompt: "Quiero diseñar una estrategia ganadora para una subvención. ¿Por dónde empiezo?"
-  },
-  {
-    icon: Lightbulb,
-    title: "Validar idea",
-    prompt: "Tengo una idea de proyecto. ¿Me ayudas a validar su viabilidad y encontrar financiación?"
-  },
-  {
-    icon: TrendingUp,
-    title: "Mejorar propuesta",
-    prompt: "¿Cómo puedo mejorar mi propuesta actual para aumentar las probabilidades de éxito?"
-  }
-];
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -274,11 +251,6 @@ const Chat = () => {
       setIsLoading(false);
       textareaRef.current?.focus();
     }
-  };
-
-  const handleSuggestionClick = (prompt: string) => {
-    setInput(prompt);
-    handleSend(prompt);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -733,38 +705,6 @@ const Chat = () => {
                     <h2 className="text-xl md:text-3xl font-semibold text-foreground px-4">
                       Bienvenido a SAVIA
                     </h2>
-                    <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4">
-                      Soy tu asistente de IA especializado en diseñar estrategias ganadoras
-                      para subvenciones y convertir ideas en proyectos viables.
-                    </p>
-                  </div>
-
-                  {/* Suggestion cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 max-w-3xl mx-auto px-3">
-                    {promptSuggestions.map((suggestion, idx) => {
-                      const Icon = suggestion.icon;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => handleSuggestionClick(suggestion.prompt)}
-                          className="group p-3 md:p-4 rounded-lg md:rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-card/80 transition-all duration-200 text-left"
-                        >
-                          <div className="flex items-start gap-2 md:gap-3">
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                              <Icon className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-sm md:text-base font-medium text-foreground mb-0.5 md:mb-1 group-hover:text-primary transition-colors">
-                                {suggestion.title}
-                              </h3>
-                              <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                                {suggestion.prompt}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
               ) : (
