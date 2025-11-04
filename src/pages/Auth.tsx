@@ -102,7 +102,15 @@ const Auth = () => {
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        // Verificar si el error es porque el usuario ya existe
+        if (signUpError.message?.includes("already registered") || signUpError.message?.includes("User already registered")) {
+          toast.error("Este correo ya tiene una cuenta. Por favor, inicia sesión en su lugar.");
+          setLoading(false);
+          return;
+        }
+        throw signUpError;
+      }
 
       if (authData.user) {
         // Asignar rol de estudiante
