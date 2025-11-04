@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,43 +12,56 @@ serve(async (req) => {
   }
 
   try {
-    const { type, data } = await req.json();
+    const { type, user_id, data } = await req.json();
     
-    console.log('Processing webhook request:', { type, dataSize: JSON.stringify(data).length });
+    console.log('Processing request:', { type, user_id });
 
-    // Send to webhook
-    const webhookUrl = 'https://webhook.hubleconsulting.com/webhook/c9763ae5-02d6-46e8-ab9e-7300d98756a0';
-    
-    const webhookResponse = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        type,
-        data,
-        timestamp: new Date().toISOString(),
-      }),
-    });
+    // Crear cliente de Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    if (!webhookResponse.ok) {
-      console.error('Webhook error:', await webhookResponse.text());
-      throw new Error(`Webhook returned ${webhookResponse.status}`);
+    if (type === 'starter_profile') {
+      // Extraer edad y grupo de edad de los datos
+      const age = data.age;
+      const ageGroup = age >= 7 && age <= 12 ? '7-12' : age >= 12 && age <= 17 ? '12-17' : null;
+
+      // Guardar en la base de datos
+      const { data: profile, error } = await supabase
+        .from('starter_profiles')
+        .upsert({
+          user_id,
+          age,
+          age_group: ageGroup,
+          profile_data: data,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error(`Failed to save starter profile: ${error.message}`);
+      }
+
+      console.log('Starter profile saved successfully:', profile.id);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          profile_id: profile.id 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
     }
 
-    const webhookResult = await webhookResponse.json();
-    console.log('Webhook response received:', webhookResult);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        response: webhookResult 
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
+    // Otros tipos de webhook pueden seguir usando el webhook externo si es necesario
+    throw new Error(`Unknown webhook type: ${type}`);
 
   } catch (error) {
     console.error('Error in webhook integration:', error);

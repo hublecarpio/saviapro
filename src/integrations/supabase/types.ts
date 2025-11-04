@@ -139,6 +139,36 @@ export type Database = {
         }
         Relationships: []
       }
+      starter_profiles: {
+        Row: {
+          age: number | null
+          age_group: string | null
+          created_at: string | null
+          id: string
+          profile_data: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          age_group?: string | null
+          created_at?: string | null
+          id?: string
+          profile_data: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          age_group?: string | null
+          created_at?: string | null
+          id?: string
+          profile_data?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       system_config: {
         Row: {
           id: string
