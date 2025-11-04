@@ -54,7 +54,18 @@ const Auth = () => {
     if (roles?.some(r => r.role === "admin")) {
       navigate("/admin");
     } else {
-      navigate("/chat");
+      // Verificar si completó el starter
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("starter_completed")
+        .eq("id", userId)
+        .single();
+
+      if (profile?.starter_completed) {
+        navigate("/chat");
+      } else {
+        navigate("/starter");
+      }
     }
   };
 

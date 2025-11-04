@@ -434,6 +434,12 @@ const Starter = () => {
         }
       });
 
+      // Marcar starter como completado
+      await supabase
+        .from("profiles")
+        .update({ starter_completed: true })
+        .eq("id", user.id);
+
       toast({
         title: "¡Perfecto! ✨",
         description: "Tu perfil ha sido creado. ¡Comencemos a aprender juntos!",
