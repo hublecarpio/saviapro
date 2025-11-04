@@ -71,6 +71,17 @@ const Chat = () => {
         return;
       }
       
+      // Verificar si es admin y redirigir
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id);
+
+      if (roles?.some(r => r.role === "admin")) {
+        navigate("/admin");
+        return;
+      }
+      
       setUser(session.user);
     };
 
@@ -78,10 +89,21 @@ const Chat = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!session) {
         navigate("/");
       } else {
+        // Verificar si es admin
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id);
+
+        if (roles?.some(r => r.role === "admin")) {
+          navigate("/admin");
+          return;
+        }
+        
         setUser(session.user);
       }
     });

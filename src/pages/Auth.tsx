@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Info } from "lucide-react";
 import { z } from "zod";
 
 const authSchema = z.object({
@@ -24,22 +25,38 @@ const Auth = () => {
   const [name, setName] = useState("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkSessionAndRedirect = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/chat");
+        await redirectBasedOnRole(session.user.id);
       }
-    });
+    };
+
+    checkSessionAndRedirect();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        navigate("/chat");
+        await redirectBasedOnRole(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const redirectBasedOnRole = async (userId: string) => {
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+
+    if (roles?.some(r => r.role === "admin")) {
+      navigate("/admin");
+    } else {
+      navigate("/chat");
+    }
+  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,20 +65,50 @@ const Auth = () => {
       const validated = authSchema.parse({ email, password, name });
       setLoading(true);
 
-      const { error } = await supabase.auth.signUp({
+      // Verificar si el email está en la lista de invitados
+      const { data: invitedUser } = await supabase
+        .from("invited_users")
+        .select("*")
+        .eq("email", validated.email.toLowerCase())
+        .eq("used", false)
+        .single();
+
+      if (!invitedUser) {
+        toast.error("Este correo no está autorizado para registrarse. Contacta al administrador.");
+        setLoading(false);
+        return;
+      }
+
+      // Crear cuenta
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: validated.email,
         password: validated.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/chat`,
+          emailRedirectTo: `${window.location.origin}/starter`,
           data: {
             name: validated.name || validated.email.split('@')[0],
           },
         },
       });
 
-      if (error) throw error;
+      if (signUpError) throw signUpError;
+
+      if (authData.user) {
+        // Asignar rol de estudiante
+        await supabase
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            role: "student"
+          });
+
+        // Marcar usuario invitado como usado
+        await supabase.rpc("mark_invited_user_used", { 
+          user_email: validated.email.toLowerCase() 
+        });
+      }
       
-      toast.success("Cuenta creada exitosamente");
+      toast.success("Cuenta creada exitosamente. ¡Bienvenido!");
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -163,6 +210,12 @@ const Auth = () => {
               </TabsContent>
               
               <TabsContent value="signup">
+                <Alert className="mb-4">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Solo puedes registrarte si tu correo ha sido autorizado por un administrador
+                  </AlertDescription>
+                </Alert>
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signup-name" className="text-sm font-medium">
@@ -179,7 +232,7 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email" className="text-sm font-medium">
-                      Email
+                      Email autorizado
                     </Label>
                     <Input
                       id="signup-email"

@@ -439,7 +439,17 @@ const Starter = () => {
         description: "Tu perfil ha sido creado. ¡Comencemos a aprender juntos!",
       });
 
-      navigate("/chat");
+      // Verificar si es admin o estudiante
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+
+      if (roles?.some(r => r.role === "admin")) {
+        navigate("/admin");
+      } else {
+        navigate("/chat");
+      }
     } catch (error) {
       console.error("Error al enviar starter:", error);
       toast({
