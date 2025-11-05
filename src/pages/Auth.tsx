@@ -143,14 +143,13 @@ const Auth = () => {
         password: validated.password
       });
       if (error) throw error;
-      toast.success("Sesión iniciada");
+      // El redirect se maneja automáticamente en onAuthStateChange
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
       } else if (error instanceof Error) {
         toast.error(error.message);
       }
-    } finally {
       setLoading(false);
     }
   };
