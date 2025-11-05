@@ -37,9 +37,12 @@ const Auth = () => {
       data: {
         subscription
       }
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        await redirectBasedOnRole(session.user.id);
+        // Usar setTimeout para evitar deadlock
+        setTimeout(() => {
+          redirectBasedOnRole(session.user.id);
+        }, 0);
       }
     });
     return () => subscription.unsubscribe();
