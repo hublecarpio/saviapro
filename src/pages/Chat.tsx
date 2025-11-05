@@ -193,8 +193,15 @@ const Chat = () => {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
+      navigate("/");
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error("Error al cerrar sesión");
+    }
   };
 
   const handleSend = async (messageText?: string) => {
