@@ -118,7 +118,10 @@ const Chat = () => {
 
   // Cargar mensajes y suscribirse a realtime cuando cambia la conversación
   useEffect(() => {
-    if (!user || !currentConversationId) return;
+    if (!user || !currentConversationId) {
+      setIsLoading(false);
+      return;
+    }
 
     console.log('Setting up conversation:', currentConversationId);
     
@@ -133,10 +136,12 @@ const Chat = () => {
       if (error) {
         console.error('Error loading messages:', error);
         toast.error("Error cargando mensajes");
+        setIsLoading(false);
         return;
       }
 
       setMessages((data || []) as Message[]);
+      setIsLoading(false);
     };
 
     loadInitialMessages();
@@ -168,12 +173,19 @@ const Chat = () => {
           
           // Limpiar loading cuando llega respuesta del assistant
           if (newMessage.role === 'assistant') {
+            console.log('Assistant message received, clearing loading state');
             setIsLoading(false);
           }
         }
       )
       .subscribe((status) => {
         console.log('Realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to realtime');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime subscription error');
+          setIsLoading(false);
+        }
       });
 
     return () => {
@@ -259,6 +271,13 @@ const Chat = () => {
     setInput("");
     setIsLoading(true);
 
+    // Timeout de seguridad: resetear isLoading después de 30 segundos
+    const timeoutId = setTimeout(() => {
+      console.log('Timeout: resetting isLoading');
+      setIsLoading(false);
+      toast.error("La respuesta está tomando más tiempo del esperado");
+    }, 30000);
+
     try {
       let conversationId = currentConversationId;
       
@@ -267,6 +286,7 @@ const Chat = () => {
         console.log('Creating new conversation');
         conversationId = await createNewConversation(textToSend);
         if (!conversationId) {
+          clearTimeout(timeoutId);
           toast.error("Error creando conversación");
           setIsLoading(false);
           return;
@@ -279,7 +299,7 @@ const Chat = () => {
       }
       
       console.log('Invoking chat function');
-      const { error } = await supabase.functions.invoke('chat', {
+      const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
           message: textToSend,
           conversation_id: conversationId,
@@ -288,13 +308,18 @@ const Chat = () => {
       });
 
       if (error) {
+        clearTimeout(timeoutId);
         console.error('Function invocation error:', error);
         throw error;
       }
       
-      console.log('Message sent successfully');
+      console.log('Chat function response:', data);
+      
+      // El isLoading se reseteará cuando llegue el mensaje del assistant vía realtime
+      // o por el timeout de seguridad
       
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Error sending message:', error);
       toast.error("Error enviando mensaje");
       setInput(textToSend);
