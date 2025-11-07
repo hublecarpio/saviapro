@@ -133,9 +133,13 @@ const Chat = () => {
           (payload) => {
             const newMessage = payload.new as Message;
             setMessages((prev) => {
+              // Remover mensajes temporales del mismo tipo
+              const filtered = prev.filter(m => 
+                !(m.id.startsWith('temp-') && m.role === newMessage.role)
+              );
               // Evitar duplicados
-              if (prev.some(m => m.id === newMessage.id)) return prev;
-              return [...prev, newMessage];
+              if (filtered.some(m => m.id === newMessage.id)) return filtered;
+              return [...filtered, newMessage];
             });
             
             if (newMessage.role === 'assistant') {
@@ -233,6 +237,7 @@ const Chat = () => {
     try {
       let conversationId = currentConversationId;
       
+      // Crear conversación si no existe
       if (!conversationId) {
         conversationId = await createNewConversation(textToSend);
         if (!conversationId) {
@@ -241,8 +246,22 @@ const Chat = () => {
           return;
         }
         setCurrentConversationId(conversationId);
+        // Dar tiempo para que el useEffect se suscriba al realtime
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // Agregar mensaje del usuario al UI inmediatamente
+      const tempUserMessage: Message = {
+        id: `temp-${Date.now()}`,
+        role: 'user',
+        message: textToSend,
+        created_at: new Date().toISOString(),
+        conversation_id: conversationId
+      };
       
+      setMessages(prev => [...prev, tempUserMessage]);
+      
+      // Llamar al edge function
       const { error } = await supabase.functions.invoke('chat', {
         body: { 
           message: textToSend,
@@ -253,12 +272,13 @@ const Chat = () => {
 
       if (error) throw error;
       
-      // El realtime se encargará de limpiar el loading cuando llegue la respuesta
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error("Error enviando mensaje");
       setInput(textToSend);
       setIsLoading(false);
+      // Remover el mensaje temporal del usuario
+      setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')));
     }
   };
 
