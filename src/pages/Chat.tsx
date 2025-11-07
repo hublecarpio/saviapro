@@ -140,15 +140,19 @@ const Chat = () => {
         return;
       }
 
+      console.log('Initial messages loaded:', data?.length);
       setMessages((data || []) as Message[]);
       setIsLoading(false);
     };
 
     loadInitialMessages();
 
-    // Suscribirse a nuevos mensajes
+    // Suscribirse a nuevos mensajes con un identificador único para evitar conflictos
+    const channelName = `messages-${currentConversationId}-${Date.now()}`;
+    console.log('Creating realtime channel:', channelName);
+    
     const channel = supabase
-      .channel(`messages-${currentConversationId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -158,38 +162,46 @@ const Chat = () => {
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         (payload) => {
-          console.log('New message received via realtime:', payload);
+          console.log('🔔 New message received via realtime:', payload);
           const newMessage = payload.new as Message;
           
           setMessages((prev) => {
             // Evitar duplicados
             if (prev.some(m => m.id === newMessage.id)) {
-              console.log('Duplicate message, ignoring');
+              console.log('⚠️ Duplicate message detected, ignoring:', newMessage.id);
               return prev;
             }
-            console.log('Adding new message to state');
+            console.log('✅ Adding new message to state:', newMessage.role, newMessage.message.substring(0, 50));
             return [...prev, newMessage];
           });
           
           // Limpiar loading cuando llega respuesta del assistant
           if (newMessage.role === 'assistant') {
-            console.log('Assistant message received, clearing loading state');
+            console.log('🎯 Assistant message received, clearing loading state');
             setIsLoading(false);
           }
         }
       )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
+      .subscribe((status, err) => {
+        console.log('📡 Realtime subscription status:', status);
+        if (err) {
+          console.error('❌ Realtime subscription error:', err);
+        }
         if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to realtime');
+          console.log('✅ Successfully subscribed to realtime channel:', channelName);
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('Realtime subscription error');
+          console.error('❌ Realtime channel error');
           setIsLoading(false);
+        } else if (status === 'TIMED_OUT') {
+          console.error('⏱️ Realtime subscription timed out');
+          setIsLoading(false);
+        } else if (status === 'CLOSED') {
+          console.log('🔒 Realtime channel closed');
         }
       });
 
     return () => {
-      console.log('Cleaning up channel');
+      console.log('🧹 Cleaning up realtime channel:', channelName);
       supabase.removeChannel(channel);
     };
   }, [user, currentConversationId]);
