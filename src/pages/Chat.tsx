@@ -91,13 +91,7 @@ const Chat = () => {
   // Cargar automáticamente la última conversación al entrar
   useEffect(() => {
     const loadLatestConversation = async () => {
-      if (!user) return;
-      
-      // Solo cargar si no hay conversación actual
-      if (currentConversationId) {
-        await loadMessages(currentConversationId);
-        return;
-      }
+      if (!user || currentConversationId) return;
 
       const { data, error } = await supabase
         .from('conversations')
@@ -114,15 +108,16 @@ const Chat = () => {
 
       if (data) {
         setCurrentConversationId(data.id);
-        await loadMessages(data.id);
       }
     };
 
     loadLatestConversation();
-  }, [user, currentConversationId]);
+  }, [user]);
 
   useEffect(() => {
     if (!user || !currentConversationId) return;
+
+    loadMessages(currentConversationId);
 
     const channel = supabase
       .channel(`messages-${currentConversationId}`)
@@ -204,8 +199,16 @@ const Chat = () => {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setMessages([]);
+      setCurrentConversationId(null);
+      navigate("/");
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error("Error al cerrar sesión");
+    }
   };
 
   const handleSend = async (messageText?: string) => {
