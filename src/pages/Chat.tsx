@@ -810,21 +810,25 @@ const Chat = () => {
                               <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
                                 {msg.message.split(urlMatch[0])[0]}
                               </p>
-                              <div className="border rounded-lg overflow-hidden">
-                                <iframe 
-                                  src={urlMatch[0]}
-                                  className="w-full h-[500px] md:h-[600px]"
-                                  title="Informe PDF"
-                                />
-                              </div>
-                              <a 
-                                href={urlMatch[0]} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                              <Button 
+                                asChild
+                                className="w-full gap-2 h-auto py-4"
+                                size="lg"
                               >
-                                Abrir PDF en nueva pestaña →
-                              </a>
+                                <a 
+                                  href={urlMatch[0]} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  download
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                  </svg>
+                                  Descargar Informe PDF
+                                </a>
+                              </Button>
                             </div>
                           ) : hasMedia && urlMatch ? (
                             <div className="space-y-3">
