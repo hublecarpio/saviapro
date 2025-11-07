@@ -21,6 +21,7 @@ interface Conversation {
   title: string;
   created_at: string;
   updated_at: string;
+  first_message?: string;
 }
 
 interface AppSidebarProps {
@@ -77,7 +78,7 @@ export function AppSidebar({
     console.log('Loading conversations for user:', user.id);
     setLoading(true);
     
-    const { data, error } = await supabase
+    const { data: conversationsData, error } = await supabase
       .from('conversations')
       .select('*')
       .eq('user_id', user.id)
@@ -86,10 +87,31 @@ export function AppSidebar({
     if (error) {
       console.error('Error loading conversations:', error);
       toast.error("Error cargando conversaciones");
-    } else {
-      console.log('Conversations loaded:', data?.length || 0);
-      setConversations(data || []);
+      setLoading(false);
+      return;
     }
+
+    // Obtener el primer mensaje de cada conversación
+    const conversationsWithFirstMessage = await Promise.all(
+      (conversationsData || []).map(async (conv) => {
+        const { data: messages } = await supabase
+          .from('messages')
+          .select('message')
+          .eq('conversation_id', conv.id)
+          .eq('role', 'user')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        return {
+          ...conv,
+          first_message: messages?.message || conv.title
+        };
+      })
+    );
+
+    console.log('Conversations loaded:', conversationsWithFirstMessage.length);
+    setConversations(conversationsWithFirstMessage);
     setLoading(false);
   };
 
@@ -156,16 +178,16 @@ export function AppSidebar({
                     <SidebarMenuButton
                       onClick={() => onConversationSelect(conversation.id)}
                       isActive={currentConversationId === conversation.id}
-                      className="group relative"
+                      className="group relative w-full"
                     >
                       <MessageSquare className="h-4 w-4 shrink-0" />
                       {sidebarOpen && (
-                        <>
-                          <span className="flex-1 truncate text-left">
-                            {conversation.title}
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <span className="flex-1 truncate text-left text-sm">
+                            {conversation.first_message}
                           </span>
-                          <div
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer hover:bg-accent rounded-sm"
+                          <button
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-accent rounded-sm shrink-0"
                             onClick={(e) => handleDelete(e, conversation.id)}
                           >
                             {deletingId === conversation.id ? (
@@ -173,8 +195,8 @@ export function AppSidebar({
                             ) : (
                               <Trash2 className="h-3 w-3" />
                             )}
-                          </div>
-                        </>
+                          </button>
+                        </div>
                       )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
