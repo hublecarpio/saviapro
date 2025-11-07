@@ -272,7 +272,17 @@ serve(async (req) => {
     const requestsInforme = informeKeywords.some(keyword => userMessageLower.includes(keyword));
 
     if (requestsInforme) {
-      console.log('Informe request detected, calling webhook in background...');
+      console.log('Informe request detected, inserting loading message...');
+      
+      // Insertar mensaje de carga inmediatamente
+      await supabaseAdmin
+        .from('messages')
+        .insert({
+          user_id: user_id,
+          conversation_id: conversation_id,
+          role: 'assistant',
+          message: '⏳ Estoy generando tu informe PDF personalizado, esto puede tomar hasta 2 minutos. Por favor espera...'
+        });
       
       // Ejecutar webhook en background sin esperar
       (async () => {
@@ -314,14 +324,34 @@ serve(async (req) => {
                   user_id: user_id,
                   conversation_id: conversation_id,
                   role: 'assistant',
-                  message: `📄 ¡Tu informe está listo! Descárgalo aquí: ${pdfUrl}`
+                  message: `📄 ¡Tu informe está listo! Descárgalo aquí:\n\n${pdfUrl}`
                 });
             }
           } else {
             console.error('Webhook error:', webhookResponse.status);
+            
+            // Insertar mensaje de error
+            await supabaseAdmin
+              .from('messages')
+              .insert({
+                user_id: user_id,
+                conversation_id: conversation_id,
+                role: 'assistant',
+                message: '❌ Hubo un problema generando el informe. Por favor intenta de nuevo más tarde.'
+              });
           }
         } catch (webhookError) {
           console.error('Error calling webhook:', webhookError);
+          
+          // Insertar mensaje de error
+          await supabaseAdmin
+            .from('messages')
+            .insert({
+              user_id: user_id,
+              conversation_id: conversation_id,
+              role: 'assistant',
+              message: '❌ Hubo un error inesperado generando el informe. Por favor intenta de nuevo.'
+            });
         }
       })();
     }
