@@ -119,7 +119,7 @@ const Chat = () => {
     if (!user || !currentConversationId) return;
 
     const channel = supabase
-      .channel('messages-changes')
+      .channel(`messages-${currentConversationId}`)
       .on(
         'postgres_changes',
         {
@@ -129,7 +129,16 @@ const Chat = () => {
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+          const newMessage = payload.new as Message;
+          setMessages((prev) => {
+            // Evitar duplicados
+            if (prev.some(m => m.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
+          // Limpiar loading cuando llega respuesta del asistente
+          if (newMessage.role === 'assistant') {
+            setIsLoading(false);
+          }
         }
       )
       .subscribe();
@@ -219,6 +228,7 @@ const Chat = () => {
         conversationId = await createNewConversation(textToSend);
         if (!conversationId) {
           toast.error("Error creando conversación");
+          setIsLoading(false);
           return;
         }
         setCurrentConversationId(conversationId);
@@ -233,11 +243,12 @@ const Chat = () => {
       });
 
       if (error) throw error;
+      
+      // El realtime se encargará de limpiar el loading cuando llegue la respuesta
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error("Error enviando mensaje");
       setInput(textToSend);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -263,7 +274,6 @@ const Chat = () => {
     toast.info(`Procesando archivo: ${file.name}`);
 
     try {
-      // Subir archivo a Supabase Storage
       const fileName = `${conversationId}/${Date.now()}-${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('chat-files')
@@ -274,14 +284,12 @@ const Chat = () => {
 
       if (uploadError) throw uploadError;
 
-      // Obtener URL temporal (válida por 1 hora)
       const { data: urlData } = await supabase.storage
         .from('chat-files')
         .createSignedUrl(fileName, 3600);
 
       if (!urlData?.signedUrl) throw new Error('No se pudo generar URL del archivo');
 
-      // Enviar URL a webhook
       const { data, error } = await supabase.functions.invoke('webhook-integration', {
         body: {
           type: 'file',
@@ -296,13 +304,11 @@ const Chat = () => {
 
       if (error) throw error;
 
-      // Extraer respuesta del webhook
       const response = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message || data?.response?.content;
       
       if (response) {
         toast.success("Archivo procesado, generando respuesta...");
         
-        // Enviar al agente
         const { error: chatError } = await supabase.functions.invoke('chat', {
           body: { 
             message: response,
@@ -449,45 +455,51 @@ const Chat = () => {
     }
 
     setIsLoading(true);
+    toast.info("Transcribiendo audio...");
 
     try {
-      // Extraer el formato del audio (webm, mp4, ogg, etc.)
       const audioFormat = audioBlob.type.split('/')[1].split(';')[0];
-      console.log('Processing audio format:', audioFormat, 'size:', audioBlob.size);
       
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const base64Data = event.target?.result as string;
-        
-        const { data, error } = await supabase.functions.invoke('webhook-integration', {
-          body: {
-            type: 'audio',
-            data: {
-              audioFormat: audioFormat,
-              content: base64Data.split(',')[1],
-            }
-          }
-        });
-
-        if (error) throw error;
-
-        // Extraer la transcripción del webhook
-        const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
-        
-        if (transcription) {
-          // Enviar directamente al agente (él se encargará de guardar el mensaje del usuario)
-          const { error: chatError } = await supabase.functions.invoke('chat', {
-            body: { 
-              message: transcription,
-              conversation_id: conversationId,
-              user_id: user.id
+        try {
+          const base64Data = event.target?.result as string;
+          
+          const { data, error } = await supabase.functions.invoke('webhook-integration', {
+            body: {
+              type: 'audio',
+              data: {
+                audioFormat: audioFormat,
+                content: base64Data.split(',')[1],
+              }
             }
           });
+
+          if (error) throw error;
+
+          const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
           
-          if (chatError) throw chatError;
-        } else {
-          console.error('Respuesta del webhook sin texto:', data);
-          toast.error("El webhook respondió pero sin contenido de texto");
+          if (transcription) {
+            toast.success("Audio transcrito, generando respuesta...");
+            
+            const { error: chatError } = await supabase.functions.invoke('chat', {
+              body: { 
+                message: transcription,
+                conversation_id: conversationId,
+                user_id: user.id
+              }
+            });
+            
+            if (chatError) throw chatError;
+          } else {
+            console.error('Respuesta del webhook sin texto:', data);
+            toast.error("El webhook respondió pero sin contenido de texto");
+          }
+        } catch (innerError) {
+          console.error('Error processing audio response:', innerError);
+          toast.error("Error procesando el audio");
+        } finally {
+          setIsLoading(false);
         }
       };
       
@@ -495,7 +507,6 @@ const Chat = () => {
     } catch (error) {
       console.error('Error processing audio:', error);
       toast.error("Error procesando el audio");
-    } finally {
       setIsLoading(false);
     }
   };
