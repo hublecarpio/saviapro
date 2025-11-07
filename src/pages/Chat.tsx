@@ -91,7 +91,7 @@ const Chat = () => {
   // Cargar automáticamente la última conversación al entrar
   useEffect(() => {
     const loadLatestConversation = async () => {
-      if (!user || currentConversationId) return;
+      if (!user) return;
 
       const { data, error } = await supabase
         .from('conversations')
@@ -111,56 +111,79 @@ const Chat = () => {
       }
     };
 
-    loadLatestConversation();
+    if (!currentConversationId) {
+      loadLatestConversation();
+    }
   }, [user]);
 
+  // Cargar mensajes y suscribirse a realtime cuando cambia la conversación
   useEffect(() => {
     if (!user || !currentConversationId) return;
 
-    const loadAndSubscribe = async () => {
-      await loadMessages(currentConversationId);
+    console.log('Setting up conversation:', currentConversationId);
+    
+    // Cargar mensajes existentes
+    const loadInitialMessages = async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', currentConversationId)
+        .order('created_at', { ascending: true });
 
-      const channel = supabase
-        .channel(`messages-${currentConversationId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `conversation_id=eq.${currentConversationId}`,
-          },
-          (payload) => {
-            const newMessage = payload.new as Message;
-            setMessages((prev) => {
-              // Remover mensajes temporales del mismo tipo
-              const filtered = prev.filter(m => 
-                !(m.id.startsWith('temp-') && m.role === newMessage.role)
-              );
-              // Evitar duplicados
-              if (filtered.some(m => m.id === newMessage.id)) return filtered;
-              return [...filtered, newMessage];
-            });
-            
-            if (newMessage.role === 'assistant') {
-              setIsLoading(false);
-            }
-          }
-        )
-        .subscribe();
+      if (error) {
+        console.error('Error loading messages:', error);
+        toast.error("Error cargando mensajes");
+        return;
+      }
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      setMessages((data || []) as Message[]);
     };
 
-    const cleanup = loadAndSubscribe();
+    loadInitialMessages();
+
+    // Suscribirse a nuevos mensajes
+    const channel = supabase
+      .channel(`messages-${currentConversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${currentConversationId}`,
+        },
+        (payload) => {
+          console.log('New message received via realtime:', payload);
+          const newMessage = payload.new as Message;
+          
+          setMessages((prev) => {
+            // Evitar duplicados
+            if (prev.some(m => m.id === newMessage.id)) {
+              console.log('Duplicate message, ignoring');
+              return prev;
+            }
+            console.log('Adding new message to state');
+            return [...prev, newMessage];
+          });
+          
+          // Limpiar loading cuando llega respuesta del assistant
+          if (newMessage.role === 'assistant') {
+            setIsLoading(false);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
+
     return () => {
-      cleanup.then(fn => fn && fn());
+      console.log('Cleaning up channel');
+      supabase.removeChannel(channel);
     };
   }, [user, currentConversationId]);
 
   const loadMessages = async (conversationId: string) => {
+    console.log('Loading messages for conversation:', conversationId);
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -173,6 +196,7 @@ const Chat = () => {
       return;
     }
 
+    console.log('Messages loaded:', data?.length);
     setMessages((data || []) as Message[]);
   };
 
@@ -231,6 +255,7 @@ const Chat = () => {
     
     if (!textToSend || !user || isLoading) return;
 
+    console.log('Sending message:', textToSend);
     setInput("");
     setIsLoading(true);
 
@@ -239,29 +264,21 @@ const Chat = () => {
       
       // Crear conversación si no existe
       if (!conversationId) {
+        console.log('Creating new conversation');
         conversationId = await createNewConversation(textToSend);
         if (!conversationId) {
           toast.error("Error creando conversación");
           setIsLoading(false);
           return;
         }
+        console.log('New conversation created:', conversationId);
         setCurrentConversationId(conversationId);
-        // Dar tiempo para que el useEffect se suscriba al realtime
-        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Esperar a que el useEffect configure el realtime
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
-
-      // Agregar mensaje del usuario al UI inmediatamente
-      const tempUserMessage: Message = {
-        id: `temp-${Date.now()}`,
-        role: 'user',
-        message: textToSend,
-        created_at: new Date().toISOString(),
-        conversation_id: conversationId
-      };
       
-      setMessages(prev => [...prev, tempUserMessage]);
-      
-      // Llamar al edge function
+      console.log('Invoking chat function');
       const { error } = await supabase.functions.invoke('chat', {
         body: { 
           message: textToSend,
@@ -270,15 +287,18 @@ const Chat = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Function invocation error:', error);
+        throw error;
+      }
+      
+      console.log('Message sent successfully');
       
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error("Error enviando mensaje");
       setInput(textToSend);
       setIsLoading(false);
-      // Remover el mensaje temporal del usuario
-      setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')));
     }
   };
 
