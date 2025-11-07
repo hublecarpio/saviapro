@@ -164,19 +164,16 @@ export function AppSidebar({
                           <span className="flex-1 truncate text-left">
                             {conversation.title}
                           </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          <div
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer hover:bg-accent rounded-sm"
                             onClick={(e) => handleDelete(e, conversation.id)}
-                            disabled={deletingId === conversation.id}
                           >
                             {deletingId === conversation.id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
                               <Trash2 className="h-3 w-3" />
                             )}
-                          </Button>
+                          </div>
                         </>
                       )}
                     </SidebarMenuButton>

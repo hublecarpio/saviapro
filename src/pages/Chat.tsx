@@ -207,34 +207,24 @@ const Chat = () => {
   const handleSend = async (messageText?: string) => {
     const textToSend = messageText || input.trim();
     
-    console.log('handleSend called with:', { textToSend, hasUser: !!user, isLoading });
-    
-    if (!textToSend || !user || isLoading) {
-      console.log('Blocked: no text, no user, or loading');
-      return;
-    }
-
-    let conversationId = currentConversationId;
-    
-    // Create new conversation if needed
-    if (!conversationId) {
-      console.log('Creating new conversation...');
-      conversationId = await createNewConversation(textToSend);
-      if (!conversationId) {
-        console.error('Failed to create conversation');
-        toast.error("Error creando conversación");
-        return;
-      }
-      setCurrentConversationId(conversationId);
-    }
+    if (!textToSend || !user || isLoading) return;
 
     setInput("");
     setIsLoading(true);
 
     try {
-      console.log('Calling chat function with:', { conversationId, userId: user.id });
+      let conversationId = currentConversationId;
       
-      const { data, error } = await supabase.functions.invoke('chat', {
+      if (!conversationId) {
+        conversationId = await createNewConversation(textToSend);
+        if (!conversationId) {
+          toast.error("Error creando conversación");
+          return;
+        }
+        setCurrentConversationId(conversationId);
+      }
+      
+      const { error } = await supabase.functions.invoke('chat', {
         body: { 
           message: textToSend,
           conversation_id: conversationId,
@@ -242,21 +232,13 @@ const Chat = () => {
         }
       });
 
-      console.log('Chat function response:', { data, error });
-
-      if (error) {
-        console.error('Chat function error:', error);
-        throw error;
-      }
-      
-      console.log('Message sent successfully');
+      if (error) throw error;
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error("Error enviando mensaje. Por favor intenta nuevamente.");
+      toast.error("Error enviando mensaje");
+      setInput(textToSend);
     } finally {
-      console.log('Resetting loading state');
       setIsLoading(false);
-      textareaRef.current?.focus();
     }
   };
 
