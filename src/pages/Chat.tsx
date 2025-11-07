@@ -717,12 +717,13 @@ const Chat = () => {
               ) : (
                 <div className="space-y-3 md:space-y-6">
                   {messages.map((msg) => {
-                    // Detectar si el mensaje contiene una URL de video/audio
+                    // Detectar si el mensaje contiene una URL de video/audio/pdf
                     const urlMatch = msg.message.match(/(https?:\/\/[^\s]+)/);
                     const hasMedia = urlMatch && (
                       msg.message.includes('Video resumen') || 
                       msg.message.includes('Podcast resumen')
                     );
+                    const hasPdf = urlMatch && msg.message.includes('📄');
                     const isVideo = msg.message.includes('Video resumen');
                     
                     return (
@@ -737,7 +738,28 @@ const Chat = () => {
                               : 'bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm'
                           }`}
                         >
-                          {hasMedia && urlMatch ? (
+                          {hasPdf && urlMatch ? (
+                            <div className="space-y-3">
+                              <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                {msg.message.split(urlMatch[0])[0]}
+                              </p>
+                              <div className="border rounded-lg overflow-hidden">
+                                <iframe 
+                                  src={urlMatch[0]}
+                                  className="w-full h-[500px] md:h-[600px]"
+                                  title="Informe PDF"
+                                />
+                              </div>
+                              <a 
+                                href={urlMatch[0]} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                              >
+                                Abrir PDF en nueva pestaña →
+                              </a>
+                            </div>
+                          ) : hasMedia && urlMatch ? (
                             <div className="space-y-3">
                               <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
                                 {msg.message.split(urlMatch[0])[0]}

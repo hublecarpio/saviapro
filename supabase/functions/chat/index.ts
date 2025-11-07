@@ -264,6 +264,67 @@ serve(async (req) => {
 
     console.log('Message saved successfully');
 
+    // Detectar si el usuario pidió un informe
+    const informeKeywords = ['informe', 'reporte', 'pdf', 'documento', 'generar informe', 'hacer informe', 'crear informe'];
+    const userMessageLower = message.toLowerCase();
+    const requestsInforme = informeKeywords.some(keyword => userMessageLower.includes(keyword));
+
+    if (requestsInforme) {
+      console.log('Informe request detected, calling webhook...');
+      
+      try {
+        // Construir el contexto para el informe
+        const conversationSummary = recentMessages && recentMessages.length > 0 
+          ? recentMessages.slice(-10).map(m => `${m.role}: ${m.message}`).join('\n')
+          : '';
+        
+        const informeContext = {
+          user_profile: {
+            name: starterProfile?.profile_data?.description?.split(',')[0]?.replace('Soy ', '') || 'Estudiante',
+            age: starterProfile?.age || 'No especificada',
+            age_group: starterProfile?.age_group || '',
+            learning_style: starterProfile?.profile_data?.learningStyle || '',
+            interests: starterProfile?.profile_data?.interests || starterProfile?.profile_data?.passionateTopics || ''
+          },
+          conversation_summary: conversationSummary,
+          topic: message,
+          assistant_response: assistantResponse
+        };
+
+        // Llamar a la webhook
+        const webhookResponse = await fetch('https://webhook.hubleconsulting.com/webhook/154f3182-4561-4897-b57a-51db1fd2informe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(informeContext)
+        });
+
+        if (webhookResponse.ok) {
+          const webhookData = await webhookResponse.json();
+          const pdfUrl = webhookData.response;
+
+          if (pdfUrl) {
+            console.log('PDF URL received:', pdfUrl);
+            
+            // Guardar mensaje con el PDF
+            await supabaseAdmin
+              .from('messages')
+              .insert({
+                user_id: user_id,
+                conversation_id: conversation_id,
+                role: 'assistant',
+                message: `📄 Tu informe está listo: ${pdfUrl}`
+              });
+          }
+        } else {
+          console.error('Webhook error:', webhookResponse.status);
+        }
+      } catch (webhookError) {
+        console.error('Error calling webhook:', webhookError);
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
