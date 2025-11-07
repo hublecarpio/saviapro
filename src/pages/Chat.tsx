@@ -117,31 +117,42 @@ const Chat = () => {
   useEffect(() => {
     if (!user || !currentConversationId) return;
 
-    loadMessages(currentConversationId);
+    const loadAndSubscribe = async () => {
+      await loadMessages(currentConversationId);
 
-    const channel = supabase
-      .channel(`messages-${currentConversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${currentConversationId}`,
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages((prev) => [...prev, newMessage]);
-          
-          if (newMessage.role === 'assistant') {
-            setIsLoading(false);
+      const channel = supabase
+        .channel(`messages-${currentConversationId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${currentConversationId}`,
+          },
+          (payload) => {
+            const newMessage = payload.new as Message;
+            setMessages((prev) => {
+              // Evitar duplicados
+              if (prev.some(m => m.id === newMessage.id)) return prev;
+              return [...prev, newMessage];
+            });
+            
+            if (newMessage.role === 'assistant') {
+              setIsLoading(false);
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    const cleanup = loadAndSubscribe();
     return () => {
-      supabase.removeChannel(channel);
+      cleanup.then(fn => fn && fn());
     };
   }, [user, currentConversationId]);
 
