@@ -53,6 +53,11 @@ TU REGLA MÁS IMPORTANTE: Debes seguir un flujo de trabajo estructurado en FASES
 * Perfil Cognitivo y de Aprendizaje: ${perfilTexto}
 ---
 
+### HERRAMIENTAS DISPONIBLES ###
+
+Tienes acceso a una herramienta especial:
+- **generate_student_report**: Úsala cuando el estudiante o tutor te pida un "informe", "reporte" o "documento PDF" del progreso. Esta herramienta generará automáticamente un PDF profesional con todo el historial de aprendizaje.
+
 ### FLUJO DE TRABAJO OBLIGATORIO ###
 
 Tu interacción con el alumno se divide en 3 FASES. Comienzas siempre en la FASE 1.
@@ -208,7 +213,29 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    console.log('Calling Lovable AI...');
+    // Define herramientas disponibles para el AI
+    const tools = [
+      {
+        type: 'function',
+        function: {
+          name: 'generate_student_report',
+          description: 'Genera un informe PDF personalizado del estudiante con su progreso, desempeño y recomendaciones. Usa esta herramienta cuando el usuario solicite un informe, reporte o documento PDF.',
+          parameters: {
+            type: 'object',
+            properties: {
+              request_type: {
+                type: 'string',
+                description: 'Tipo de solicitud de informe',
+                enum: ['informe_completo']
+              }
+            },
+            required: ['request_type']
+          }
+        }
+      }
+    ];
+
+    console.log('Calling Lovable AI with tools...');
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -218,6 +245,8 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: conversationHistory,
+        tools: tools,
+        tool_choice: 'auto',
         temperature: 0.8,
         max_tokens: 2000,
       }),
@@ -238,91 +267,123 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
-    const assistantResponse = aiData.choices?.[0]?.message?.content;
+    const choice = aiData.choices?.[0];
+    const assistantMessage = choice?.message;
 
-    if (!assistantResponse) {
-      console.error('No response from AI');
-      throw new Error('No response from AI');
-    }
-
-    console.log('AI response received, saving to database...');
-
-    // Save assistant response
-    const { error: insertAssistantError } = await supabaseAdmin
-      .from('messages')
-      .insert({
-        user_id: user_id,
-        conversation_id: conversation_id,
-        role: 'assistant',
-        message: assistantResponse
-      });
-
-    if (insertAssistantError) {
-      console.error('Error saving assistant message:', insertAssistantError);
-      throw new Error('Error guardando respuesta');
-    }
-
-    console.log('Message saved successfully');
-
-    // Detectar si el usuario pidió un informe
-    const informeKeywords = ['informe', 'reporte', 'pdf', 'documento', 'generar informe', 'hacer informe', 'crear informe'];
-    const userMessageLower = message.toLowerCase();
-    const requestsInforme = informeKeywords.some(keyword => userMessageLower.includes(keyword));
-
-    if (requestsInforme) {
-      console.log('Informe request detected, calling webhook...');
+    // Verificar si el AI quiere usar una herramienta
+    if (assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0) {
+      console.log('AI requested tool call:', assistantMessage.tool_calls[0].function.name);
       
-      try {
-        // Construir el contexto para el informe
-        const conversationSummary = recentMessages && recentMessages.length > 0 
-          ? recentMessages.slice(-10).map(m => `${m.role}: ${m.message}`).join('\n')
-          : '';
+      const toolCall = assistantMessage.tool_calls[0];
+      
+      if (toolCall.function.name === 'generate_student_report') {
+        // Primero, guardar mensaje del AI indicando que está generando el informe
+        const preparingMessage = '📊 Perfecto, voy a generar tu informe personalizado. Dame un momento mientras recopilo toda la información...';
         
-        const informeContext = {
-          user_profile: {
-            name: starterProfile?.profile_data?.description?.split(',')[0]?.replace('Soy ', '') || 'Estudiante',
-            age: starterProfile?.age || 'No especificada',
-            age_group: starterProfile?.age_group || '',
-            learning_style: starterProfile?.profile_data?.learningStyle || '',
-            interests: starterProfile?.profile_data?.interests || starterProfile?.profile_data?.passionateTopics || ''
-          },
-          conversation_summary: conversationSummary,
-          topic: message,
-          assistant_response: assistantResponse
-        };
+        await supabaseAdmin
+          .from('messages')
+          .insert({
+            user_id: user_id,
+            conversation_id: conversation_id,
+            role: 'assistant',
+            message: preparingMessage
+          });
 
-        // Llamar a la webhook
-        const webhookResponse = await fetch('https://webhook.hubleconsulting.com/webhook/154f3182-4561-4897-b57a-51db1fd2informe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(informeContext)
+        console.log('Generating report via webhook...');
+        
+        try {
+          // Construir el contexto para el informe
+          const conversationSummary = recentMessages && recentMessages.length > 0 
+            ? recentMessages.slice(-10).map(m => `${m.role}: ${m.message}`).join('\n')
+            : '';
+          
+          const informeContext = {
+            user_profile: {
+              name: starterProfile?.profile_data?.description?.split(',')[0]?.replace('Soy ', '') || 'Estudiante',
+              age: starterProfile?.age || 'No especificada',
+              age_group: starterProfile?.age_group || '',
+              learning_style: starterProfile?.profile_data?.learningStyle || '',
+              interests: starterProfile?.profile_data?.interests || starterProfile?.profile_data?.passionateTopics || ''
+            },
+            conversation_summary: conversationSummary,
+            topic: message,
+            timestamp: new Date().toISOString()
+          };
+
+          // Llamar a la webhook
+          const webhookResponse = await fetch('https://webhook.hubleconsulting.com/webhook/154f3182-4561-4897-b57a-51db1fd2informe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(informeContext)
+          });
+
+          if (webhookResponse.ok) {
+            const webhookData = await webhookResponse.json();
+            const pdfUrl = webhookData.response;
+
+            if (pdfUrl) {
+              console.log('PDF generated successfully:', pdfUrl);
+              
+              // Guardar mensaje final con el PDF
+              await supabaseAdmin
+                .from('messages')
+                .insert({
+                  user_id: user_id,
+                  conversation_id: conversation_id,
+                  role: 'assistant',
+                  message: `✅ ¡Tu informe está listo! 📄\n\nPuedes descargarlo aquí: ${pdfUrl}\n\nEl informe incluye un resumen de tu progreso, las áreas en las que has trabajado y recomendaciones personalizadas para continuar tu aprendizaje.`
+                });
+            } else {
+              throw new Error('No se recibió URL del PDF');
+            }
+          } else {
+            const errorText = await webhookResponse.text();
+            console.error('Webhook error:', webhookResponse.status, errorText);
+            throw new Error(`Error del webhook: ${webhookResponse.status}`);
+          }
+        } catch (webhookError) {
+          console.error('Error generating report:', webhookError);
+          
+          // Guardar mensaje de error
+          await supabaseAdmin
+            .from('messages')
+            .insert({
+              user_id: user_id,
+              conversation_id: conversation_id,
+              role: 'assistant',
+              message: '❌ Lo siento, hubo un problema al generar el informe. Por favor, intenta de nuevo más tarde.'
+            });
+        }
+      }
+    } else {
+      // Respuesta normal sin tool call
+      const assistantResponse = assistantMessage?.content;
+
+      if (!assistantResponse) {
+        console.error('No response from AI');
+        throw new Error('No response from AI');
+      }
+
+      console.log('AI response received, saving to database...');
+
+      // Save assistant response
+      const { error: insertAssistantError } = await supabaseAdmin
+        .from('messages')
+        .insert({
+          user_id: user_id,
+          conversation_id: conversation_id,
+          role: 'assistant',
+          message: assistantResponse
         });
 
-        if (webhookResponse.ok) {
-          const webhookData = await webhookResponse.json();
-          const pdfUrl = webhookData.response;
-
-          if (pdfUrl) {
-            console.log('PDF URL received:', pdfUrl);
-            
-            // Guardar mensaje con el PDF
-            await supabaseAdmin
-              .from('messages')
-              .insert({
-                user_id: user_id,
-                conversation_id: conversation_id,
-                role: 'assistant',
-                message: `📄 Tu informe está listo: ${pdfUrl}`
-              });
-          }
-        } else {
-          console.error('Webhook error:', webhookResponse.status);
-        }
-      } catch (webhookError) {
-        console.error('Error calling webhook:', webhookError);
+      if (insertAssistantError) {
+        console.error('Error saving assistant message:', insertAssistantError);
+        throw new Error('Error guardando respuesta');
       }
+
+      console.log('Message saved successfully');
     }
 
     return new Response(
