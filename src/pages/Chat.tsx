@@ -823,24 +823,54 @@ const Chat = () => {
                                 {msg.message.split(urlMatch[0])[0]}
                               </p>
                               <Button 
-                                asChild
+                                onClick={async () => {
+                                  try {
+                                    toast.info("Descargando PDF...");
+                                    const response = await fetch(urlMatch[0], {
+                                      mode: 'cors',
+                                      credentials: 'omit'
+                                    });
+                                    
+                                    if (!response.ok) {
+                                      throw new Error('Error descargando el archivo');
+                                    }
+                                    
+                                    const blob = await response.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const link = document.createElement('a');
+                                    link.href = url;
+                                    link.download = `Informe_SAVIA_${new Date().toISOString().split('T')[0]}.pdf`;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    window.URL.revokeObjectURL(url);
+                                    toast.success("¡PDF descargado!");
+                                  } catch (error) {
+                                    console.error('Error downloading PDF:', error);
+                                    toast.error("Error al descargar. Intenta copiar el enlace manualmente");
+                                  }
+                                }}
                                 className="w-full gap-2 h-auto py-4"
                                 size="lg"
                               >
-                                <a 
-                                  href={urlMatch[0]} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  download
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                  </svg>
-                                  Descargar Informe PDF
-                                </a>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                  <polyline points="7 10 12 15 17 10"></polyline>
+                                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Descargar Informe PDF
                               </Button>
+                              <p className="text-xs text-muted-foreground text-center">
+                                Si el botón no funciona, <button 
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(urlMatch[0]);
+                                    toast.success("¡Link copiado!");
+                                  }}
+                                  className="underline hover:text-foreground"
+                                >
+                                  copia este enlace
+                                </button>
+                              </p>
                             </div>
                           ) : hasMedia && urlMatch ? (
                             <div className="space-y-3">
