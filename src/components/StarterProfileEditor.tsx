@@ -43,6 +43,19 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
       if (data) {
         setProfileData(data.profile_data);
         setAgeGroup(data.age_group || "");
+      } else {
+        // Crear un perfil vacío por defecto si no existe
+        setProfileData({
+          age: "",
+          description: "",
+          uniqueData: "",
+          learningStyle: "",
+          studyTime: "",
+          interests: "",
+          learningGoal: "",
+          language: ""
+        });
+        setAgeGroup("");
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -60,13 +73,18 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
     try {
       setSaving(true);
       
+      // Usar upsert para crear o actualizar
       const { error } = await supabase
         .from("starter_profiles")
-        .update({
+        .upsert({
+          user_id: userId,
+          age: profileData.age || null,
+          age_group: ageGroup || null,
           profile_data: profileData,
           updated_at: new Date().toISOString()
-        })
-        .eq("user_id", userId);
+        }, {
+          onConflict: 'user_id'
+        });
 
       if (error) throw error;
 
@@ -92,25 +110,23 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
     setProfileData({ ...profileData, [field]: value });
   };
 
-  if (!profileData) {
+  if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Editar Mi Perfil</DialogTitle>
           </DialogHeader>
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              No se encontró información de perfil
-            </div>
-          )}
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
         </DialogContent>
       </Dialog>
     );
+  }
+
+  if (!profileData) {
+    return null;
   }
 
   return (
