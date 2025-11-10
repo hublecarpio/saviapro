@@ -49,24 +49,45 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
   const redirectBasedOnRole = async (userId: string) => {
-    const {
-      data: roles
-    } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-    
-    if (roles?.some(r => r.role === "admin")) {
-      navigate("/admin");
-    } else if (roles?.some(r => r.role === "tutor")) {
-      navigate("/tutor");
-    } else {
-      // Verificar si completó el starter
-      const {
-        data: profile
-      } = await supabase.from("profiles").select("starter_completed").eq("id", userId).single();
-      if (profile?.starter_completed) {
-        navigate("/chat");
-      } else {
-        navigate("/starter");
+    try {
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      
+      if (rolesError) {
+        console.error("Error al obtener roles:", rolesError);
+        toast.error("Error al verificar permisos");
+        setLoading(false);
+        return;
       }
+      
+      if (roles?.some(r => r.role === "admin")) {
+        navigate("/admin");
+      } else if (roles?.some(r => r.role === "tutor")) {
+        navigate("/tutor");
+      } else {
+        // Verificar si completó el starter
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("starter_completed")
+          .eq("id", userId)
+          .single();
+        
+        if (profileError) {
+          console.error("Error al obtener perfil:", profileError);
+          // Si no existe el perfil, ir a starter
+          navigate("/starter");
+        } else if (profile?.starter_completed) {
+          navigate("/chat");
+        } else {
+          navigate("/starter");
+        }
+      }
+    } catch (error) {
+      console.error("Error en redirectBasedOnRole:", error);
+      toast.error("Error al iniciar sesión");
+      setLoading(false);
     }
   };
   const handleSignUp = async (e: React.FormEvent) => {
@@ -143,15 +164,23 @@ const Auth = () => {
         password
       });
       setLoading(true);
-      const {
-        error
-      } = await supabase.auth.signInWithPassword({
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: validated.email,
         password: validated.password
       });
-      if (error) throw error;
-      // El redirect se maneja automáticamente en onAuthStateChange
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data.user) {
+        console.log("Login exitoso, usuario:", data.user.id);
+        // El redirect se maneja automáticamente en onAuthStateChange
+        // No reseteamos loading aquí porque la redirección lo hará
+      }
     } catch (error) {
+      console.error("Error en handleSignIn:", error);
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
       } else if (error instanceof Error) {
