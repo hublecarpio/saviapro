@@ -489,10 +489,14 @@ const Starter = () => {
     }
   };
 
-  const handleRankingChange = (value: string, rank: number) => {
-    const newRanking = [...multipleChoices];
-    newRanking[rank - 1] = value;
-    setMultipleChoices(newRanking);
+  const handleRankingClick = (value: string) => {
+    // Si ya está seleccionado, quitarlo
+    if (multipleChoices.includes(value)) {
+      setMultipleChoices(multipleChoices.filter(v => v !== value));
+    } else {
+      // Asignar el siguiente número disponible
+      setMultipleChoices([...multipleChoices, value]);
+    }
   };
 
   const canProceed = () => {
@@ -616,25 +620,37 @@ const Starter = () => {
 
             {currentQuestion.type === "ranking" && (
               <div className="space-y-3">
-                {currentQuestion.options?.map((option, index) => (
-                  <div key={option.value} className="flex items-center gap-4 p-4 rounded-lg border border-border">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={currentQuestion.options.length}
-                      placeholder="#"
-                      className="w-16 text-center"
-                      value={multipleChoices.findIndex(v => v === option.value) + 1 || ""}
-                      onChange={(e) => {
-                        const rank = parseInt(e.target.value);
-                        if (rank >= 1 && rank <= currentQuestion.options.length) {
-                          handleRankingChange(option.value, rank);
-                        }
-                      }}
-                    />
-                    <Label className="flex-1 text-base">{option.label}</Label>
-                  </div>
-                ))}
+                {currentQuestion.options?.map((option, index) => {
+                  const currentRank = multipleChoices.indexOf(option.value);
+                  const isSelected = currentRank !== -1;
+                  const displayRank = isSelected ? currentRank + 1 : null;
+                  
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleRankingClick(option.value)}
+                      className={`w-full flex items-center gap-4 p-6 h-auto justify-start text-left ${
+                        isSelected
+                          ? "bg-primary/10 border-primary hover:bg-primary/15"
+                          : "hover:bg-accent"
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl font-bold border-2 ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/50 text-muted-foreground border-border"
+                      }`}>
+                        {displayRank || "#"}
+                      </div>
+                      <span className="flex-1 text-base">{option.label}</span>
+                    </Button>
+                  );
+                })}
+                <p className="text-sm text-muted-foreground text-center mt-4">
+                  Haz clic en cada opción para asignar el orden automáticamente
+                </p>
               </div>
             )}
           </div>
