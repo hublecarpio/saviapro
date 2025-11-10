@@ -425,8 +425,8 @@ const Starter = () => {
         return;
       }
 
-      // Enviar al webhook
-      await supabase.functions.invoke("webhook-integration", {
+      // Enviar al webhook y verificar respuesta
+      const { data: webhookResponse, error: webhookError } = await supabase.functions.invoke("webhook-integration", {
         body: {
           user_id: user.id,
           type: "starter_profile",
@@ -434,11 +434,23 @@ const Starter = () => {
         }
       });
 
-      // Marcar starter como completado
-      await supabase
+      if (webhookError) {
+        throw new Error(`Error en webhook: ${webhookError.message}`);
+      }
+
+      if (!webhookResponse?.success) {
+        throw new Error("No se pudo guardar el perfil correctamente");
+      }
+
+      // Solo marcar starter como completado si todo fue exitoso
+      const { error: updateError } = await supabase
         .from("profiles")
         .update({ starter_completed: true })
         .eq("id", user.id);
+
+      if (updateError) {
+        throw new Error("Error al actualizar perfil");
+      }
 
       toast({
         title: "¡Perfecto! ✨",
@@ -460,7 +472,7 @@ const Starter = () => {
       console.error("Error al enviar starter:", error);
       toast({
         title: "Error",
-        description: "Hubo un problema al crear tu perfil",
+        description: error instanceof Error ? error.message : "Hubo un problema al crear tu perfil. Por favor intenta nuevamente.",
         variant: "destructive",
       });
     }
