@@ -64,8 +64,10 @@ const Auth = () => {
       
       if (roles?.some(r => r.role === "admin")) {
         navigate("/admin");
+        return;
       } else if (roles?.some(r => r.role === "tutor")) {
         navigate("/tutor");
+        return;
       } else {
         // Verificar si completó el starter
         const { data: profile, error: profileError } = await supabase
@@ -78,10 +80,13 @@ const Auth = () => {
           console.error("Error al obtener perfil:", profileError);
           // Si no existe el perfil, ir a starter
           navigate("/starter");
+          return;
         } else if (profile?.starter_completed) {
           navigate("/chat");
+          return;
         } else {
           navigate("/starter");
+          return;
         }
       }
     } catch (error) {
@@ -171,13 +176,17 @@ const Auth = () => {
       });
       
       if (error) {
+        setLoading(false);
         throw error;
       }
       
       if (data.user) {
         console.log("Login exitoso, usuario:", data.user.id);
-        // El redirect se maneja automáticamente en onAuthStateChange
-        // No reseteamos loading aquí porque la redirección lo hará
+        // El redirect se maneja en onAuthStateChange con setTimeout
+        // Resetear loading después de un timeout por seguridad
+        setTimeout(() => {
+          setLoading(false);
+        }, 5000);
       }
     } catch (error) {
       console.error("Error en handleSignIn:", error);
