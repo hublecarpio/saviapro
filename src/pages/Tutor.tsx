@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { User, MessageSquare, UserPlus, LogOut, Eye, EyeOff } from "lucide-react";
+import { User, MessageSquare, UserPlus, LogOut, Eye, EyeOff, X } from "lucide-react";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 
 interface Student {
@@ -315,7 +315,15 @@ const Tutor = () => {
 
       {/* Dialog para crear estudiante */}
       <Dialog open={showCreateDialog} onOpenChange={handleCloseCreateDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]" onPointerDownOutside={handleCloseCreateDialog} onEscapeKeyDown={handleCloseCreateDialog}>
+          <button
+            onClick={handleCloseCreateDialog}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+            disabled={creating}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Cerrar</span>
+          </button>
           <DialogHeader>
             <DialogTitle>Crear Nuevo Estudiante</DialogTitle>
             <DialogDescription>
