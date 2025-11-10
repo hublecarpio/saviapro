@@ -201,177 +201,183 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
             </TabsContent>
 
             <TabsContent value="learning" className="space-y-4 mt-4">
-              {profileData.learningStyle && (
-                <div className="space-y-2">
-                  <Label htmlFor="learningStyle">Estilo de Aprendizaje</Label>
-                  <Input
-                    id="learningStyle"
-                    value={Array.isArray(profileData.learningStyle) 
-                      ? profileData.learningStyle.join(", ")
-                      : profileData.learningStyle || ""}
-                    onChange={(e) => updateField("learningStyle", e.target.value)}
-                    placeholder="Visual, Auditivo, Kinestésico..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="learningStyle">Estilo de Aprendizaje</Label>
+                <Input
+                  id="learningStyle"
+                  value={Array.isArray(profileData.learningStyle) 
+                    ? profileData.learningStyle.join(", ")
+                    : profileData.learningStyle || ""}
+                  onChange={(e) => updateField("learningStyle", e.target.value)}
+                  placeholder="Visual, Auditivo, Kinestésico..."
+                />
+              </div>
 
-              {profileData.studyTime && (
-                <div className="space-y-2">
-                  <Label htmlFor="studyTime">Tiempo de Estudio Preferido</Label>
-                  <Input
-                    id="studyTime"
-                    value={profileData.studyTime || ""}
-                    onChange={(e) => updateField("studyTime", e.target.value)}
-                    placeholder="Mañana, Tarde, Noche..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="studyTime">Tiempo de Estudio Preferido</Label>
+                <Input
+                  id="studyTime"
+                  value={profileData.studyTime || ""}
+                  onChange={(e) => updateField("studyTime", e.target.value)}
+                  placeholder="Mañana, Tarde, Noche..."
+                />
+              </div>
 
-              {profileData.sessionDuration && (
-                <div className="space-y-2">
-                  <Label htmlFor="sessionDuration">Duración de Sesión Ideal</Label>
-                  <Input
-                    id="sessionDuration"
-                    value={profileData.sessionDuration || ""}
-                    onChange={(e) => updateField("sessionDuration", e.target.value)}
-                    placeholder="30 minutos, 1 hora..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="sessionDuration">Duración de Sesión Ideal</Label>
+                <Input
+                  id="sessionDuration"
+                  value={profileData.sessionDuration || ""}
+                  onChange={(e) => updateField("sessionDuration", e.target.value)}
+                  placeholder="30 minutos, 1 hora..."
+                />
+              </div>
 
-              {profileData.explanationStyle && (
-                <div className="space-y-2">
-                  <Label htmlFor="explanationStyle">Estilo de Explicación Preferido</Label>
-                  <Input
-                    id="explanationStyle"
-                    value={Array.isArray(profileData.explanationStyle)
-                      ? profileData.explanationStyle.join(", ")
-                      : profileData.explanationStyle || ""}
-                    onChange={(e) => updateField("explanationStyle", e.target.value)}
-                    placeholder="Directo, Detallado, Con ejemplos..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="explanationStyle">Estilo de Explicación Preferido</Label>
+                <Input
+                  id="explanationStyle"
+                  value={Array.isArray(profileData.explanationStyle)
+                    ? profileData.explanationStyle.join(", ")
+                    : profileData.explanationStyle || ""}
+                  onChange={(e) => updateField("explanationStyle", e.target.value)}
+                  placeholder="Directo, Detallado, Con ejemplos..."
+                />
+              </div>
 
-              {profileData.communicationStyle && (
-                <div className="space-y-2">
-                  <Label htmlFor="communicationStyle">Estilo de Comunicación</Label>
-                  <Input
-                    id="communicationStyle"
-                    value={profileData.communicationStyle || ""}
-                    onChange={(e) => updateField("communicationStyle", e.target.value)}
-                    placeholder="Formal, Informal, Amigable..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="communicationStyle">Estilo de Comunicación</Label>
+                <Input
+                  id="communicationStyle"
+                  value={profileData.communicationStyle || ""}
+                  onChange={(e) => updateField("communicationStyle", e.target.value)}
+                  placeholder="Formal, Informal, Amigable..."
+                />
+              </div>
 
-              {profileData.learningGoal && (
-                <div className="space-y-2">
-                  <Label htmlFor="learningGoal">Objetivo de Aprendizaje</Label>
-                  <Textarea
-                    id="learningGoal"
-                    rows={3}
-                    value={profileData.learningGoal || ""}
-                    onChange={(e) => updateField("learningGoal", e.target.value)}
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="feelings">Cómo te sientes ante dificultades</Label>
+                <Input
+                  id="feelings"
+                  value={profileData.feelings || ""}
+                  onChange={(e) => updateField("feelings", e.target.value)}
+                  placeholder="Tranquilo, Confundido, Frustrado..."
+                />
+              </div>
 
-              {profileData.learningGoals && (
-                <div className="space-y-2">
-                  <Label htmlFor="learningGoals">Metas de Aprendizaje (6 meses)</Label>
-                  <Textarea
-                    id="learningGoals"
-                    rows={3}
-                    value={profileData.learningGoals || ""}
-                    onChange={(e) => updateField("learningGoals", e.target.value)}
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="autonomyLevel">Nivel de Autonomía</Label>
+                <Input
+                  id="autonomyLevel"
+                  value={profileData.autonomyLevel || ""}
+                  onChange={(e) => updateField("autonomyLevel", e.target.value)}
+                  placeholder="Guiado, Colaborativo, Autónomo..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="knowledgeContext">Contexto de Uso del Conocimiento</Label>
+                <Input
+                  id="knowledgeContext"
+                  value={profileData.knowledgeContext || ""}
+                  onChange={(e) => updateField("knowledgeContext", e.target.value)}
+                  placeholder="Académico, Profesional, Personal..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="learningGoal">Objetivo de Aprendizaje</Label>
+                <Textarea
+                  id="learningGoal"
+                  rows={3}
+                  value={profileData.learningGoal || ""}
+                  onChange={(e) => updateField("learningGoal", e.target.value)}
+                  placeholder="¿Para qué quieres aprender?"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="learningGoals">Metas de Aprendizaje (6 meses)</Label>
+                <Textarea
+                  id="learningGoals"
+                  rows={3}
+                  value={profileData.learningGoals || ""}
+                  onChange={(e) => updateField("learningGoals", e.target.value)}
+                  placeholder="Describe qué esperas lograr..."
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="interests" className="space-y-4 mt-4">
-              {profileData.interests && (
-                <div className="space-y-2">
-                  <Label htmlFor="interests">Temas de Interés</Label>
-                  <Textarea
-                    id="interests"
-                    rows={3}
-                    value={Array.isArray(profileData.interests)
-                      ? profileData.interests.join(", ")
-                      : profileData.interests || ""}
-                    onChange={(e) => updateField("interests", e.target.value)}
-                    placeholder="Ciencia, Arte, Deportes..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="interests">Temas de Interés</Label>
+                <Textarea
+                  id="interests"
+                  rows={3}
+                  value={Array.isArray(profileData.interests)
+                    ? profileData.interests.join(", ")
+                    : profileData.interests || ""}
+                  onChange={(e) => updateField("interests", e.target.value)}
+                  placeholder="Ciencia, Arte, Deportes..."
+                />
+              </div>
 
-              {profileData.passionateTopics && (
-                <div className="space-y-2">
-                  <Label htmlFor="passionateTopics">Temas que te Apasionan</Label>
-                  <Textarea
-                    id="passionateTopics"
-                    rows={3}
-                    value={Array.isArray(profileData.passionateTopics)
-                      ? profileData.passionateTopics.join(", ")
-                      : profileData.passionateTopics || ""}
-                    onChange={(e) => updateField("passionateTopics", e.target.value)}
-                    placeholder="Lo que más te emociona aprender..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="passionateTopics">Temas que te Apasionan</Label>
+                <Textarea
+                  id="passionateTopics"
+                  rows={3}
+                  value={Array.isArray(profileData.passionateTopics)
+                    ? profileData.passionateTopics.join(", ")
+                    : profileData.passionateTopics || ""}
+                  onChange={(e) => updateField("passionateTopics", e.target.value)}
+                  placeholder="Lo que más te emociona aprender..."
+                />
+              </div>
 
-              {profileData.contentPreference && (
-                <div className="space-y-2">
-                  <Label htmlFor="contentPreference">Preferencia de Contenido</Label>
-                  <Input
-                    id="contentPreference"
-                    value={Array.isArray(profileData.contentPreference)
-                      ? profileData.contentPreference.join(" → ")
-                      : profileData.contentPreference || ""}
-                    onChange={(e) => updateField("contentPreference", e.target.value)}
-                    placeholder="Videos, Textos, Práctica..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="contentPreference">Preferencia de Contenido (Ranking)</Label>
+                <Input
+                  id="contentPreference"
+                  value={Array.isArray(profileData.contentPreference)
+                    ? profileData.contentPreference.join(" → ")
+                    : profileData.contentPreference || ""}
+                  onChange={(e) => updateField("contentPreference", e.target.value)}
+                  placeholder="Videos, Textos, Práctica (en orden de preferencia)..."
+                />
+              </div>
 
-              {profileData.challenges && (
-                <div className="space-y-2">
-                  <Label htmlFor="challenges">Enfoque ante Desafíos</Label>
-                  <Input
-                    id="challenges"
-                    value={Array.isArray(profileData.challenges)
-                      ? profileData.challenges.join(", ")
-                      : profileData.challenges || ""}
-                    onChange={(e) => updateField("challenges", e.target.value)}
-                    placeholder="Cómo prefieres enfrentar retos..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="challenges">Enfoque ante Desafíos</Label>
+                <Input
+                  id="challenges"
+                  value={Array.isArray(profileData.challenges)
+                    ? profileData.challenges.join(", ")
+                    : profileData.challenges || ""}
+                  onChange={(e) => updateField("challenges", e.target.value)}
+                  placeholder="Cómo prefieres enfrentar retos..."
+                />
+              </div>
 
-              {profileData.problemApproach && (
-                <div className="space-y-2">
-                  <Label htmlFor="problemApproach">Enfoque de Resolución de Problemas</Label>
-                  <Input
-                    id="problemApproach"
-                    value={profileData.problemApproach || ""}
-                    onChange={(e) => updateField("problemApproach", e.target.value)}
-                    placeholder="Paso a paso, Experimental..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="problemApproach">Enfoque de Resolución de Problemas</Label>
+                <Input
+                  id="problemApproach"
+                  value={profileData.problemApproach || ""}
+                  onChange={(e) => updateField("problemApproach", e.target.value)}
+                  placeholder="Analítico, Global, Metódico, Intuitivo..."
+                />
+              </div>
 
-              {profileData.challengeTolerance && (
-                <div className="space-y-2">
-                  <Label htmlFor="challengeTolerance">Tolerancia a Desafíos</Label>
-                  <Input
-                    id="challengeTolerance"
-                    value={profileData.challengeTolerance || ""}
-                    onChange={(e) => updateField("challengeTolerance", e.target.value)}
-                    placeholder="Alta, Media, Baja..."
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="challengeTolerance">Tolerancia a Desafíos</Label>
+                <Input
+                  id="challengeTolerance"
+                  value={profileData.challengeTolerance || ""}
+                  onChange={(e) => updateField("challengeTolerance", e.target.value)}
+                  placeholder="Alta, Media, Baja, Variable..."
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </ScrollArea>
