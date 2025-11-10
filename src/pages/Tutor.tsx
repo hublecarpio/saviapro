@@ -168,11 +168,7 @@ const Tutor = () => {
         });
 
         toast.success("Estudiante creado exitosamente");
-        setShowCreateDialog(false);
-        setNewStudentEmail("");
-        setNewStudentName("");
-        setNewStudentPassword("");
-        setShowPassword(false);
+        handleCloseCreateDialog();
         await loadStudents(user.id);
       }
     } catch (error) {
@@ -181,6 +177,14 @@ const Tutor = () => {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleCloseCreateDialog = () => {
+    setShowCreateDialog(false);
+    setNewStudentEmail("");
+    setNewStudentName("");
+    setNewStudentPassword("");
+    setShowPassword(false);
   };
 
   const handleViewProfile = (studentId: string) => {
@@ -310,7 +314,7 @@ const Tutor = () => {
       </main>
 
       {/* Dialog para crear estudiante */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={handleCloseCreateDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Crear Nuevo Estudiante</DialogTitle>
@@ -364,7 +368,7 @@ const Tutor = () => {
           <div className="flex gap-2 justify-end">
             <Button
               variant="outline"
-              onClick={() => setShowCreateDialog(false)}
+              onClick={handleCloseCreateDialog}
               disabled={creating}
             >
               Cancelar
