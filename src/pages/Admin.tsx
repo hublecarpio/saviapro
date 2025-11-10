@@ -8,13 +8,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Trash2, UserPlus, Settings, LogOut } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, UserPlus, Settings, LogOut, Users } from "lucide-react";
 
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [masterPrompt, setMasterPrompt] = useState("");
   const [invitedUsers, setInvitedUsers] = useState<any[]>([]);
+  const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [newUserEmail, setNewUserEmail] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -53,6 +56,7 @@ const Admin = () => {
       setIsAdmin(true);
       await loadMasterPrompt();
       await loadInvitedUsers();
+      await loadRegisteredUsers();
     } catch (error) {
       console.error("Error checking admin status:", error);
       navigate("/");
@@ -81,6 +85,38 @@ const Admin = () => {
 
     if (data) {
       setInvitedUsers(data);
+    }
+  };
+
+  const loadRegisteredUsers = async () => {
+    try {
+      // Obtener todos los perfiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (profilesError) throw profilesError;
+
+      // Obtener todos los roles
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("*");
+
+      if (rolesError) throw rolesError;
+
+      // Combinar la información
+      const usersWithRoles = profiles?.map(profile => {
+        const userRoles = roles?.filter(r => r.user_id === profile.id) || [];
+        return {
+          ...profile,
+          roles: userRoles.map(r => r.role)
+        };
+      }) || [];
+
+      setRegisteredUsers(usersWithRoles);
+    } catch (error) {
+      console.error("Error loading registered users:", error);
     }
   };
 
@@ -232,7 +268,7 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="prompt" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="prompt">
               <Settings className="w-4 h-4 mr-2" />
               Prompt Maestro
@@ -240,6 +276,10 @@ const Admin = () => {
             <TabsTrigger value="users">
               <UserPlus className="w-4 h-4 mr-2" />
               Usuarios Invitados
+            </TabsTrigger>
+            <TabsTrigger value="registered">
+              <Users className="w-4 h-4 mr-2" />
+              Usuarios Registrados
             </TabsTrigger>
           </TabsList>
 
@@ -340,6 +380,84 @@ const Admin = () => {
                     ))
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="registered" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Usuarios Registrados</CardTitle>
+                <CardDescription>
+                  Todos los usuarios que tienen cuenta en el sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {registeredUsers.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No hay usuarios registrados aún
+                  </p>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Roles</TableHead>
+                          <TableHead>Starter Completado</TableHead>
+                          <TableHead>Fecha de Registro</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {registeredUsers.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">
+                              {user.name || "Sin nombre"}
+                            </TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 flex-wrap">
+                                {user.roles.length === 0 ? (
+                                  <Badge variant="outline">Sin rol</Badge>
+                                ) : (
+                                  user.roles.map((role: string) => (
+                                    <Badge 
+                                      key={role}
+                                      variant={
+                                        role === "admin" ? "default" : 
+                                        role === "tutor" ? "secondary" : 
+                                        "outline"
+                                      }
+                                    >
+                                      {role}
+                                    </Badge>
+                                  ))
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {user.starter_completed ? (
+                                <Badge variant="default" className="bg-green-600">
+                                  ✓ Completado
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">Pendiente</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {new Date(user.created_at).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
