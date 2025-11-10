@@ -186,16 +186,24 @@ export function AppSidebar({
                           <span className="flex-1 truncate text-left text-sm">
                             {conversation.first_message}
                           </span>
-                          <button
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-accent rounded-sm shrink-0"
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-accent rounded-sm shrink-0 cursor-pointer"
                             onClick={(e) => handleDelete(e, conversation.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleDelete(e as any, conversation.id);
+                              }
+                            }}
                           >
                             {deletingId === conversation.id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
                               <Trash2 className="h-3 w-3" />
                             )}
-                          </button>
+                          </div>
                         </div>
                       )}
                     </SidebarMenuButton>
