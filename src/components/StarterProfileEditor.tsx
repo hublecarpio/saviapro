@@ -36,7 +36,7 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
         .from("starter_profiles")
         .select("*")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
@@ -173,12 +173,13 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
 
               {profileData.language && (
                 <div className="space-y-2">
-                  <Label>Idioma preferido</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {profileData.language === "spanish" ? "Español" :
-                     profileData.language === "english" ? "Inglés" :
-                     profileData.language === "both" ? "Ambos" : profileData.language}
-                  </div>
+                  <Label htmlFor="language">Idioma preferido</Label>
+                  <Input
+                    id="language"
+                    value={profileData.language || ""}
+                    onChange={(e) => updateField("language", e.target.value)}
+                    placeholder="Español, Inglés, Ambos..."
+                  />
                 </div>
               )}
             </TabsContent>
@@ -186,44 +187,65 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
             <TabsContent value="learning" className="space-y-4 mt-4">
               {profileData.learningStyle && (
                 <div className="space-y-2">
-                  <Label>Estilo de Aprendizaje</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {Array.isArray(profileData.learningStyle) 
+                  <Label htmlFor="learningStyle">Estilo de Aprendizaje</Label>
+                  <Input
+                    id="learningStyle"
+                    value={Array.isArray(profileData.learningStyle) 
                       ? profileData.learningStyle.join(", ")
-                      : profileData.learningStyle}
-                  </div>
+                      : profileData.learningStyle || ""}
+                    onChange={(e) => updateField("learningStyle", e.target.value)}
+                    placeholder="Visual, Auditivo, Kinestésico..."
+                  />
                 </div>
               )}
 
               {profileData.studyTime && (
                 <div className="space-y-2">
-                  <Label>Tiempo de Estudio Preferido</Label>
-                  <div className="text-sm text-muted-foreground">{profileData.studyTime}</div>
+                  <Label htmlFor="studyTime">Tiempo de Estudio Preferido</Label>
+                  <Input
+                    id="studyTime"
+                    value={profileData.studyTime || ""}
+                    onChange={(e) => updateField("studyTime", e.target.value)}
+                    placeholder="Mañana, Tarde, Noche..."
+                  />
                 </div>
               )}
 
               {profileData.sessionDuration && (
                 <div className="space-y-2">
-                  <Label>Duración de Sesión Ideal</Label>
-                  <div className="text-sm text-muted-foreground">{profileData.sessionDuration}</div>
+                  <Label htmlFor="sessionDuration">Duración de Sesión Ideal</Label>
+                  <Input
+                    id="sessionDuration"
+                    value={profileData.sessionDuration || ""}
+                    onChange={(e) => updateField("sessionDuration", e.target.value)}
+                    placeholder="30 minutos, 1 hora..."
+                  />
                 </div>
               )}
 
               {profileData.explanationStyle && (
                 <div className="space-y-2">
-                  <Label>Estilo de Explicación Preferido</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {Array.isArray(profileData.explanationStyle)
+                  <Label htmlFor="explanationStyle">Estilo de Explicación Preferido</Label>
+                  <Input
+                    id="explanationStyle"
+                    value={Array.isArray(profileData.explanationStyle)
                       ? profileData.explanationStyle.join(", ")
-                      : profileData.explanationStyle}
-                  </div>
+                      : profileData.explanationStyle || ""}
+                    onChange={(e) => updateField("explanationStyle", e.target.value)}
+                    placeholder="Directo, Detallado, Con ejemplos..."
+                  />
                 </div>
               )}
 
               {profileData.communicationStyle && (
                 <div className="space-y-2">
-                  <Label>Estilo de Comunicación</Label>
-                  <div className="text-sm text-muted-foreground">{profileData.communicationStyle}</div>
+                  <Label htmlFor="communicationStyle">Estilo de Comunicación</Label>
+                  <Input
+                    id="communicationStyle"
+                    value={profileData.communicationStyle || ""}
+                    onChange={(e) => updateField("communicationStyle", e.target.value)}
+                    placeholder="Formal, Informal, Amigable..."
+                  />
                 </div>
               )}
 
@@ -255,59 +277,83 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
             <TabsContent value="interests" className="space-y-4 mt-4">
               {profileData.interests && (
                 <div className="space-y-2">
-                  <Label>Temas de Interés</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {Array.isArray(profileData.interests)
+                  <Label htmlFor="interests">Temas de Interés</Label>
+                  <Textarea
+                    id="interests"
+                    rows={3}
+                    value={Array.isArray(profileData.interests)
                       ? profileData.interests.join(", ")
-                      : profileData.interests}
-                  </div>
+                      : profileData.interests || ""}
+                    onChange={(e) => updateField("interests", e.target.value)}
+                    placeholder="Ciencia, Arte, Deportes..."
+                  />
                 </div>
               )}
 
               {profileData.passionateTopics && (
                 <div className="space-y-2">
-                  <Label>Temas que te Apasionan</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {Array.isArray(profileData.passionateTopics)
+                  <Label htmlFor="passionateTopics">Temas que te Apasionan</Label>
+                  <Textarea
+                    id="passionateTopics"
+                    rows={3}
+                    value={Array.isArray(profileData.passionateTopics)
                       ? profileData.passionateTopics.join(", ")
-                      : profileData.passionateTopics}
-                  </div>
+                      : profileData.passionateTopics || ""}
+                    onChange={(e) => updateField("passionateTopics", e.target.value)}
+                    placeholder="Lo que más te emociona aprender..."
+                  />
                 </div>
               )}
 
               {profileData.contentPreference && (
                 <div className="space-y-2">
-                  <Label>Preferencia de Contenido</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {Array.isArray(profileData.contentPreference)
+                  <Label htmlFor="contentPreference">Preferencia de Contenido</Label>
+                  <Input
+                    id="contentPreference"
+                    value={Array.isArray(profileData.contentPreference)
                       ? profileData.contentPreference.join(" → ")
-                      : profileData.contentPreference}
-                  </div>
+                      : profileData.contentPreference || ""}
+                    onChange={(e) => updateField("contentPreference", e.target.value)}
+                    placeholder="Videos, Textos, Práctica..."
+                  />
                 </div>
               )}
 
               {profileData.challenges && (
                 <div className="space-y-2">
-                  <Label>Enfoque ante Desafíos</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {Array.isArray(profileData.challenges)
+                  <Label htmlFor="challenges">Enfoque ante Desafíos</Label>
+                  <Input
+                    id="challenges"
+                    value={Array.isArray(profileData.challenges)
                       ? profileData.challenges.join(", ")
-                      : profileData.challenges}
-                  </div>
+                      : profileData.challenges || ""}
+                    onChange={(e) => updateField("challenges", e.target.value)}
+                    placeholder="Cómo prefieres enfrentar retos..."
+                  />
                 </div>
               )}
 
               {profileData.problemApproach && (
                 <div className="space-y-2">
-                  <Label>Enfoque de Resolución de Problemas</Label>
-                  <div className="text-sm text-muted-foreground">{profileData.problemApproach}</div>
+                  <Label htmlFor="problemApproach">Enfoque de Resolución de Problemas</Label>
+                  <Input
+                    id="problemApproach"
+                    value={profileData.problemApproach || ""}
+                    onChange={(e) => updateField("problemApproach", e.target.value)}
+                    placeholder="Paso a paso, Experimental..."
+                  />
                 </div>
               )}
 
               {profileData.challengeTolerance && (
                 <div className="space-y-2">
-                  <Label>Tolerancia a Desafíos</Label>
-                  <div className="text-sm text-muted-foreground">{profileData.challengeTolerance}</div>
+                  <Label htmlFor="challengeTolerance">Tolerancia a Desafíos</Label>
+                  <Input
+                    id="challengeTolerance"
+                    value={profileData.challengeTolerance || ""}
+                    onChange={(e) => updateField("challengeTolerance", e.target.value)}
+                    placeholder="Alta, Media, Baja..."
+                  />
                 </div>
               )}
             </TabsContent>
