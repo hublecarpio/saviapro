@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, UserCog } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 
 interface Message {
   id: string;
@@ -27,6 +28,7 @@ const Chat = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -753,15 +755,26 @@ const Chat = () => {
                   </div>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={handleSignOut}
-                className="text-muted-foreground hover:text-foreground shrink-0"
-              >
-                <LogOut className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline">Salir</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowProfileEditor(true)}
+                  className="text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <UserCog className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Mi Perfil</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <LogOut className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Salir</span>
+                </Button>
+              </div>
             </div>
           </header>
 
@@ -1014,6 +1027,15 @@ const Chat = () => {
           </div>
         </div>
       </div>
+      
+      {/* Modal de edición de perfil */}
+      {user && (
+        <StarterProfileEditor 
+          userId={user.id}
+          open={showProfileEditor}
+          onOpenChange={setShowProfileEditor}
+        />
+      )}
     </SidebarProvider>
   );
 };
