@@ -51,8 +51,11 @@ const Auth = () => {
     const {
       data: roles
     } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    
     if (roles?.some(r => r.role === "admin")) {
       navigate("/admin");
+    } else if (roles?.some(r => r.role === "tutor")) {
+      navigate("/tutor");
     } else {
       // Verificar si completó el starter
       const {

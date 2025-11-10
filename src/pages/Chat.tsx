@@ -50,7 +50,7 @@ const Chat = () => {
         return;
       }
       
-      // Verificar si es admin y redirigir
+      // Verificar rol y redirigir
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
@@ -58,6 +58,11 @@ const Chat = () => {
 
       if (roles?.some(r => r.role === "admin")) {
         navigate("/admin");
+        return;
+      }
+
+      if (roles?.some(r => r.role === "tutor")) {
+        navigate("/tutor");
         return;
       }
       
@@ -72,7 +77,7 @@ const Chat = () => {
       if (!session) {
         navigate("/");
       } else {
-        // Verificar si es admin
+        // Verificar rol
         const { data: roles } = await supabase
           .from("user_roles")
           .select("role")
@@ -80,6 +85,11 @@ const Chat = () => {
 
         if (roles?.some(r => r.role === "admin")) {
           navigate("/admin");
+          return;
+        }
+
+        if (roles?.some(r => r.role === "tutor")) {
+          navigate("/tutor");
           return;
         }
         
