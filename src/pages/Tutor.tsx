@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { User, MessageSquare, UserPlus, LogOut, Eye } from "lucide-react";
+import { User, MessageSquare, UserPlus, LogOut, Eye, EyeOff } from "lucide-react";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 
 interface Student {
@@ -29,6 +29,7 @@ const Tutor = () => {
   const [newStudentName, setNewStudentName] = useState("");
   const [newStudentPassword, setNewStudentPassword] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -171,6 +172,7 @@ const Tutor = () => {
         setNewStudentEmail("");
         setNewStudentName("");
         setNewStudentPassword("");
+        setShowPassword(false);
         await loadStudents(user.id);
       }
     } catch (error) {
@@ -339,14 +341,24 @@ const Tutor = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña *</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                value={newStudentPassword}
-                onChange={(e) => setNewStudentPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Mínimo 6 caracteres"
+                  value={newStudentPassword}
+                  onChange={(e) => setNewStudentPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex gap-2 justify-end">
