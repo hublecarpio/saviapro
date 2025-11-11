@@ -22,6 +22,7 @@ const Tutor = () => {
   const [user, setUser] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -193,8 +194,26 @@ const Tutor = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
+    if (isSigningOut) return;
+    
+    setIsSigningOut(true);
+    
+    // Timeout de seguridad: forzar navegación después de 3 segundos
+    const timeoutId = setTimeout(() => {
+      console.log('Logout timeout: forcing navigation');
+      window.location.href = '/';
+    }, 3000);
+    
+    try {
+      await supabase.auth.signOut();
+      clearTimeout(timeoutId);
+      navigate("/");
+    } catch (error) {
+      console.error('Error signing out:', error);
+      clearTimeout(timeoutId);
+      // Forzar navegación incluso si hay error
+      window.location.href = '/';
+    }
   };
 
   if (loading) {
@@ -228,9 +247,18 @@ const Tutor = () => {
               <MessageSquare className="mr-2 h-4 w-4" />
               Mi Chat
             </Button>
-            <Button variant="ghost" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Salir
+            <Button variant="ghost" onClick={handleLogout} disabled={isSigningOut}>
+              {isSigningOut ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                  Saliendo...
+                </>
+              ) : (
+                <>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Salir
+                </>
+              )}
             </Button>
           </div>
         </div>

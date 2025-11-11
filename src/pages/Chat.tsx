@@ -29,6 +29,7 @@ const Chat = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -264,15 +265,32 @@ const Chat = () => {
   };
 
   const handleSignOut = async () => {
+    if (isSigningOut) return;
+    
+    setIsSigningOut(true);
+    
+    // Timeout de seguridad: forzar navegación después de 3 segundos
+    const timeoutId = setTimeout(() => {
+      console.log('Logout timeout: forcing navigation');
+      window.location.href = '/';
+    }, 3000);
+    
     try {
-      await supabase.auth.signOut();
+      // Limpiar estado primero
       setUser(null);
       setMessages([]);
       setCurrentConversationId(null);
+      
+      // Intentar signOut
+      await supabase.auth.signOut();
+      
+      clearTimeout(timeoutId);
       navigate("/");
     } catch (error) {
       console.error('Error signing out:', error);
-      toast.error("Error al cerrar sesión");
+      clearTimeout(timeoutId);
+      // Forzar navegación incluso si hay error
+      window.location.href = '/';
     }
   };
 
@@ -769,10 +787,15 @@ const Chat = () => {
                   variant="ghost" 
                   size="sm"
                   onClick={handleSignOut}
+                  disabled={isSigningOut}
                   className="text-muted-foreground hover:text-foreground shrink-0"
                 >
-                  <LogOut className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Salir</span>
+                  {isSigningOut ? (
+                    <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
+                  ) : (
+                    <LogOut className="h-4 w-4 md:mr-2" />
+                  )}
+                  <span className="hidden md:inline">{isSigningOut ? "Saliendo..." : "Salir"}</span>
                 </Button>
               </div>
             </div>

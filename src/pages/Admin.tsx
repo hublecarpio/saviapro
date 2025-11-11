@@ -15,6 +15,7 @@ import { Trash2, UserPlus, Settings, LogOut, Users } from "lucide-react";
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [masterPrompt, setMasterPrompt] = useState("");
   const [invitedUsers, setInvitedUsers] = useState<any[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
@@ -225,17 +226,25 @@ const Admin = () => {
   };
 
   const handleLogout = async () => {
+    if (isSigningOut) return;
+    
+    setIsSigningOut(true);
+    
+    // Timeout de seguridad: forzar navegación después de 3 segundos
+    const timeoutId = setTimeout(() => {
+      console.log('Logout timeout: forcing navigation');
+      window.location.href = '/';
+    }, 3000);
+    
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      await supabase.auth.signOut();
+      clearTimeout(timeoutId);
       navigate("/");
     } catch (error) {
       console.error('Error signing out:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo cerrar sesión",
-        variant: "destructive",
-      });
+      clearTimeout(timeoutId);
+      // Forzar navegación incluso si hay error
+      window.location.href = '/';
     }
   };
 
@@ -261,9 +270,18 @@ const Admin = () => {
             </h1>
             <p className="text-muted-foreground mt-2">BIEX 4.0 - Sistema de gestión</p>
           </div>
-          <Button onClick={handleLogout} variant="outline">
-            <LogOut className="w-4 h-4 mr-2" />
-            Cerrar sesión
+          <Button onClick={handleLogout} variant="outline" disabled={isSigningOut}>
+            {isSigningOut ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                Saliendo...
+              </>
+            ) : (
+              <>
+                <LogOut className="w-4 h-4 mr-2" />
+                Cerrar sesión
+              </>
+            )}
           </Button>
         </div>
 
