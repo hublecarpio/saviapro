@@ -202,7 +202,12 @@ const Auth = () => {
             <div className="flex justify-center"></div>
             <div>
               <CardTitle className="text-3xl font-semibold">
-                <img src="https://files.catbox.moe/uhd8c1.png" alt="Logo BIEXT" loading="lazy" />
+                <img
+                  className="w-1/2 mx-auto"
+                  src="https://files.catbox.moe/uhd8c1.png"
+                  alt="Logo BIEXT"
+                  loading="lazy"
+                />
               </CardTitle>
             </div>
           </CardHeader>
