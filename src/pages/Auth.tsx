@@ -13,7 +13,7 @@ import { z } from "zod";
 const authSchema = z.object({
   email: z.string().trim().email("Email inválido").max(255),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
-  name: z.string().trim().optional()
+  name: z.string().trim().optional(),
 });
 const Auth = () => {
   const navigate = useNavigate();
@@ -25,9 +25,7 @@ const Auth = () => {
   useEffect(() => {
     const checkSessionAndRedirect = async () => {
       const {
-        data: {
-          session
-        }
+        data: { session },
       } = await supabase.auth.getSession();
       if (session) {
         await redirectBasedOnRole(session.user.id);
@@ -35,9 +33,7 @@ const Auth = () => {
     };
     checkSessionAndRedirect();
     const {
-      data: {
-        subscription
-      }
+      data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         // Usar setTimeout para evitar deadlock
@@ -50,22 +46,19 @@ const Auth = () => {
   }, [navigate]);
   const redirectBasedOnRole = async (userId: string) => {
     try {
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
-      
+      const { data: roles, error: rolesError } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+
       if (rolesError) {
         console.error("Error al obtener roles:", rolesError);
         toast.error("Error al verificar permisos");
         setLoading(false);
         return;
       }
-      
-      if (roles?.some(r => r.role === "admin")) {
+
+      if (roles?.some((r) => r.role === "admin")) {
         navigate("/admin");
         return;
-      } else if (roles?.some(r => r.role === "tutor")) {
+      } else if (roles?.some((r) => r.role === "tutor")) {
         navigate("/tutor");
         return;
       } else {
@@ -75,7 +68,7 @@ const Auth = () => {
           .select("starter_completed")
           .eq("id", userId)
           .single();
-        
+
         if (profileError) {
           console.error("Error al obtener perfil:", profileError);
           // Si no existe el perfil, ir a starter
@@ -101,14 +94,17 @@ const Auth = () => {
       const validated = authSchema.parse({
         email,
         password,
-        name
+        name,
       });
       setLoading(true);
 
       // Verificar si el email está en la lista de invitados
-      const {
-        data: invitedUser
-      } = await supabase.from("invited_users").select("*").eq("email", validated.email.toLowerCase()).eq("used", false).single();
+      const { data: invitedUser } = await supabase
+        .from("invited_users")
+        .select("*")
+        .eq("email", validated.email.toLowerCase())
+        .eq("used", false)
+        .single();
       if (!invitedUser) {
         toast.error("Este correo no está autorizado para registrarse. Contacta al administrador.");
         setLoading(false);
@@ -116,22 +112,22 @@ const Auth = () => {
       }
 
       // Crear cuenta
-      const {
-        data: authData,
-        error: signUpError
-      } = await supabase.auth.signUp({
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: validated.email,
         password: validated.password,
         options: {
           emailRedirectTo: `${window.location.origin}/starter`,
           data: {
-            name: validated.name || validated.email.split('@')[0]
-          }
-        }
+            name: validated.name || validated.email.split("@")[0],
+          },
+        },
       });
       if (signUpError) {
         // Verificar si el error es porque el usuario ya existe
-        if (signUpError.message?.includes("already registered") || signUpError.message?.includes("User already registered")) {
+        if (
+          signUpError.message?.includes("already registered") ||
+          signUpError.message?.includes("User already registered")
+        ) {
           toast.error("Este correo ya tiene una cuenta. Por favor, inicia sesión en su lugar.");
           setLoading(false);
           return;
@@ -142,12 +138,12 @@ const Auth = () => {
         // Asignar rol de estudiante
         await supabase.from("user_roles").insert({
           user_id: authData.user.id,
-          role: "student"
+          role: "student",
         });
 
         // Marcar usuario invitado como usado
         await supabase.rpc("mark_invited_user_used", {
-          user_email: validated.email.toLowerCase()
+          user_email: validated.email.toLowerCase(),
         });
       }
       toast.success("Cuenta creada exitosamente. ¡Bienvenido!");
@@ -166,20 +162,20 @@ const Auth = () => {
     try {
       const validated = authSchema.parse({
         email,
-        password
+        password,
       });
       setLoading(true);
-      
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: validated.email,
-        password: validated.password
+        password: validated.password,
       });
-      
+
       if (error) {
         setLoading(false);
         throw error;
       }
-      
+
       if (data.user) {
         console.log("Login exitoso, usuario:", data.user.id);
         // El redirect se maneja en onAuthStateChange con setTimeout
@@ -198,18 +194,16 @@ const Auth = () => {
       setLoading(false);
     }
   };
-  return <div className="min-h-screen flex items-center justify-center bg-background p-4">
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <Card className="border-border shadow-lg">
           <CardHeader className="space-y-4 text-center pb-6">
-            <div className="flex justify-center">
-              
-            </div>
+            <div className="flex justify-center"></div>
             <div>
               <CardTitle className="text-3xl font-semibold">
-                SAVIA
+                <img src="https://files.catbox.moe/uhd8c1.png" alt="Logo BIEXT" loading="lazy" />
               </CardTitle>
-              
             </div>
           </CardHeader>
           <CardContent className="px-6 pb-6">
@@ -218,28 +212,36 @@ const Auth = () => {
                 <TabsTrigger value="signin">Iniciar Sesión</TabsTrigger>
                 <TabsTrigger value="signup">Registrarse</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signin-email" className="text-sm font-medium">
                       Email
                     </Label>
-                    <Input id="signin-email" type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} required className="h-11" />
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="h-11"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-password" className="text-sm font-medium">
                       Contraseña
                     </Label>
                     <div className="relative">
-                      <Input 
-                        id="signin-password" 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="••••••••" 
-                        value={password} 
-                        onChange={e => setPassword(e.target.value)} 
-                        required 
-                        className="h-11 pr-10" 
+                      <Input
+                        id="signin-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="h-11 pr-10"
                       />
                       <button
                         type="button"
@@ -255,7 +257,7 @@ const Auth = () => {
                   </Button>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="signup">
                 <Alert className="mb-4">
                   <Info className="h-4 w-4" />
@@ -268,27 +270,42 @@ const Auth = () => {
                     <Label htmlFor="signup-name" className="text-sm font-medium">
                       Nombre <span className="text-muted-foreground">(opcional)</span>
                     </Label>
-                    <Input id="signup-name" type="text" placeholder="Tu nombre" value={name} onChange={e => setName(e.target.value)} className="h-11" />
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="Tu nombre"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-11"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email" className="text-sm font-medium">
                       Email autorizado
                     </Label>
-                    <Input id="signup-email" type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} required className="h-11" />
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="h-11"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password" className="text-sm font-medium">
                       Contraseña
                     </Label>
                     <div className="relative">
-                      <Input 
-                        id="signup-password" 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="••••••••" 
-                        value={password} 
-                        onChange={e => setPassword(e.target.value)} 
-                        required 
-                        className="h-11 pr-10" 
+                      <Input
+                        id="signup-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="h-11 pr-10"
                       />
                       <button
                         type="button"
@@ -305,10 +322,10 @@ const Auth = () => {
                 </form>
               </TabsContent>
             </Tabs>
-
           </CardContent>
         </Card>
       </div>
-    </div>;
+    </div>
+  );
 };
 export default Auth;
