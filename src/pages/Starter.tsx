@@ -525,21 +525,20 @@ const Starter = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br flex items-center from-primary/10 via-background to-secondary/10 p-4">
       <div className="max-w-2xl w-full mx-auto py-8">
-        {/* Progress bar */}
-        <div className="mb-8">
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-500"
-              style={{ width: `${((step + 1) / questions.length) * 100}%` }}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground mt-2 text-center">
-            Pregunta {step + 1} de {questions.length}
-          </p>
-        </div>
-
         {/* Question card */}
         <div className="bg-card border border-border rounded-2xl p-8 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Progress bar */}
+          <div className="mb-8">
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-500"
+                style={{ width: `${((step + 1) / questions.length) * 100}%` }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-2 text-center">
+              Pregunta {step + 1} de {questions.length}
+            </p>
+          </div>
           <div className="text-center mb-8">
             <div className="text-6xl mb-4">{currentQuestion.icon}</div>
             <h2 className="text-2xl font-bold text-foreground mb-2">{currentQuestion.question}</h2>
