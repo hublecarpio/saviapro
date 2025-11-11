@@ -8,14 +8,14 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Cyrano Estrategia - Nueva paleta corporativa */
+    /* Cyrano Estrategia - Mar Sereno Design System (actualizado a nueva marca) */
     /* Paleta: 70% fondo neutro, 20% superficies, 10% acentos */
 
-    /* Base colors */
+    /* Base colors - desde #ffffff */
     --background: 0 0% 100%;
     --foreground: 210 15% 20%;
 
-    /* Surface colors */
+    /* Surface colors - 20% del diseño */
     --card: 0 0% 100%;
     --card-foreground: 210 15% 20%;
 
@@ -31,7 +31,7 @@ All colors MUST be HSL.
     --secondary: 190 82% 51%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Accent - puede usarse como tono cálido complementario o éxito */
+    /* Accent warm - tono complementario (éxito/avance) */
     --accent: 35 100% 60%;
     --accent-foreground: 210 15% 20%;
 
@@ -39,29 +39,33 @@ All colors MUST be HSL.
     --muted: 210 20% 80%;
     --muted-foreground: 210 10% 40%;
 
+    /* Destructive / error */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Bordes y sombras */
+    /* Borders - divisores sutiles */
     --border: 210 20% 90%;
     --input: 210 20% 90%;
     --ring: 210 100% 53%;
 
+    /* Radio global */
     --radius: 0.75rem;
 
-    /* Chat-specific colors */
+    /* Chat-specific colors - diseño minimalista */
     --chat-user-bubble: 210 100% 53%;
     --chat-user-foreground: 0 0% 100%;
     --chat-assistant-bubble: 0 0% 100%;
     --chat-assistant-foreground: 210 15% 20%;
     --chat-assistant-border: 210 20% 90%;
 
-    /* Texturas y sombras */
+    /* Subtle textures - opacidad 3-6% */
     --texture-pattern: 210 100% 53% / 0.04;
 
+    /* Shadows suaves */
     --shadow-soft: 0 2px 8px rgb(13 138 255 / 0.08);
     --shadow-medium: 0 4px 16px rgb(13 138 255 / 0.12);
 
+    /* Transitions suaves */
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -75,26 +79,32 @@ All colors MUST be HSL.
     --popover: 210 20% 14%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 190 82% 51%;
+    /* Primary - #0d8aff pero adaptado a modo oscuro */
+    --primary: 210 100% 53%;
     --primary-foreground: 210 25% 15%;
-    --primary-hover: 190 82% 60%;
+    --primary-hover: 210 100% 60%;
 
-    --secondary: 210 100% 53%;
+    /* Secondary - #1dc1e6 */
+    --secondary: 190 82% 51%;
     --secondary-foreground: 210 25% 15%;
 
+    /* Muted y accent adaptados */
     --muted: 210 25% 25%;
     --muted-foreground: 210 10% 60%;
 
     --accent: 35 100% 55%;
     --accent-foreground: 210 25% 15%;
 
+    /* Destructive */
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Bordes */
     --border: 210 25% 25%;
     --input: 210 25% 25%;
     --ring: 190 82% 51%;
 
+    /* Chat dark mode */
     --chat-user-bubble: 190 82% 51%;
     --chat-user-foreground: 210 25% 15%;
     --chat-assistant-bubble: 210 25% 18%;
