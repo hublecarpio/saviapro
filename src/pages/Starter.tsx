@@ -524,7 +524,7 @@ const Starter = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br flex items-center from-primary/10 via-background to-secondary/10 p-4">
-      <div className="max-w-3xl mx-auto py-8">
+      <div className="max-w-3xl w-full mx-auto py-8">
         {/* Progress bar */}
         <div className="mb-8">
           <div className="h-2 bg-muted rounded-full overflow-hidden">
