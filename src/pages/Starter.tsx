@@ -45,21 +45,21 @@ const Starter = () => {
       id: "age",
       question: "¿Cuántos años tienes?",
       type: "number",
-      icon: "🎂"
+      icon: "🎂",
     },
     {
       id: "description",
       question: "NOS CONOCEMOS!! Cuéntame sobre ti 🎯",
       placeholder: "Por ejemplo: Soy Salvador, tengo 9 años, curso el 4to grado de primaria...",
       type: "textarea",
-      icon: "👋"
+      icon: "👋",
     },
     {
       id: "uniqueData",
       question: "TUS DATOS INTERESANTES:",
       placeholder: "Cuéntame algo que creas que debo saber para ser el mejor tutor para ti...",
       type: "textarea",
-      icon: "⭐"
+      icon: "⭐",
     },
     {
       id: "learningStyle",
@@ -72,9 +72,9 @@ const Starter = () => {
         { value: "hands", label: "Hacer actividades con las manos ✋" },
         { value: "reading", label: "Leer y escribir en mi cuaderno 📖" },
         { value: "games", label: "Jugar y moverme mientras aprendo 🎮" },
-        { value: "friends", label: "Trabajar con amigos 👫" }
+        { value: "friends", label: "Trabajar con amigos 👫" },
       ],
-      icon: "📚"
+      icon: "📚",
     },
     {
       id: "challenges",
@@ -85,9 +85,9 @@ const Starter = () => {
         { value: "ask", label: "Preguntas a alguien de inmediato ❓" },
         { value: "solo", label: "Intentas resolverlo solo un rato 🧠" },
         { value: "clues", label: "Buscas pistas o ejemplos 🔍" },
-        { value: "rest", label: "Descansas y lo intentas después ⏸️" }
+        { value: "rest", label: "Descansas y lo intentas después ⏸️" },
       ],
-      icon: "💪"
+      icon: "💪",
     },
     {
       id: "contentPreference",
@@ -97,9 +97,9 @@ const Starter = () => {
         { value: "videos", label: "Videos divertidos con animaciones 🎥" },
         { value: "games", label: "Juegos y actividades para hacer 🎯" },
         { value: "audio", label: "Audios e historias para escuchar 🎧" },
-        { value: "texts", label: "Textos cortos con dibujos 📝" }
+        { value: "texts", label: "Textos cortos con dibujos 📝" },
       ],
-      icon: "🎯"
+      icon: "🎯",
     },
     {
       id: "studyTime",
@@ -109,9 +109,9 @@ const Starter = () => {
         { value: "15-20", label: "15-20 minutos (como un episodio de dibujos)" },
         { value: "25-35", label: "25-35 minutos (como una clase en el colegio)" },
         { value: "40-50", label: "40-50 minutos (como hacer la tarea)" },
-        { value: "depends", label: "Depende de lo divertido que sea" }
+        { value: "depends", label: "Depende de lo divertido que sea" },
       ],
-      icon: "⏱️"
+      icon: "⏱️",
     },
     {
       id: "interests",
@@ -124,9 +124,9 @@ const Starter = () => {
         { value: "animals", label: "Animales y naturaleza 🐠" },
         { value: "stories", label: "Historias y aventuras 📚" },
         { value: "how", label: "Cómo funcionan las cosas 🔧" },
-        { value: "puzzles", label: "Juegos y acertijos 🧩" }
+        { value: "puzzles", label: "Juegos y acertijos 🧩" },
       ],
-      icon: "🌟"
+      icon: "🌟",
     },
     {
       id: "learningGoal",
@@ -138,9 +138,9 @@ const Starter = () => {
         { value: "school", label: "Para mejorar en el colegio" },
         { value: "smart", label: "Para ser más listo" },
         { value: "enjoy", label: "Porque me gusta aprender" },
-        { value: "friends", label: "Para contarle a mis amigos" }
+        { value: "friends", label: "Para contarle a mis amigos" },
       ],
-      icon: "🎓"
+      icon: "🎓",
     },
     {
       id: "feelings",
@@ -150,9 +150,9 @@ const Starter = () => {
         { value: "calm", label: "😊 Tranquilo, sé que lo lograré" },
         { value: "confused", label: "😐 Un poco confundido, pero intento" },
         { value: "frustrated", label: "😟 Frustrado, quiero rendirme" },
-        { value: "help", label: "😊 Pido ayuda rápido" }
+        { value: "help", label: "😊 Pido ayuda rápido" },
       ],
-      icon: "💭"
+      icon: "💭",
     },
     {
       id: "explanationStyle",
@@ -163,9 +163,9 @@ const Starter = () => {
         { value: "examples", label: "Con muchos ejemplos y paciencia" },
         { value: "direct", label: "Directo al punto, sin tanto rollo" },
         { value: "game", label: "Como si fuera un juego" },
-        { value: "adventure", label: "Como si fuera una aventura" }
+        { value: "adventure", label: "Como si fuera una aventura" },
       ],
-      icon: "🎈"
+      icon: "🎈",
     },
     {
       id: "language",
@@ -174,10 +174,10 @@ const Starter = () => {
       options: [
         { value: "english", label: "Inglés" },
         { value: "spanish", label: "Español" },
-        { value: "both", label: "Ambas" }
+        { value: "both", label: "Ambas" },
       ],
-      icon: "🌐"
-    }
+      icon: "🌐",
+    },
   ];
 
   // Preguntas para 12-17 años
@@ -186,21 +186,21 @@ const Starter = () => {
       id: "age",
       question: "¿Cuántos años tienes?",
       type: "number",
-      icon: "🚀"
+      icon: "🚀",
     },
     {
       id: "description",
       question: "PRESENTACIÓN PERSONAL - Cuéntame brevemente sobre ti para conocerte mejor",
       placeholder: "Por ejemplo: Soy María, tengo 15 años, curso 3ero de secundaria...",
       type: "textarea",
-      icon: "👤"
+      icon: "👤",
     },
     {
       id: "uniqueCharacteristics",
       question: "TUS CARACTERÍSTICAS ÚNICAS - Comparte algo importante que deba saber para ser tu mejor tutor",
       placeholder: "Por ejemplo: Tengo TDAH diagnosticado, pero tomo medicación...",
       type: "textarea",
-      icon: "✨"
+      icon: "✨",
     },
     {
       id: "learningStyle",
@@ -213,9 +213,9 @@ const Starter = () => {
         { value: "kinesthetic", label: "Kinestésico - haciendo ejercicios prácticos y simulaciones" },
         { value: "reading", label: "Lectura/Escritura - leyendo textos y tomando apuntes" },
         { value: "social", label: "Social - discutiendo y colaborando con otros" },
-        { value: "reflective", label: "Reflexivo - procesando información individualmente" }
+        { value: "reflective", label: "Reflexivo - procesando información individualmente" },
       ],
-      icon: "🧠"
+      icon: "🧠",
     },
     {
       id: "problemApproach",
@@ -227,9 +227,9 @@ const Starter = () => {
         { value: "methodical", label: "Metódico - seguir pasos lógicos y ordenados" },
         { value: "intuitive", label: "Intuitivo - confiar en tu instinto y creatividad" },
         { value: "collaborative", label: "Colaborativo - buscar perspectivas de otros" },
-        { value: "experimental", label: "Experimental - probar diferentes soluciones" }
+        { value: "experimental", label: "Experimental - probar diferentes soluciones" },
       ],
-      icon: "🎯"
+      icon: "🎯",
     },
     {
       id: "contentPreference",
@@ -241,9 +241,9 @@ const Starter = () => {
         { value: "audio", label: "Contenido auditivo y podcasts 🎧" },
         { value: "texts", label: "Textos profundos y artículos especializados 📚" },
         { value: "infographics", label: "Infografías y mapas conceptuales 🗺️" },
-        { value: "dialogues", label: "Diálogos guiados y debates socráticos 💬" }
+        { value: "dialogues", label: "Diálogos guiados y debates socráticos 💬" },
       ],
-      icon: "📊"
+      icon: "📊",
     },
     {
       id: "challengeTolerance",
@@ -253,9 +253,9 @@ const Starter = () => {
         { value: "low", label: "Baja tolerancia - prefiero retos graduales con apoyo constante" },
         { value: "medium", label: "Tolerancia media - manejo desafíos con orientación moderada" },
         { value: "high", label: "Alta tolerancia - disfruto resolver problemas complejos solo" },
-        { value: "variable", label: "Variable - depende del tema y mi estado de ánimo" }
+        { value: "variable", label: "Variable - depende del tema y mi estado de ánimo" },
       ],
-      icon: "💪"
+      icon: "💪",
     },
     {
       id: "sessionDuration",
@@ -265,16 +265,17 @@ const Starter = () => {
         { value: "25-35", label: "Cortas (25-35 min) - sesiones intensas y focalizadas" },
         { value: "40-55", label: "Moderadas (40-55 min) - equilibrio perfecto" },
         { value: "60-80", label: "Extendidas (60-80 min) - inmersión completa" },
-        { value: "flexible", label: "Flexible - según la complejidad del tema" }
+        { value: "flexible", label: "Flexible - según la complejidad del tema" },
       ],
-      icon: "⏱️"
+      icon: "⏱️",
     },
     {
       id: "learningGoals",
       question: "Metas de aprendizaje para los próximos 6 meses:",
-      placeholder: "Describe qué esperas lograr - preparación académica, proyectos personales, desarrollo de habilidades",
+      placeholder:
+        "Describe qué esperas lograr - preparación académica, proyectos personales, desarrollo de habilidades",
       type: "textarea",
-      icon: "🎯"
+      icon: "🎯",
     },
     {
       id: "passionateTopics",
@@ -290,9 +291,9 @@ const Starter = () => {
         { value: "environment", label: "Medio ambiente y sostenibilidad" },
         { value: "economy", label: "Economía y comercio internacional" },
         { value: "security", label: "Seguridad y defensa global" },
-        { value: "cultures", label: "Culturas y sociedades contemporáneas" }
+        { value: "cultures", label: "Culturas y sociedades contemporáneas" },
       ],
-      icon: "🌟"
+      icon: "🌟",
     },
     {
       id: "knowledgeContext",
@@ -303,9 +304,9 @@ const Starter = () => {
         { value: "professional", label: "Profesional - desarrollo de carrera futura" },
         { value: "personal", label: "Personal - crecimiento y cultura general" },
         { value: "projects", label: "Proyectos - aplicaciones específicas" },
-        { value: "mixed", label: "Mixto - múltiples propósitos" }
+        { value: "mixed", label: "Mixto - múltiples propósitos" },
       ],
-      icon: "🎓"
+      icon: "🎓",
     },
     {
       id: "communicationStyle",
@@ -315,9 +316,9 @@ const Starter = () => {
         { value: "direct", label: "Directo - lenguaje técnico y preciso" },
         { value: "narrative", label: "Narrativo - explicaciones con contexto y ejemplos" },
         { value: "collaborative", label: "Colaborativo - como un compañero de aprendizaje" },
-        { value: "structured", label: "Estructurado - enfoque metódico y organizado" }
+        { value: "structured", label: "Estructurado - enfoque metódico y organizado" },
       ],
-      icon: "💬"
+      icon: "💬",
     },
     {
       id: "autonomyLevel",
@@ -327,9 +328,9 @@ const Starter = () => {
         { value: "guided", label: "Guiado - prefiero que dirijas el proceso" },
         { value: "collaborative", label: "Colaborativo - decisiones compartidas" },
         { value: "autonomous", label: "Autónomo - yo tomo las decisiones principales" },
-        { value: "adaptive", label: "Adaptativo - que ajustes según mi progreso" }
+        { value: "adaptive", label: "Adaptativo - que ajustes según mi progreso" },
       ],
-      icon: "🎨"
+      icon: "🎨",
     },
     {
       id: "language",
@@ -338,10 +339,10 @@ const Starter = () => {
       options: [
         { value: "spanish", label: "Español" },
         { value: "english", label: "Inglés" },
-        { value: "both", label: "Ambos - intercambiando según el tema" }
+        { value: "both", label: "Ambos - intercambiando según el tema" },
       ],
-      icon: "🌐"
-    }
+      icon: "🌐",
+    },
   ];
 
   const questions: Question[] = ageGroup === "7-12" ? questions712 : questions1217;
@@ -352,24 +353,24 @@ const Starter = () => {
       description: [
         "¡Genial conocerte! 🌟 Cada persona es única y especial.",
         "¡Qué interesante! 🎉 Me encanta saber más sobre ti.",
-        "¡Excelente! 👏 Vamos a aprender muchísimo juntos."
+        "¡Excelente! 👏 Vamos a aprender muchísimo juntos.",
       ],
       interests: [
         "¡Wow! Esos temas son fascinantes 🚀 Hay tanto por descubrir.",
         "¡Excelente elección! 🌟 Vamos a explorar juntos esos temas.",
-        "¡Me encanta! 🎯 Aprenderemos cosas increíbles."
+        "¡Me encanta! 🎯 Aprenderemos cosas increíbles.",
       ],
       learningStyle: [
         "¡Perfecto! 📚 Ahora sé cómo ayudarte mejor a aprender.",
         "¡Genial! 🎨 Vamos a usar tu forma favorita de aprender.",
-        "¡Excelente! 🎯 Tu estilo de aprendizaje es único."
-      ]
+        "¡Excelente! 🎯 Tu estilo de aprendizaje es único.",
+      ],
     };
 
     const messages = interactions[questionId] || [
       "¡Muy bien! ✨ Sigamos conociendonos.",
       "¡Perfecto! 🎯 Cada respuesta me ayuda a conocerte mejor.",
-      "¡Genial! 🌟 Vamos avanzando."
+      "¡Genial! 🌟 Vamos avanzando.",
     ];
 
     return messages[Math.floor(Math.random() * messages.length)];
@@ -413,8 +414,10 @@ const Starter = () => {
 
   const handleSubmit = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         toast({
           title: "Error",
@@ -430,8 +433,8 @@ const Starter = () => {
         body: {
           user_id: user.id,
           type: "starter_profile",
-          data: starterData
-        }
+          data: starterData,
+        },
       });
 
       if (webhookError) {
@@ -458,12 +461,9 @@ const Starter = () => {
       });
 
       // Verificar si es admin o estudiante
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
 
-      if (roles?.some(r => r.role === "admin")) {
+      if (roles?.some((r) => r.role === "admin")) {
         navigate("/admin");
       } else {
         navigate("/chat");
@@ -472,7 +472,8 @@ const Starter = () => {
       console.error("Error al enviar starter:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Hubo un problema al crear tu perfil. Por favor intenta nuevamente.",
+        description:
+          error instanceof Error ? error.message : "Hubo un problema al crear tu perfil. Por favor intenta nuevamente.",
         variant: "destructive",
       });
     }
@@ -480,7 +481,7 @@ const Starter = () => {
 
   const handleMultipleChoice = (value: string) => {
     if (multipleChoices.includes(value)) {
-      setMultipleChoices(multipleChoices.filter(v => v !== value));
+      setMultipleChoices(multipleChoices.filter((v) => v !== value));
     } else {
       const max = currentQuestion.max || 999;
       if (multipleChoices.length < max) {
@@ -492,7 +493,7 @@ const Starter = () => {
   const handleRankingClick = (value: string) => {
     // Si ya está seleccionado, quitarlo
     if (multipleChoices.includes(value)) {
-      setMultipleChoices(multipleChoices.filter(v => v !== value));
+      setMultipleChoices(multipleChoices.filter((v) => v !== value));
     } else {
       // Asignar el siguiente número disponible
       setMultipleChoices([...multipleChoices, value]);
@@ -522,12 +523,12 @@ const Starter = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+    <div className="min-h-screen bg-gradient-to-br flex items-center from-primary/10 via-background to-secondary/10 p-4">
       <div className="max-w-3xl mx-auto py-8">
         {/* Progress bar */}
         <div className="mb-8">
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-primary transition-all duration-500"
               style={{ width: `${((step + 1) / questions.length) * 100}%` }}
             />
@@ -541,9 +542,7 @@ const Starter = () => {
         <div className="bg-card border border-border rounded-2xl p-8 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="text-center mb-8">
             <div className="text-6xl mb-4">{currentQuestion.icon}</div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              {currentQuestion.question}
-            </h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">{currentQuestion.question}</h2>
           </div>
 
           {/* Answer input based on type */}
@@ -573,7 +572,10 @@ const Starter = () => {
               <RadioGroup value={currentAnswer} onValueChange={setCurrentAnswer}>
                 <div className="space-y-3">
                   {currentQuestion.options?.map((option) => (
-                    <div key={option.value} className="flex items-center space-x-3 p-4 rounded-lg border border-border hover:bg-accent transition-colors">
+                    <div
+                      key={option.value}
+                      className="flex items-center space-x-3 p-4 rounded-lg border border-border hover:bg-accent transition-colors"
+                    >
                       <RadioGroupItem value={option.value} id={option.value} />
                       <Label htmlFor={option.value} className="flex-1 cursor-pointer text-base">
                         {option.label}
@@ -587,7 +589,7 @@ const Starter = () => {
             {currentQuestion.type === "multiple" && (
               <div className="space-y-3">
                 {currentQuestion.options?.map((option) => (
-                  <div 
+                  <div
                     key={option.value}
                     onClick={() => handleMultipleChoice(option.value)}
                     className={`p-4 rounded-lg border cursor-pointer transition-all ${
@@ -597,18 +599,18 @@ const Starter = () => {
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        multipleChoices.includes(option.value)
-                          ? "bg-primary border-primary"
-                          : "border-muted-foreground"
-                      }`}>
+                      <div
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                          multipleChoices.includes(option.value)
+                            ? "bg-primary border-primary"
+                            : "border-muted-foreground"
+                        }`}
+                      >
                         {multipleChoices.includes(option.value) && (
                           <div className="text-primary-foreground text-xs">✓</div>
                         )}
                       </div>
-                      <Label className="flex-1 cursor-pointer text-base">
-                        {option.label}
-                      </Label>
+                      <Label className="flex-1 cursor-pointer text-base">{option.label}</Label>
                     </div>
                   </div>
                 ))}
@@ -624,7 +626,7 @@ const Starter = () => {
                   const currentRank = multipleChoices.indexOf(option.value);
                   const isSelected = currentRank !== -1;
                   const displayRank = isSelected ? currentRank + 1 : null;
-                  
+
                   return (
                     <Button
                       key={option.value}
@@ -632,16 +634,16 @@ const Starter = () => {
                       variant="outline"
                       onClick={() => handleRankingClick(option.value)}
                       className={`w-full flex items-center gap-4 p-6 h-auto justify-start text-left ${
-                        isSelected
-                          ? "bg-primary/10 border-primary hover:bg-primary/15"
-                          : "hover:bg-accent"
+                        isSelected ? "bg-primary/10 border-primary hover:bg-primary/15" : "hover:bg-accent"
                       }`}
                     >
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl font-bold border-2 ${
-                        isSelected
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-muted/50 text-muted-foreground border-border"
-                      }`}>
+                      <div
+                        className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl font-bold border-2 ${
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/50 text-muted-foreground border-border"
+                        }`}
+                      >
                         {displayRank || "#"}
                       </div>
                       <span className="flex-1 text-base">{option.label}</span>
@@ -658,19 +660,11 @@ const Starter = () => {
           {/* Navigation buttons */}
           <div className="flex gap-4 mt-8">
             {step > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setStep(step - 1)}
-                className="flex-1"
-              >
+              <Button variant="outline" onClick={() => setStep(step - 1)} className="flex-1">
                 ← Anterior
               </Button>
             )}
-            <Button
-              onClick={handleNext}
-              disabled={!canProceed()}
-              className="flex-1"
-            >
+            <Button onClick={handleNext} disabled={!canProceed()} className="flex-1">
               {step === questions.length - 1 ? "Finalizar ✨" : "Siguiente →"}
             </Button>
           </div>
