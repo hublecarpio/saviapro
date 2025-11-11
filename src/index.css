@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 /* poppins-latin-400-normal */
 @font-face {
   font-family: "Poppins";
@@ -14,22 +15,21 @@
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
     U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+
+/* Sistema de diseño base: colores, fuentes, etc. */
 * {
   font-family: "Poppins", sans-serif;
 }
+
 @layer base {
   :root {
     /* Cyrano Estrategia - Mar Sereno Design System (actualizado a nueva marca) */
-    /* Paleta: 70% fondo neutro, 20% superficies, 10% acentos */
 
     /* Base colors - desde #ffffff */
     --background: 0 0% 100%;
     --foreground: 210 15% 20%;
 
-    /* Surface colors - 20% del diseño */
+    /* Surface colors */
     --card: 0 0% 100%;
     --card-foreground: 210 15% 20%;
 
@@ -45,7 +45,7 @@ All colors MUST be HSL.
     --secondary: 190 82% 51%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Accent warm - tono complementario (éxito/avance) */
+    /* Accent warm */
     --accent: 35 100% 60%;
     --accent-foreground: 210 15% 20%;
 
@@ -65,21 +65,21 @@ All colors MUST be HSL.
     /* Radio global */
     --radius: 0.75rem;
 
-    /* Chat-specific colors - diseño minimalista */
+    /* Chat-specific colors */
     --chat-user-bubble: 210 100% 53%;
     --chat-user-foreground: 0 0% 100%;
     --chat-assistant-bubble: 0 0% 100%;
     --chat-assistant-foreground: 210 15% 20%;
     --chat-assistant-border: 210 20% 90%;
 
-    /* Subtle textures - opacidad 3-6% */
+    /* Subtle textures */
     --texture-pattern: 210 100% 53% / 0.04;
 
-    /* Shadows suaves */
+    /* Shadows */
     --shadow-soft: 0 2px 8px rgb(13 138 255 / 0.08);
     --shadow-medium: 0 4px 16px rgb(13 138 255 / 0.12);
 
-    /* Transitions suaves */
+    /* Transitions */
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -93,12 +93,12 @@ All colors MUST be HSL.
     --popover: 210 20% 14%;
     --popover-foreground: 0 0% 100%;
 
-    /* Primary - #0d8aff pero adaptado a modo oscuro */
+    /* Primary */
     --primary: 210 100% 53%;
     --primary-foreground: 210 25% 15%;
     --primary-hover: 210 100% 60%;
 
-    /* Secondary - #1dc1e6 */
+    /* Secondary */
     --secondary: 190 82% 51%;
     --secondary-foreground: 210 25% 15%;
 
@@ -133,7 +133,7 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-inter;
+    @apply bg-background text-foreground font-poppins;
     letter-spacing: 0.01em;
     line-height: 1.5;
   }
@@ -144,7 +144,7 @@ All colors MUST be HSL.
   h4,
   h5,
   h6 {
-    @apply font-lexend;
+    @apply font-poppins;
     letter-spacing: 0.02em;
   }
 
