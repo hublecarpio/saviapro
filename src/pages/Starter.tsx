@@ -29,6 +29,7 @@ interface StarterData {
 }
 
 const Starter = () => {
+  
   const [step, setStep] = useState(0);
   const [ageGroup, setAgeGroup] = useState<"7-12" | "12-17" | null>(null);
   const [starterData, setStarterData] = useState<StarterData>({});
@@ -478,7 +479,7 @@ const Starter = () => {
       });
     }
   };
-
+  
   const handleMultipleChoice = (value: string) => {
     if (multipleChoices.includes(value)) {
       setMultipleChoices(multipleChoices.filter((v) => v !== value));

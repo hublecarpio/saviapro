@@ -3,13 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Auth from "./pages/Auth";
-import Chat from "./pages/Chat";
-import Starter from "./pages/Starter";
-import Admin from "./pages/Admin";
-import Tutor from "./pages/Tutor";
-import NotFound from "./pages/NotFound";
-
+import Auth from "../pages/Auth";
+import Chat from "../pages/Chat";
+import Starter from "../pages/Starter";
+import Admin from "../pages/Admin";
+import Tutor from "../pages/Tutor";
+import NotFound from "../pages/NotFound";
+import { ProtectedRoute } from "./ProtetectedRoute";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -20,8 +20,17 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Auth />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/starter" element={<Starter />} />
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute >
+            } />
+          <Route path="/starter" element={
+            <ProtectedRoute>
+              <Starter />
+            </ProtectedRoute>} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/tutor" element={<Tutor />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

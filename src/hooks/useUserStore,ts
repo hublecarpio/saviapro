@@ -1,0 +1,47 @@
+import { User, UserState } from './../lib/types';
+import { create } from 'zustand';
+
+const initialUser: User = {
+  id: null,
+  email: null,
+  name: null,
+  roles: [],
+  starterCompleted: false,
+  isAuthenticated: false,
+  loading: true,
+  error: null,
+};
+
+export const useUserStore = create<UserState>((set) => ({
+  user: initialUser,
+  
+  setUser: (userData) =>
+    set((state) => ({
+      user: { ...state.user, ...userData },
+    })),
+  
+  setRoles: (roles) =>
+    set((state) => ({
+      user: { ...state.user, roles },
+    })),
+  
+  setStarter: (completed) =>
+    set((state) => ({
+      user: { ...state.user, starterCompleted: completed },
+    })),
+  
+  setLoading: (loading) =>
+    set((state) => ({
+      user: { ...state.user, loading },
+    })),
+  
+  setError: (error) =>
+    set((state) => ({
+      user: { ...state.user, error },
+    })),
+  
+  reset: () =>
+    set({
+      user: { ...initialUser, loading: false },
+    }),
+}));
