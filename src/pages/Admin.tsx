@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, UserPlus, Settings, LogOut, Users } from "lucide-react";
-
+import {handleLogout as logout} from '@/hooks/useLogout';
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ const Admin = () => {
   const checkAdminStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         navigate("/");
         return;
@@ -124,10 +124,10 @@ const Admin = () => {
   const handleSavePrompt = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const { error } = await supabase
         .from("system_config")
-        .update({ 
+        .update({
           value: masterPrompt,
           updated_by: user?.id,
           updated_at: new Date().toISOString()
@@ -162,7 +162,7 @@ const Admin = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const { error } = await supabase
         .from("invited_users")
         .insert({
@@ -226,26 +226,9 @@ const Admin = () => {
   };
 
   const handleLogout = async () => {
+    logout()
     if (isSigningOut) return;
-    
-    setIsSigningOut(true);
-    
-    // Timeout de seguridad: forzar navegación después de 3 segundos
-    const timeoutId = setTimeout(() => {
-      console.log('Logout timeout: forcing navigation');
-      window.location.href = '/';
-    }, 3000);
-    
-    try {
-      await supabase.auth.signOut();
-      clearTimeout(timeoutId);
-      navigate("/");
-    } catch (error) {
-      console.error('Error signing out:', error);
-      clearTimeout(timeoutId);
-      // Forzar navegación incluso si hay error
-      window.location.href = '/';
-    }
+    navigate('/')
   };
 
   if (loading) {
@@ -440,12 +423,12 @@ const Admin = () => {
                                   <Badge variant="outline">Sin rol</Badge>
                                 ) : (
                                   user.roles.map((role: string) => (
-                                    <Badge 
+                                    <Badge
                                       key={role}
                                       variant={
-                                        role === "admin" ? "default" : 
-                                        role === "tutor" ? "secondary" : 
-                                        "outline"
+                                        role === "admin" ? "default" :
+                                          role === "tutor" ? "secondary" :
+                                            "outline"
                                       }
                                     >
                                       {role}
