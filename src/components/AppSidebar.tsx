@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { User } from "@supabase/supabase-js";
+import { User } from "@/lib/types";
 
 interface Conversation {
   id: string;
@@ -25,7 +25,7 @@ interface Conversation {
 }
 
 interface AppSidebarProps {
-  user: User | null;
+  user: User;
   currentConversationId: string | null;
   onConversationSelect: (id: string) => void;
   onNewConversation: () => void;

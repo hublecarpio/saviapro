@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, UserCog } from "lucide-react";
-import { User } from "@supabase/supabase-js";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
@@ -22,9 +22,10 @@ interface Message {
 
 const Chat = () => {
   const navigate = useNavigate();
+  const { conversationId } = useParams<{ conversationId: string }>();
 
   const user = useUserStore((s) => s.user);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -38,12 +39,17 @@ const Chat = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    console.log("ejecuta")
-    const loadLatestConversation = async () => {
-
+    const loadConversation = async () => {
       try {
         if (!user) return;
 
+        // Si hay conversationId en la URL, usarlo
+        if (conversationId) {
+          setCurrentConversationId(conversationId);
+          return;
+        }
+
+        // Si no hay conversationId en la URL, cargar la última conversación
         const { data, error } = await supabase
           .from('conversations')
           .select('id')
@@ -58,17 +64,16 @@ const Chat = () => {
         }
 
         if (data) {
-          setCurrentConversationId(data.id);
+          // Navegar a la conversación encontrada
+          navigate(`/chat/${data.id}`, { replace: true });
         }
       } catch (error) {
         console.log("error: ", error);
       }
     };
 
-    if (user && !currentConversationId) {
-      loadLatestConversation();
-    }
-  }, [user]);
+    loadConversation();
+  }, [user, conversationId, navigate]);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -266,16 +271,34 @@ const Chat = () => {
     return data.id;
   };
 
-  const handleNewConversation = () => {
-    setCurrentConversationId(null);
-    setMessages([]);
-    setInput("");
+  const handleNewConversation = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert([
+          {
+            user_id: user.id,
+            title: 'Nueva conversación',
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Navegar a la nueva conversación
+      navigate(`/chat/${data.id}`, { replace: true });
+      toast.success("Nueva conversación creada");
+    } catch (error: any) {
+      console.error('Error creating conversation:', error);
+      toast.error("Error al crear conversación");
+    }
   };
 
   const handleConversationSelect = (conversationId: string) => {
-    setCurrentConversationId(conversationId);
-    setMessages([]);
-    loadMessages(conversationId);
+    navigate(`/chat/${conversationId}`);
   };
 
 
