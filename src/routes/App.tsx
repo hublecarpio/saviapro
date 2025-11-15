@@ -10,6 +10,8 @@ import Admin from "../pages/Admin";
 import Tutor from "../pages/Tutor";
 import NotFound from "../pages/NotFound";
 import { ProtectedRoute } from "./ProtetectedRoute";
+import AdminBeta from "@/pages/AdminBeta";
+import { DashboardLayout } from "@/layout/DashboardLaout";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -33,9 +35,12 @@ const App = () => (
             </ProtectedRoute>} />
           <Route path="/admin" element={
             <ProtectedRoute>
-              <Admin />
+              <DashboardLayout>
+                <AdminBeta />
+              </DashboardLayout>
             </ProtectedRoute>
           } />
+
           <Route path="/tutor" element={<Tutor />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -9,7 +9,8 @@ import { User } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
-
+import { destroyUser } from "@/hooks/useLogout";
+import { NavBarUser } from "@/components/NavBarUser";
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -45,12 +46,12 @@ const Chat = () => {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         navigate("/");
         return;
       }
-      
+
       // Verificar rol y redirigir solo admins
       const { data: roles } = await supabase
         .from("user_roles")
@@ -61,7 +62,7 @@ const Chat = () => {
         navigate("/admin");
         return;
       }
-      
+
       setUser(session.user);
     };
 
@@ -83,7 +84,7 @@ const Chat = () => {
           navigate("/admin");
           return;
         }
-        
+
         setUser(session.user);
       }
     });
@@ -127,7 +128,7 @@ const Chat = () => {
     }
 
     console.log('Setting up conversation:', currentConversationId);
-    
+
     // Cargar mensajes existentes
     const loadInitialMessages = async () => {
       const { data, error } = await supabase
@@ -153,7 +154,7 @@ const Chat = () => {
     // Suscribirse a nuevos mensajes con un identificador único para evitar conflictos
     const channelName = `messages-${currentConversationId}-${Date.now()}`;
     console.log('Creating realtime channel:', channelName);
-    
+
     const channel = supabase
       .channel(channelName)
       .on(
@@ -167,7 +168,7 @@ const Chat = () => {
         (payload) => {
           console.log('🔔 New message received via realtime:', payload);
           const newMessage = payload.new as Message;
-          
+
           setMessages((prev) => {
             // Evitar duplicados
             if (prev.some(m => m.id === newMessage.id)) {
@@ -177,7 +178,7 @@ const Chat = () => {
             console.log('✅ Adding new message to state:', newMessage.role, newMessage.message.substring(0, 50));
             return [...prev, newMessage];
           });
-          
+
           // Limpiar loading cuando llega respuesta del assistant
           if (newMessage.role === 'assistant') {
             console.log('🎯 Assistant message received, clearing loading state');
@@ -230,7 +231,7 @@ const Chat = () => {
   const createNewConversation = async (firstMessage?: string) => {
     if (!user) return null;
 
-    const title = firstMessage 
+    const title = firstMessage
       ? firstMessage.substring(0, 50) + (firstMessage.length > 50 ? '...' : '')
       : 'Nueva conversación';
 
@@ -264,39 +265,10 @@ const Chat = () => {
     loadMessages(conversationId);
   };
 
-  const handleSignOut = async () => {
-    if (isSigningOut) return;
-    
-    setIsSigningOut(true);
-    
-    // Timeout de seguridad: forzar navegación después de 3 segundos
-    const timeoutId = setTimeout(() => {
-      console.log('Logout timeout: forcing navigation');
-      window.location.href = '/';
-    }, 3000);
-    
-    try {
-      // Limpiar estado primero
-      setUser(null);
-      setMessages([]);
-      setCurrentConversationId(null);
-      
-      // Intentar signOut
-      await supabase.auth.signOut();
-      
-      clearTimeout(timeoutId);
-      navigate("/");
-    } catch (error) {
-      console.error('Error signing out:', error);
-      clearTimeout(timeoutId);
-      // Forzar navegación incluso si hay error
-      window.location.href = '/';
-    }
-  };
 
   const handleSend = async (messageText?: string) => {
     const textToSend = messageText || input.trim();
-    
+
     if (!textToSend || !user || isLoading) return;
 
     console.log('Sending message:', textToSend);
@@ -312,7 +284,7 @@ const Chat = () => {
 
     try {
       let conversationId = currentConversationId;
-      
+
       // Crear conversación si no existe
       if (!conversationId) {
         console.log('Creating new conversation');
@@ -325,14 +297,14 @@ const Chat = () => {
         }
         console.log('New conversation created:', conversationId);
         setCurrentConversationId(conversationId);
-        
+
         // Esperar a que el useEffect configure el realtime
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      
+
       console.log('Invoking chat function');
       const { data, error } = await supabase.functions.invoke('chat', {
-        body: { 
+        body: {
           message: textToSend,
           conversation_id: conversationId,
           user_id: user.id
@@ -344,12 +316,12 @@ const Chat = () => {
         console.error('Function invocation error:', error);
         throw error;
       }
-      
+
       console.log('Chat function response:', data);
-      
+
       // El isLoading se reseteará cuando llegue el mensaje del assistant vía realtime
       // o por el timeout de seguridad
-      
+
     } catch (error) {
       clearTimeout(timeoutId);
       console.error('Error sending message:', error);
@@ -411,18 +383,18 @@ const Chat = () => {
       if (error) throw error;
 
       const response = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message || data?.response?.content;
-      
+
       if (response) {
         toast.success("Archivo procesado, generando respuesta...");
-        
+
         const { error: chatError } = await supabase.functions.invoke('chat', {
-          body: { 
+          body: {
             message: response,
             conversation_id: conversationId,
             user_id: user.id
           }
         });
-        
+
         if (chatError) throw chatError;
       } else {
         console.error('Respuesta del webhook sin contenido:', data);
@@ -477,17 +449,17 @@ const Chat = () => {
       }
 
       console.log('Requesting microphone access...');
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           sampleRate: 44100
-        } 
+        }
       });
-      
+
       console.log('Microphone access granted');
-      
+
       // Detectar el tipo MIME soportado por el navegador
       let mimeType = 'audio/webm';
       if (MediaRecorder.isTypeSupported('audio/mp4')) {
@@ -497,9 +469,9 @@ const Chat = () => {
       } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
         mimeType = 'audio/ogg;codecs=opus';
       }
-      
+
       console.log('Using MIME type:', mimeType);
-      
+
       const recorder = new MediaRecorder(stream, { mimeType });
       const chunks: Blob[] = [];
 
@@ -508,7 +480,7 @@ const Chat = () => {
           chunks.push(e.data);
         }
       };
-      
+
       recorder.onstop = async () => {
         const blob = new Blob(chunks, { type: mimeType });
         console.log('Audio blob created:', blob.size, 'bytes, type:', blob.type);
@@ -521,10 +493,10 @@ const Chat = () => {
       setIsRecording(true);
     } catch (error: any) {
       console.error('Error starting recording:', error);
-      
+
       // Mostrar mensaje específico según el tipo de error
       let errorMessage = "No se pudo acceder al micrófono";
-      
+
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
         errorMessage = "Permiso denegado. Por favor, permite el acceso al micrófono en la configuración de tu navegador";
       } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
@@ -538,7 +510,7 @@ const Chat = () => {
       } else if (error.name === 'TypeError') {
         errorMessage = "Error de configuración de audio";
       }
-      
+
       toast.error(errorMessage);
     }
   };
@@ -565,12 +537,12 @@ const Chat = () => {
 
     try {
       const audioFormat = audioBlob.type.split('/')[1].split(';')[0];
-      
+
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
           const base64Data = event.target?.result as string;
-          
+
           const { data, error } = await supabase.functions.invoke('webhook-integration', {
             body: {
               type: 'audio',
@@ -584,18 +556,18 @@ const Chat = () => {
           if (error) throw error;
 
           const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
-          
+
           if (transcription) {
             toast.success("Audio transcrito, generando respuesta...");
-            
+
             const { error: chatError } = await supabase.functions.invoke('chat', {
-              body: { 
+              body: {
                 message: transcription,
                 conversation_id: conversationId,
                 user_id: user.id
               }
             });
-            
+
             if (chatError) throw chatError;
           } else {
             console.error('Respuesta del webhook sin texto:', data);
@@ -608,7 +580,7 @@ const Chat = () => {
           setIsLoading(false);
         }
       };
-      
+
       reader.readAsDataURL(audioBlob);
     } catch (error) {
       console.error('Error processing audio:', error);
@@ -622,14 +594,14 @@ const Chat = () => {
       try {
         const response = await fetch(webhookUrl);
         if (!response.ok) continue;
-        
+
         const data = await response.json();
         const mediaUrl = data?.response || data?.url || data?.data?.url || data?.data?.response;
-        
+
         if (mediaUrl) {
           return mediaUrl;
         }
-        
+
         // Esperar antes del siguiente intento
         await new Promise(resolve => setTimeout(resolve, interval));
       } catch (error) {
@@ -646,7 +618,7 @@ const Chat = () => {
     }
 
     setIsLoading(true);
-    
+
     try {
       // Insertar mensaje de carga en el chat
       const { data: loadingMessage, error: loadingError } = await supabase
@@ -663,7 +635,7 @@ const Chat = () => {
       if (loadingError) throw loadingError;
 
       // Crear resumen de la conversación
-      const conversationSummary = messages.map(msg => 
+      const conversationSummary = messages.map(msg =>
         `${msg.role === 'user' ? 'Usuario' : 'Asistente'}: ${msg.message}`
       ).join('\n\n');
 
@@ -720,7 +692,7 @@ const Chat = () => {
         toast.error("Tiempo de espera agotado");
       } else {
         // Si hay URL, mostrar el resultado
-        const resultMessage = type === 'video' 
+        const resultMessage = type === 'video'
           ? `✅ Video resumen generado:\n\n${mediaUrl}`
           : `✅ Podcast resumen generado:\n\n${mediaUrl}`;
 
@@ -746,7 +718,7 @@ const Chat = () => {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
-        <AppSidebar 
+        <AppSidebar
           user={user}
           currentConversationId={currentConversationId}
           onConversationSelect={handleConversationSelect}
@@ -755,54 +727,10 @@ const Chat = () => {
 
         <div className="flex flex-col flex-1">
           {/* Header */}
-          <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-            <div className="max-w-5xl mx-auto px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                <SidebarTrigger className="-ml-1" />
-                <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="text-base md:text-lg font-semibold text-foreground">
-                      SAVIA
-                    </h1>
-                    <p className="text-[10px] md:text-xs text-muted-foreground truncate max-w-[120px] md:max-w-none">
-                      {user?.email}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowProfileEditor(true)}
-                  className="text-muted-foreground hover:text-foreground shrink-0"
-                >
-                  <UserCog className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Mi Perfil</span>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={handleSignOut}
-                  disabled={isSigningOut}
-                  className="text-muted-foreground hover:text-foreground shrink-0"
-                >
-                  {isSigningOut ? (
-                    <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
-                  ) : (
-                    <LogOut className="h-4 w-4 md:mr-2" />
-                  )}
-                  <span className="hidden md:inline">{isSigningOut ? "Saliendo..." : "Salir"}</span>
-                </Button>
-              </div>
-            </div>
-          </header>
+          <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut}/>
 
           {/* Messages Area */}
-          <div 
+          <div
             className="flex-1 overflow-y-auto relative"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -835,30 +763,29 @@ const Chat = () => {
                     // Detectar si el mensaje contiene una URL de video/audio/pdf
                     const urlMatch = msg.message.match(/(https?:\/\/[^\s]+)/);
                     const hasMedia = urlMatch && (
-                      msg.message.includes('Video resumen') || 
+                      msg.message.includes('Video resumen') ||
                       msg.message.includes('Podcast resumen')
                     );
                     const hasPdf = urlMatch && msg.message.includes('📄');
                     const isVideo = msg.message.includes('Video resumen');
-                    
+
                     return (
                       <div
                         key={msg.id}
                         className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 ${
-                            msg.role === 'user'
+                          className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 ${msg.role === 'user'
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm'
-                          }`}
+                            }`}
                         >
                           {hasPdf && urlMatch ? (
                             <div className="space-y-3">
                               <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
                                 {msg.message.split(urlMatch[0])[0]}
                               </p>
-                              <Button 
+                              <Button
                                 onClick={async () => {
                                   try {
                                     toast.info("Descargando PDF...");
@@ -866,11 +793,11 @@ const Chat = () => {
                                       mode: 'cors',
                                       credentials: 'omit'
                                     });
-                                    
+
                                     if (!response.ok) {
                                       throw new Error('Error descargando el archivo');
                                     }
-                                    
+
                                     const blob = await response.blob();
                                     const url = window.URL.createObjectURL(blob);
                                     const link = document.createElement('a');
@@ -897,7 +824,7 @@ const Chat = () => {
                                 Descargar Informe PDF
                               </Button>
                               <p className="text-xs text-muted-foreground text-center">
-                                Si el botón no funciona, <button 
+                                Si el botón no funciona, <button
                                   onClick={() => {
                                     navigator.clipboard.writeText(urlMatch[0]);
                                     toast.success("¡Link copiado!");
@@ -914,16 +841,16 @@ const Chat = () => {
                                 {msg.message.split(urlMatch[0])[0]}
                               </p>
                               {isVideo ? (
-                                <video 
-                                  controls 
+                                <video
+                                  controls
                                   className="w-full rounded-lg max-h-[400px]"
                                   src={urlMatch[0]}
                                 >
                                   Tu navegador no soporta video HTML5.
                                 </video>
                               ) : (
-                                <audio 
-                                  controls 
+                                <audio
+                                  controls
                                   className="w-full"
                                   src={urlMatch[0]}
                                 >
@@ -940,7 +867,7 @@ const Chat = () => {
                       </div>
                     );
                   })}
-                  
+
                   {isLoading && (
                     <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 flex items-center gap-2 md:gap-3 shadow-sm">
@@ -949,7 +876,7 @@ const Chat = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -1050,10 +977,10 @@ const Chat = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Modal de edición de perfil */}
       {user && (
-        <StarterProfileEditor 
+        <StarterProfileEditor
           userId={user.id}
           open={showProfileEditor}
           onOpenChange={setShowProfileEditor}

@@ -1,6 +1,6 @@
 export type User = {
-    id: String | null,
-    email: String | null,
+    id: string | null,
+    email: string | null,
     name: string | null,
     roles: string[],
     starterCompleted: boolean,

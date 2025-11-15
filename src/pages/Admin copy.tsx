@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Trash2, UserPlus, Settings, LogOut, Users } from "lucide-react";
 import { destroyUser } from '@/hooks/useLogout';
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 import { NavBarUser } from "@/components/NavBarUser";
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -54,7 +56,7 @@ const Admin = () => {
         navigate("/chat");
         return;
       }
-      
+
       setIsAdmin(true);
       await loadMasterPrompt();
       await loadInvitedUsers();
@@ -245,6 +247,20 @@ const Admin = () => {
 
   return (
     <>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background">
+          <AppSidebar
+            user={user}
+            currentConversationId={currentConversationId}
+            onConversationSelect={handleConversationSelect}
+            onNewConversation={handleNewConversation}
+          />
+          <div className="flex flex-col flex-1">
+            <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
+
+          </div>
+        </div>
+      </SidebarProvider>
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           <div className="flex justify-between items-center mb-8">
