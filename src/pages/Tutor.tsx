@@ -38,22 +38,21 @@ const Tutor = () => {
 
   const checkAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session) {
         navigate("/");
         return;
       }
 
       // Verificar que sea tutor
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id);
 
-      if (!roles?.some(r => r.role === "tutor")) {
+      if (!roles?.some((r) => r.role === "tutor")) {
         // Si no es tutor, redirigir según su rol
-        if (roles?.some(r => r.role === "admin")) {
+        if (roles?.some((r) => r.role === "admin")) {
           navigate("/admin");
         } else {
           navigate("/chat");
@@ -85,7 +84,7 @@ const Tutor = () => {
         return;
       }
 
-      const studentIds = relations.map(r => r.student_id);
+      const studentIds = relations.map((r) => r.student_id);
 
       const { data: profiles, error: profError } = await supabase
         .from("profiles")
@@ -128,12 +127,10 @@ const Tutor = () => {
       }
 
       // Agregar el email a invited_users
-      const { error: inviteError } = await supabase
-        .from("invited_users")
-        .insert({
-          email: newStudentEmail.toLowerCase(),
-          created_by: user.id
-        });
+      const { error: inviteError } = await supabase.from("invited_users").insert({
+        email: newStudentEmail.toLowerCase(),
+        created_by: user.id,
+      });
 
       if (inviteError) {
         console.error("Error inviting user:", inviteError);
@@ -147,9 +144,9 @@ const Tutor = () => {
         password: newStudentPassword,
         options: {
           data: {
-            name: newStudentName || newStudentEmail.split("@")[0]
-          }
-        }
+            name: newStudentName || newStudentEmail.split("@")[0],
+          },
+        },
       });
 
       if (signUpError) {
@@ -164,12 +161,10 @@ const Tutor = () => {
       }
 
       // Asignar rol de estudiante
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: signUpData.user.id,
-          role: "student"
-        });
+      const { error: roleError } = await supabase.from("user_roles").insert({
+        user_id: signUpData.user.id,
+        role: "student",
+      });
 
       if (roleError) {
         console.error("Error assigning role:", roleError);
@@ -178,12 +173,10 @@ const Tutor = () => {
       }
 
       // Relacionar tutor con estudiante
-      const { error: relationError } = await supabase
-        .from("tutor_students")
-        .insert({
-          tutor_id: user.id,
-          student_id: signUpData.user.id
-        });
+      const { error: relationError } = await supabase.from("tutor_students").insert({
+        tutor_id: user.id,
+        student_id: signUpData.user.id,
+      });
 
       if (relationError) {
         console.error("Error creating relation:", relationError);
@@ -193,7 +186,7 @@ const Tutor = () => {
 
       // Marcar invitación como usada
       const { error: markError } = await supabase.rpc("mark_invited_user_used", {
-        user_email: newStudentEmail.toLowerCase()
+        user_email: newStudentEmail.toLowerCase(),
       });
 
       if (markError) {
@@ -229,24 +222,24 @@ const Tutor = () => {
 
   const handleLogout = async () => {
     if (isSigningOut) return;
-    
+
     setIsSigningOut(true);
-    
+
     // Timeout de seguridad: forzar navegación después de 3 segundos
     const timeoutId = setTimeout(() => {
-      console.log('Logout timeout: forcing navigation');
-      window.location.href = '/';
+      console.log("Logout timeout: forcing navigation");
+      window.location.href = "/";
     }, 3000);
-    
+
     try {
       await supabase.auth.signOut();
       clearTimeout(timeoutId);
       navigate("/");
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
       clearTimeout(timeoutId);
       // Forzar navegación incluso si hay error
-      window.location.href = '/';
+      window.location.href = "/";
     }
   };
 
@@ -274,13 +267,6 @@ const Tutor = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => navigate("/chat")}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Mi Chat
-            </Button>
             <Button variant="ghost" onClick={handleLogout} disabled={isSigningOut}>
               {isSigningOut ? (
                 <>
@@ -305,9 +291,7 @@ const Tutor = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">Mis Estudiantes</h2>
-              <p className="text-muted-foreground">
-                {students.length} de 2 estudiantes
-              </p>
+              <p className="text-muted-foreground">{students.length} de 2 estudiantes</p>
             </div>
             {students.length < 2 && (
               <Button onClick={() => setShowCreateDialog(true)}>
@@ -323,9 +307,7 @@ const Tutor = () => {
               <CardContent className="py-12 text-center">
                 <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">No tienes estudiantes</h3>
-                <p className="text-muted-foreground mb-4">
-                  Crea tu primer estudiante para comenzar
-                </p>
+                <p className="text-muted-foreground mb-4">Crea tu primer estudiante para comenzar</p>
                 <Button onClick={() => setShowCreateDialog(true)}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   Crear Estudiante
@@ -347,10 +329,7 @@ const Tutor = () => {
                           <CardDescription>{student.email}</CardDescription>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleViewProfile(student.id)}
-                      >
+                      <Button variant="outline" onClick={() => handleViewProfile(student.id)}>
                         <Eye className="mr-2 h-4 w-4" />
                         Ver Perfil
                       </Button>
@@ -358,13 +337,13 @@ const Tutor = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        student.starter_completed ? "bg-green-500" : "bg-yellow-500"
-                      }`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          student.starter_completed ? "bg-green-500" : "bg-yellow-500"
+                        }`}
+                      />
                       <span className="text-sm text-muted-foreground">
-                        {student.starter_completed 
-                          ? "Perfil completado" 
-                          : "Perfil pendiente"}
+                        {student.starter_completed ? "Perfil completado" : "Perfil pendiente"}
                       </span>
                     </div>
                   </CardContent>
@@ -377,7 +356,11 @@ const Tutor = () => {
 
       {/* Dialog para crear estudiante */}
       <Dialog open={showCreateDialog} onOpenChange={handleCloseCreateDialog}>
-        <DialogContent className="sm:max-w-[425px]" onPointerDownOutside={handleCloseCreateDialog} onEscapeKeyDown={handleCloseCreateDialog}>
+        <DialogContent
+          className="sm:max-w-[425px]"
+          onPointerDownOutside={handleCloseCreateDialog}
+          onEscapeKeyDown={handleCloseCreateDialog}
+        >
           <button
             onClick={handleCloseCreateDialog}
             className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
@@ -388,9 +371,7 @@ const Tutor = () => {
           </button>
           <DialogHeader>
             <DialogTitle>Crear Nuevo Estudiante</DialogTitle>
-            <DialogDescription>
-              Completa los datos para crear una cuenta de estudiante
-            </DialogDescription>
+            <DialogDescription>Completa los datos para crear una cuenta de estudiante</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -436,11 +417,7 @@ const Tutor = () => {
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={handleCloseCreateDialog}
-              disabled={creating}
-            >
+            <Button variant="outline" onClick={handleCloseCreateDialog} disabled={creating}>
               Cancelar
             </Button>
             <Button onClick={handleCreateStudent} disabled={creating}>
@@ -452,11 +429,7 @@ const Tutor = () => {
 
       {/* Editor de perfil */}
       {selectedStudentId && (
-        <StarterProfileEditor
-          userId={selectedStudentId}
-          open={showProfileEditor}
-          onOpenChange={setShowProfileEditor}
-        />
+        <StarterProfileEditor userId={selectedStudentId} open={showProfileEditor} onOpenChange={setShowProfileEditor} />
       )}
     </div>
   );
