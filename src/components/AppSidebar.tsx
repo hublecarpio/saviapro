@@ -70,7 +70,8 @@ export function AppSidebar({
   }, [user]);
 
   const loadConversations = async () => {
-    if (!user) {
+    try {
+      if (!user) {
       console.log('No user found, skipping conversations load');
       return;
     }
@@ -113,6 +114,9 @@ export function AppSidebar({
     console.log('Conversations loaded:', conversationsWithFirstMessage.length);
     setConversations(conversationsWithFirstMessage);
     setLoading(false);
+    } catch (error) {
+      console.log("error: ", error)
+    }
   };
 
   const handleDelete = async (e: React.MouseEvent, conversationId: string) => {
@@ -145,7 +149,7 @@ export function AppSidebar({
               <MessageSquare className="h-4 w-4 text-primary" />
             </div>
             {sidebarOpen && (
-              <span className="font-semibold text-foreground">SAVIA</span>
+              <span className="font-semibold text-foreground">BIEX</span>
             )}
           </div>
           

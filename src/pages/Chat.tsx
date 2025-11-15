@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 import { destroyUser } from "@/hooks/useLogout";
 import { NavBarUser } from "@/components/NavBarUser";
+import { useUserStore } from "@/store/useUserStore";
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -21,7 +22,9 @@ interface Message {
 
 const Chat = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+
+  const user = useUserStore((s) => s.user);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -34,19 +37,54 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    console.log("ejecuta")
+    const loadLatestConversation = async () => {
 
+      try {
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading latest conversation:', error);
+          return;
+        }
+
+        if (data) {
+          setCurrentConversationId(data.id);
+        }
+      } catch (error) {
+        console.log("error: ", error);
+      }
+    };
+
+    if (user && !currentConversationId) {
+      loadLatestConversation();
+    }
+  }, [user]);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
+  console.log("hola")
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    console.log("eaeae1")
 
+    const checkAuth = async () => {
+      console.log("eaeae")
+
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("results")
+      console.log(session)
       if (!session) {
         navigate("/");
         return;
@@ -63,7 +101,7 @@ const Chat = () => {
         return;
       }
 
-      setUser(session.user);
+      setCurrentUser(session.user);
     };
 
     checkAuth();
@@ -85,7 +123,7 @@ const Chat = () => {
           return;
         }
 
-        setUser(session.user);
+        setCurrentUser(session.user);
       }
     });
 
@@ -93,32 +131,7 @@ const Chat = () => {
   }, [navigate]);
 
   // Cargar automáticamente la última conversación al entrar
-  useEffect(() => {
-    const loadLatestConversation = async () => {
-      if (!user) return;
 
-      const { data, error } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error loading latest conversation:', error);
-        return;
-      }
-
-      if (data) {
-        setCurrentConversationId(data.id);
-      }
-    };
-
-    if (!currentConversationId) {
-      loadLatestConversation();
-    }
-  }, [user]);
 
   // Cargar mensajes y suscribirse a realtime cuando cambia la conversación
   useEffect(() => {
@@ -714,7 +727,7 @@ const Chat = () => {
       setIsLoading(false);
     }
   };
-
+  console.log(user);
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
@@ -727,7 +740,7 @@ const Chat = () => {
 
         <div className="flex flex-col flex-1">
           {/* Header */}
-          <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut}/>
+          <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
 
           {/* Messages Area */}
           <div
@@ -753,7 +766,7 @@ const Chat = () => {
                       <Sparkles className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                     </div>
                     <h2 className="text-xl md:text-3xl font-semibold text-foreground px-4">
-                      Bienvenido a SAVIA
+                      Bienvenido a BIEX
                     </h2>
                   </div>
                 </div>
@@ -776,8 +789,8 @@ const Chat = () => {
                       >
                         <div
                           className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 ${msg.role === 'user'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm'
                             }`}
                         >
                           {hasPdf && urlMatch ? (
@@ -968,10 +981,7 @@ const Chat = () => {
                 <span className="hidden sm:inline">Adjunta archivos o graba audio • </span>
                 <span className="sm:hidden">Archivos/audio • </span>
                 Enter para enviar
-                <span className="hidden sm:inline"> • Shift+Enter para nueva línea</span>
-              </p>
-              <p className="text-[10px] md:text-xs text-muted-foreground/50 text-center mt-1 md:mt-2">
-                Desarrollado por Huble Consulting
+                <span className="hidden sm:inline"  > • Shift+Enter para nueva línea</span>
               </p>
             </div>
           </div>
