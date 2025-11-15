@@ -38,114 +38,41 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Sincronizar conversationId de la URL con el estado
   useEffect(() => {
-    const loadConversation = async () => {
-      try {
-        if (!user) return;
-
-        // Si hay conversationId en la URL, usarlo
-        if (conversationId) {
-          setCurrentConversationId(conversationId);
-          return;
-        }
-
-        // Si no hay conversationId en la URL, cargar la última conversación
-        const { data, error } = await supabase
-          .from('conversations')
-          .select('id')
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error loading latest conversation:', error);
-          return;
-        }
-
-        if (data) {
-          // Navegar a la conversación encontrada
-          navigate(`/chat/${data.id}`, { replace: true });
-        }
-      } catch (error) {
-        console.log("error: ", error);
-      }
-    };
-
-    loadConversation();
-  }, [user, conversationId, navigate]);
+    if (conversationId) {
+      setCurrentConversationId(conversationId);
+    } else {
+      setCurrentConversationId(null);
+      setMessages([]);
+    }
+  }, [conversationId]);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-  console.log("hola")
+  
+  // Verificar autenticación una sola vez al montar
   useEffect(() => {
-    console.log("eaeae1")
-
     const checkAuth = async () => {
-      console.log("eaeae")
-
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("results")
-      console.log(session)
-      if (!session) {
-        navigate("/");
-        return;
-      }
-
-      // Verificar rol y redirigir solo admins
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
-
-      if (roles?.some(r => r.role === "admin")) {
-        navigate("/admin");
-        return;
-      }
-
-      setCurrentUser(session.user);
-    };
-
-    checkAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!session) {
-        navigate("/");
-      } else {
-        // Verificar rol - solo redirigir admins
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id);
-
-        if (roles?.some(r => r.role === "admin")) {
-          navigate("/admin");
-          return;
-        }
-
+      if (session) {
         setCurrentUser(session.user);
       }
-    });
+    };
+    checkAuth();
+  }, []);
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  // Cargar automáticamente la última conversación al entrar
+  
 
 
-  // Cargar mensajes y suscribirse a realtime cuando cambia la conversación
+  // Cargar mensajes y suscribirse a realtime cuando hay conversationId
   useEffect(() => {
-    if (!user || !currentConversationId) {
-      setIsLoading(false);
+    if (!currentConversationId) {
       return;
     }
-
-    console.log('Setting up conversation:', currentConversationId);
 
     // Cargar mensajes existentes
     const loadInitialMessages = async () => {
@@ -158,21 +85,16 @@ const Chat = () => {
       if (error) {
         console.error('Error loading messages:', error);
         toast.error("Error cargando mensajes");
-        setIsLoading(false);
         return;
       }
 
-      console.log('Initial messages loaded:', data?.length);
       setMessages((data || []) as Message[]);
-      setIsLoading(false);
     };
 
     loadInitialMessages();
 
-    // Suscribirse a nuevos mensajes con un identificador único para evitar conflictos
+    // Suscribirse a nuevos mensajes
     const channelName = `messages-${currentConversationId}-${Date.now()}`;
-    console.log('Creating realtime channel:', channelName);
-
     const channel = supabase
       .channel(channelName)
       .on(
@@ -184,49 +106,23 @@ const Chat = () => {
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         (payload) => {
-          console.log('🔔 New message received via realtime:', payload);
           const newMessage = payload.new as Message;
-
           setMessages((prev) => {
-            // Evitar duplicados
-            if (prev.some(m => m.id === newMessage.id)) {
-              console.log('⚠️ Duplicate message detected, ignoring:', newMessage.id);
-              return prev;
-            }
-            console.log('✅ Adding new message to state:', newMessage.role, newMessage.message.substring(0, 50));
+            if (prev.some(m => m.id === newMessage.id)) return prev;
             return [...prev, newMessage];
           });
 
-          // Limpiar loading cuando llega respuesta del assistant
           if (newMessage.role === 'assistant') {
-            console.log('🎯 Assistant message received, clearing loading state');
             setIsLoading(false);
           }
         }
       )
-      .subscribe((status, err) => {
-        console.log('📡 Realtime subscription status:', status);
-        if (err) {
-          console.error('❌ Realtime subscription error:', err);
-        }
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully subscribed to realtime channel:', channelName);
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime channel error');
-          setIsLoading(false);
-        } else if (status === 'TIMED_OUT') {
-          console.error('⏱️ Realtime subscription timed out');
-          setIsLoading(false);
-        } else if (status === 'CLOSED') {
-          console.log('🔒 Realtime channel closed');
-        }
-      });
+      .subscribe();
 
     return () => {
-      console.log('🧹 Cleaning up realtime channel:', channelName);
       supabase.removeChannel(channel);
     };
-  }, [user, currentConversationId]);
+  }, [currentConversationId]);
 
   const loadMessages = async (conversationId: string) => {
     console.log('Loading messages for conversation:', conversationId);
@@ -271,30 +167,10 @@ const Chat = () => {
     return data.id;
   };
 
-  const handleNewConversation = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert([
-          {
-            user_id: user.id,
-            title: 'Nueva conversación',
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Navegar a la nueva conversación
-      navigate(`/chat/${data.id}`, { replace: true });
-      toast.success("Nueva conversación creada");
-    } catch (error: any) {
-      console.error('Error creating conversation:', error);
-      toast.error("Error al crear conversación");
-    }
+  const handleNewConversation = () => {
+    // Simplemente navegar a /chat sin conversationId
+    navigate('/chat', { replace: true });
+    setInput("");
   };
 
   const handleConversationSelect = (conversationId: string) => {
@@ -304,16 +180,12 @@ const Chat = () => {
 
   const handleSend = async (messageText?: string) => {
     const textToSend = messageText || input.trim();
-
     if (!textToSend || !user || isLoading) return;
 
-    console.log('Sending message:', textToSend);
     setInput("");
     setIsLoading(true);
 
-    // Timeout de seguridad: resetear isLoading después de 30 segundos
     const timeoutId = setTimeout(() => {
-      console.log('Timeout: resetting isLoading');
       setIsLoading(false);
       toast.error("La respuesta está tomando más tiempo del esperado");
     }, 30000);
@@ -321,9 +193,8 @@ const Chat = () => {
     try {
       let conversationId = currentConversationId;
 
-      // Crear conversación si no existe
+      // Crear conversación si no existe (primer mensaje)
       if (!conversationId) {
-        console.log('Creating new conversation');
         conversationId = await createNewConversation(textToSend);
         if (!conversationId) {
           clearTimeout(timeoutId);
@@ -331,14 +202,12 @@ const Chat = () => {
           setIsLoading(false);
           return;
         }
-        console.log('New conversation created:', conversationId);
-        setCurrentConversationId(conversationId);
-
-        // Esperar a que el useEffect configure el realtime
+        // Navegar a la nueva conversación
+        navigate(`/chat/${conversationId}`, { replace: true });
+        // Esperar a que se configure el realtime
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      console.log('Invoking chat function');
       const { data, error } = await supabase.functions.invoke('chat', {
         body: {
           message: textToSend,
@@ -349,20 +218,12 @@ const Chat = () => {
 
       if (error) {
         clearTimeout(timeoutId);
-        console.error('Function invocation error:', error);
         throw error;
       }
-
-      console.log('Chat function response:', data);
-
-      // El isLoading se reseteará cuando llegue el mensaje del assistant vía realtime
-      // o por el timeout de seguridad
-
     } catch (error) {
       clearTimeout(timeoutId);
       console.error('Error sending message:', error);
       toast.error("Error enviando mensaje");
-      setInput(textToSend);
       setIsLoading(false);
     }
   };
@@ -751,6 +612,14 @@ const Chat = () => {
     }
   };
   console.log(user);
+  if (!user || !user.id) {
+    return (
+      <div className="flex min-h-screen w-full bg-background items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
