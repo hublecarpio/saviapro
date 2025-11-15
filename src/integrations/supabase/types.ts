@@ -251,6 +251,10 @@ export type Database = {
         Args: { user_email: string }
         Returns: undefined
       }
+      user_was_invited_by_tutor: {
+        Args: { _tutor_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "student" | "tutor"
