@@ -105,7 +105,7 @@ const Auth = () => {
               <CardTitle className="text-3xl font-semibold">
                 <img
                   className="w-1/2 mx-auto"
-                  src="https://files.catbox.moe/uhd8c1.png"
+                  src="/uhd8c1.png"
                   alt="Logo BIEXT"
                   loading="lazy"
                 />
