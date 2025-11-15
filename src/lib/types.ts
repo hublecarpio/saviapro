@@ -18,12 +18,3 @@ export interface UserState {
   setError: (msg: string | null) => void;
   reset: () => void;
 }
-export interface UserState {
-  user: User;
-  setUser: (userData: Partial<User>) => void;
-  setRoles: (roles: string[]) => void;
-  setStarter: (completed: boolean) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (msg: string | null) => void;
-  reset: () => void;
-}
