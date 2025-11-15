@@ -115,63 +115,97 @@ const Tutor = () => {
     try {
       setCreating(true);
 
-      // Primero agregar el email a invited_users
+      // Verificar si ya existe un usuario con ese correo
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .eq("email", newStudentEmail.toLowerCase())
+        .maybeSingle();
+
+      if (existingProfile) {
+        toast.error("Ya existe un usuario registrado con ese correo");
+        return;
+      }
+
+      // Agregar el email a invited_users
       const { error: inviteError } = await supabase
         .from("invited_users")
         .insert({
           email: newStudentEmail.toLowerCase(),
-          created_by: user.id,
-          used: false
+          created_by: user.id
         });
 
       if (inviteError) {
-        if (inviteError.message.includes("duplicate")) {
-          toast.error("Este correo ya está invitado");
-        } else {
-          throw inviteError;
-        }
+        console.error("Error inviting user:", inviteError);
+        toast.error("Error al invitar usuario");
         return;
       }
 
-      // Crear la cuenta del estudiante
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: newStudentEmail,
+      // Crear el usuario
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: newStudentEmail.toLowerCase(),
         password: newStudentPassword,
         options: {
           data: {
-            name: newStudentName || newStudentEmail.split('@')[0]
+            name: newStudentName || newStudentEmail.split("@")[0]
           }
         }
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        console.error("Error signing up:", signUpError);
+        toast.error("Error al crear usuario");
+        return;
+      }
 
-      if (authData.user) {
-        // Asignar rol de estudiante
-        await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            role: "student"
-          });
+      if (!signUpData.user) {
+        toast.error("Error al crear usuario");
+        return;
+      }
 
-        // Relacionar con el tutor
-        await supabase
-          .from("tutor_students")
-          .insert({
-            tutor_id: user.id,
-            student_id: authData.user.id
-          });
-
-        // Marcar email como usado
-        await supabase.rpc("mark_invited_user_used", {
-          user_email: newStudentEmail.toLowerCase()
+      // Asignar rol de estudiante
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: signUpData.user.id,
+          role: "student"
         });
 
-        toast.success("Estudiante creado exitosamente");
-        handleCloseCreateDialog();
-        await loadStudents(user.id);
+      if (roleError) {
+        console.error("Error assigning role:", roleError);
+        toast.error("Error al asignar rol");
+        return;
       }
+
+      // Relacionar tutor con estudiante
+      const { error: relationError } = await supabase
+        .from("tutor_students")
+        .insert({
+          tutor_id: user.id,
+          student_id: signUpData.user.id
+        });
+
+      if (relationError) {
+        console.error("Error creating relation:", relationError);
+        toast.error("Error al relacionar estudiante");
+        return;
+      }
+
+      // Marcar invitación como usada
+      const { error: markError } = await supabase.rpc("mark_invited_user_used", {
+        user_email: newStudentEmail.toLowerCase()
+      });
+
+      if (markError) {
+        console.error("Error marking invitation:", markError);
+      }
+
+      toast.success("Estudiante creado exitosamente");
+      setShowCreateDialog(false);
+      setNewStudentEmail("");
+      setNewStudentName("");
+      setNewStudentPassword("");
+      await loadStudents(user.id);
     } catch (error) {
       console.error("Error creating student:", error);
       toast.error("Error al crear estudiante");
