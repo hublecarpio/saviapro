@@ -26,7 +26,7 @@ export const useAuth = () => {
       // Obtener perfil
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('full_name, starter_completed')
+        .select('name, starter_completed')
         .eq('id', userId)
         .single();
 
