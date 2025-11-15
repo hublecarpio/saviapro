@@ -40,7 +40,7 @@ export const useAuth = () => {
       setUser({
         id: userId,
         email: authUser?.email || null,
-        name: profileData?.full_name || null,
+        name: profileData?.name || null,
         roles,
         starterCompleted: profileData?.starter_completed || false,
         isAuthenticated: true,
