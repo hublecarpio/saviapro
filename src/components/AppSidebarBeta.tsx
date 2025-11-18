@@ -46,12 +46,12 @@ export function AppSidebarBeta({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
+  const isAdmin = role === 'admin' || role === 'tutor';
   return (
     <Sidebar className={sidebarOpen ? "w-64" : "w-14"} collapsible="icon">
       <SidebarContent className="bg-card border-r">
         <div className="p-4 border-b">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-2">
 
             {sidebarOpen ? (
               <img
@@ -68,14 +68,17 @@ export function AppSidebarBeta({
             />}
           </div>
 
-          <Button
-            // onClick={onNewConversation}
-            className="w-full"
-            size={sidebarOpen ? "default" : "icon"}
-          >
-            <Plus className="h-4 w-4" />
-            {sidebarOpen && <span className="ml-2">Nuevo chat</span>}
-          </Button>
+          {
+            isAdmin ? '' : <Button
+              // onClick={onNewConversation}
+              className="w-full"
+              size={sidebarOpen ? "default" : "icon"}
+            >
+              <Plus className="h-4 w-4" />
+              {sidebarOpen && <span className="ml-2">Nuevo chat</span>}
+            </Button>
+          }
+
         </div>
 
         <SidebarGroup>

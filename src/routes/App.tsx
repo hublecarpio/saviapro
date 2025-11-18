@@ -12,6 +12,9 @@ import NotFound from "../pages/NotFound";
 import { ProtectedRoute } from "./ProtetectedRoute";
 import AdminBeta from "@/pages/AdminBeta";
 import { DashboardLayout } from "@/layout/DashboardLaout";
+import Prompt from "@/components/user/admin/prompt";
+import RegisterUser from "@/components/user/admin/RegisterUser";
+import ListUser from "@/components/user/admin/ListUser";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -42,6 +45,7 @@ const App = () => (
             <ProtectedRoute>
               <Starter />
             </ProtectedRoute>} />
+          {/**admin */}
           <Route path="/admin" element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -49,7 +53,28 @@ const App = () => (
               </DashboardLayout>
             </ProtectedRoute>
           } />
-
+          <Route path="/admin/prompt" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Prompt />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/userlist" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <RegisterUser />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <ListUser />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          {/**end admin */}
           <Route path="/tutor" element={<Tutor />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
