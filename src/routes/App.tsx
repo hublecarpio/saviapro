@@ -12,9 +12,10 @@ import NotFound from "../pages/NotFound";
 import { ProtectedRoute } from "./ProtetectedRoute";
 import AdminBeta from "@/pages/AdminBeta";
 import { DashboardLayout } from "@/layout/DashboardLaout";
-import Prompt from "@/components/user/admin/prompt";
-import RegisterUser from "@/components/user/admin/RegisterUser";
-import ListUser from "@/components/user/admin/ListUser";
+import Prompt from "@/components/user/Prompt";
+import RegisterUser from "@/components/user/RegisterUser";
+import ListUser from "@/components/user/ListUser";
+
 const queryClient = new QueryClient();
 
 const App = () => (
