@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Loading } from "@/components/ui/loading";
 import { FileUploader } from "../FileUploader";
+import { DocumentsList } from "../DocumentsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 const Prompt = () => {
     const [isAdmin, setIsAdmin] = useState(false);
@@ -136,16 +137,18 @@ const Prompt = () => {
                         </Card>
                     </TabsContent>
                     <TabsContent value="files">
-                        <Card>
-                            <CardContent>
-                                {/* Uploader Elegante */}
-                                <div className="pt-6 border-t">
-                                    <Label className="font-semibold text-lg">Subir Archivos (.pdf / .docx)</Label>
-                                    <FileUploader />
-                                </div>
-                            </CardContent>
-
-                        </Card>
+                        <div className="space-y-4">
+                            <Card>
+                                <CardContent>
+                                    <div className="pt-6">
+                                        <Label className="font-semibold text-lg">Subir Archivos (.pdf / .docx) o Texto</Label>
+                                        <FileUploader />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            
+                            <DocumentsList />
+                        </div>
                     </TabsContent>
                 </Tabs>
             </div>}

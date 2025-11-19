@@ -214,6 +214,33 @@ export type Database = {
         }
         Relationships: []
       }
+      uploaded_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_type: string
+          id: string
+          upload_mode: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_type: string
+          id?: string
+          upload_mode: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_type?: string
+          id?: string
+          upload_mode?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
