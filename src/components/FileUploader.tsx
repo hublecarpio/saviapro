@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, UploadCloud } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
 
 export const FileUploader = () => {
     const [file, setFile] = useState(null);
@@ -86,6 +87,17 @@ export const FileUploader = () => {
 
             if (!res.ok) throw new Error("Error en el envío");
             
+            // Guardar registro en la base de datos
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from("uploaded_documents").insert({
+                    uploaded_by: user.id,
+                    file_name: fileName,
+                    file_type: fileType,
+                    upload_mode: mode,
+                });
+            }
+
             toast({
                 title: "Contenido enviado",
                 description: mode === "file" 
