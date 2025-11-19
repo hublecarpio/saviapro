@@ -50,13 +50,6 @@ const App = () => (
           <Route path="/admin" element={
             <ProtectedRoute>
               <DashboardLayout>
-                <AdminBeta />
-              </DashboardLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/prompt" element={
-            <ProtectedRoute>
-              <DashboardLayout>
                 <Prompt />
               </DashboardLayout>
             </ProtectedRoute>
@@ -76,7 +69,15 @@ const App = () => (
             </ProtectedRoute>
           } />
           {/**end admin */}
-          <Route path="/tutor" element={<Tutor />} />
+          <Route path="/tutor" element={ 
+            <ProtectedRoute>
+              <DashboardLayout>
+            <Tutor />
+            
+              </DashboardLayout>
+            </ProtectedRoute>
+            
+            } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

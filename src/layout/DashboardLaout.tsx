@@ -59,7 +59,7 @@ export function DashboardLayout({ children }) {
                 <AppSidebarBeta user={user} role={user?.roles[0]} />
                 <div className="flex flex-col flex-1">
                     <NavBarUser user={user} setShowProfileEditor={null} isSigningOut={isSigningOut} />
-                    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+                    <div className="h-full bg-gradient-to-br from-background via-background to-muted/20">
                         {children}
                     </div>
                 </div>

@@ -4,29 +4,19 @@ import { Settings, UserPlus, Users } from 'lucide-react'
 
 const items = [
     {
-        title: "Prompt maestro",
-        url: "/admin",
-        icon: Settings,
-    },
-    {
-        title: "Usuarios Invitados",
-        url: "/admin/userlist",
-        icon: UserPlus,
-    },
-    {
-        title: "Usuarios Registrados",
-        url: "/admin/users",
+        title: "Lista de estudiantes",
+        url: "/tutor",
         icon: Users,
     }
 ]
 
-export const AdminOptions = () => {
+export const TutorOptions = () => {
     const location = useLocation();
 
     return (
         <>
             <SidebarGroupLabel className="text-muted-foreground">
-                Panel de administrador
+                Panel de tutor
             </SidebarGroupLabel>
 
             <SidebarGroupContent>

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { User } from "@/lib/types";
 import { AdminOptions } from "./user/AdminOptions";
+import {  TutorOptions } from "./user/TutorOptions";
 
 interface Conversation {
   id: string;
@@ -83,7 +84,7 @@ export function AppSidebarBeta({
 
         <SidebarGroup>
           {
-            role == 'admin' ? <AdminOptions /> : ''
+            role == 'admin' ? <AdminOptions /> : role == 'tutor' ? <TutorOptions /> : 'p'
           }
         </SidebarGroup>
 

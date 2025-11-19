@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { User, MessageSquare, UserPlus, LogOut, Eye, EyeOff, X } from "lucide-react";
+import { User,  UserPlus, Eye, EyeOff, X } from "lucide-react";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 
 interface Student {
@@ -22,7 +22,6 @@ const Tutor = () => {
   const [user, setUser] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isSigningOut, setIsSigningOut] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -220,28 +219,6 @@ const Tutor = () => {
     setShowProfileEditor(true);
   };
 
-  const handleLogout = async () => {
-    if (isSigningOut) return;
-
-    setIsSigningOut(true);
-
-    // Timeout de seguridad: forzar navegación después de 3 segundos
-    const timeoutId = setTimeout(() => {
-      console.log("Logout timeout: forcing navigation");
-      window.location.href = "/";
-    }, 3000);
-
-    try {
-      await supabase.auth.signOut();
-      clearTimeout(timeoutId);
-      navigate("/");
-    } catch (error) {
-      console.error("Error signing out:", error);
-      clearTimeout(timeoutId);
-      // Forzar navegación incluso si hay error
-      window.location.href = "/";
-    }
-  };
 
   if (loading) {
     return (
@@ -255,39 +232,9 @@ const Tutor = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <User className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="text-xl font-semibold">Panel de Tutor</h1>
-              <p className="text-sm text-muted-foreground">{user?.email}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={handleLogout} disabled={isSigningOut}>
-              {isSigningOut ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                  Saliendo...
-                </>
-              ) : (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Salir
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
+    <div className="h-full bg-background">
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header con botón crear */}
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">Mis Estudiantes</h2>
@@ -300,8 +247,6 @@ const Tutor = () => {
               </Button>
             )}
           </div>
-
-          {/* Lista de estudiantes */}
           {students.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
@@ -338,9 +283,8 @@ const Tutor = () => {
                   <CardContent>
                     <div className="flex items-center gap-2">
                       <div
-                        className={`w-2 h-2 rounded-full ${
-                          student.starter_completed ? "bg-green-500" : "bg-yellow-500"
-                        }`}
+                        className={`w-2 h-2 rounded-full ${student.starter_completed ? "bg-green-500" : "bg-yellow-500"
+                          }`}
                       />
                       <span className="text-sm text-muted-foreground">
                         {student.starter_completed ? "Perfil completado" : "Perfil pendiente"}

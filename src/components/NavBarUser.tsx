@@ -19,7 +19,7 @@ export const NavBarUser = ({ user, setShowProfileEditor, isSigningOut }) => {
                     <SidebarTrigger className="-ml-1" />
                     <div className="flex items-center gap-2 md:gap-3 min-w-0">
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                            <img src='/icono.png'  className='w-4'/>
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-base md:text-lg font-semibold text-foreground">
