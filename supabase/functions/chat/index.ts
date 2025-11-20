@@ -129,7 +129,7 @@ serve(async (req) => {
       }
     );
 
-    const { message, conversation_id, user_id } = await req.json();
+    const { message, conversation_id, user_id, image } = await req.json();
     
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return new Response(
@@ -189,7 +189,10 @@ serve(async (req) => {
     }
 
     // Build conversation history
-    const conversationHistory = [
+    const conversationHistory: Array<{
+      role: 'system' | 'user' | 'assistant';
+      content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+    }> = [
       { role: 'system', content: systemPrompt }
     ];
 
@@ -201,6 +204,29 @@ serve(async (req) => {
           content: msg.message
         });
       });
+    }
+
+    // Si hay una imagen, agregar al último mensaje del usuario
+    if (image && image.data && image.mimeType) {
+      const lastUserMessageIndex = conversationHistory.length - 1;
+      if (conversationHistory[lastUserMessageIndex]?.role === 'user') {
+        const textContent = conversationHistory[lastUserMessageIndex].content as string;
+        conversationHistory[lastUserMessageIndex] = {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: textContent
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${image.mimeType};base64,${image.data}`
+              }
+            }
+          ]
+        };
+      }
     }
 
     // Call Lovable AI

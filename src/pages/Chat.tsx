@@ -242,60 +242,130 @@ const Chat = () => {
     if (!conversationId) {
       conversationId = await createNewConversation(`Archivo: ${file.name}`);
       if (!conversationId) return;
-      setCurrentConversationId(conversationId);
+      navigate(`/chat/${conversationId}`, { replace: true });
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
+    const fileType = file.type.toLowerCase();
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+    // Verificar si es imagen
+    const isImage = fileType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension || '');
+    
+    // Verificar si es DOCX o PDF
+    const isDocumentForWebhook = fileType === 'application/pdf' || 
+                                 fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                                 fileExtension === 'pdf' || 
+                                 fileExtension === 'docx';
+
     setIsLoading(true);
-    toast.info(`Procesando archivo: ${file.name}`);
 
     try {
-      const fileName = `${conversationId}/${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('chat-files')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      // Procesar imágenes con Gemini Vision
+      if (isImage) {
+        toast.info("Analizando imagen con IA...");
+        
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const base64Data = e.target?.result as string;
+            const imageData = base64Data.split(',')[1];
+            const mimeType = base64Data.split(':')[1].split(';')[0];
 
-      if (uploadError) throw uploadError;
+            // Enviar directamente a chat con la imagen
+            const imageMessage = `[Imagen adjunta: ${file.name}]`;
+            
+            // Guardar mensaje del usuario con referencia a la imagen
+            await supabase.from('messages').insert({
+              user_id: user.id,
+              conversation_id: conversationId,
+              role: 'user',
+              message: imageMessage
+            });
 
-      const { data: urlData } = await supabase.storage
-        .from('chat-files')
-        .createSignedUrl(fileName, 3600);
+            // Llamar a chat function con la imagen
+            const { data, error } = await supabase.functions.invoke('chat', {
+              body: {
+                message: `Analiza esta imagen y describe qué ves. Responde en español de forma clara y educativa.`,
+                conversation_id: conversationId,
+                user_id: user.id,
+                image: {
+                  data: imageData,
+                  mimeType: mimeType
+                }
+              }
+            });
 
-      if (!urlData?.signedUrl) throw new Error('No se pudo generar URL del archivo');
-
-      const { data, error } = await supabase.functions.invoke('webhook-integration', {
-        body: {
-          type: 'file',
-          data: {
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            url: urlData.signedUrl,
+            if (error) throw error;
+            toast.success("Imagen analizada correctamente");
+          } catch (error) {
+            console.error('Error processing image:', error);
+            toast.error("Error procesando la imagen");
+          } finally {
+            setIsLoading(false);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
           }
-        }
-      });
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
 
-      if (error) throw error;
+      // Procesar PDF y DOCX con webhook
+      if (isDocumentForWebhook) {
+        toast.info(`Procesando ${fileExtension?.toUpperCase()}...`);
+        
+        const fileName = `${conversationId}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('chat-files')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-      const response = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message || data?.response?.content;
+        if (uploadError) throw uploadError;
 
-      if (response) {
-        toast.success("Archivo procesado, generando respuesta...");
+        const { data: urlData } = await supabase.storage
+          .from('chat-files')
+          .createSignedUrl(fileName, 3600);
 
-        const { error: chatError } = await supabase.functions.invoke('chat', {
+        if (!urlData?.signedUrl) throw new Error('No se pudo generar URL del archivo');
+
+        const { data, error } = await supabase.functions.invoke('webhook-integration', {
           body: {
-            message: response,
-            conversation_id: conversationId,
-            user_id: user.id
+            type: 'file',
+            data: {
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+              url: urlData.signedUrl,
+            }
           }
         });
 
-        if (chatError) throw chatError;
+        if (error) throw error;
+
+        const response = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message || data?.response?.content;
+
+        if (response) {
+          toast.success("Documento procesado, generando respuesta...");
+
+          const { error: chatError } = await supabase.functions.invoke('chat', {
+            body: {
+              message: response,
+              conversation_id: conversationId,
+              user_id: user.id
+            }
+          });
+
+          if (chatError) throw chatError;
+        } else {
+          console.error('Respuesta del webhook sin contenido:', data);
+          toast.error("El webhook respondió pero sin contenido");
+        }
       } else {
-        console.error('Respuesta del webhook sin contenido:', data);
-        toast.error("El webhook respondió pero sin contenido");
+        toast.error("Tipo de archivo no soportado. Solo se permiten imágenes, PDF y DOCX.");
       }
     } catch (error) {
       console.error('Error processing file:', error);
@@ -426,11 +496,12 @@ const Chat = () => {
     if (!conversationId) {
       conversationId = await createNewConversation('Mensaje de audio');
       if (!conversationId) return;
-      setCurrentConversationId(conversationId);
+      navigate(`/chat/${conversationId}`, { replace: true });
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     setIsLoading(true);
-    toast.info("Transcribiendo audio...");
+    toast.info("Transcribiendo audio con IA...");
 
     try {
       const audioFormat = audioBlob.type.split('/')[1].split(';')[0];
@@ -439,20 +510,19 @@ const Chat = () => {
       reader.onload = async (event) => {
         try {
           const base64Data = event.target?.result as string;
+          const audioBase64 = base64Data.split(',')[1];
 
-          const { data, error } = await supabase.functions.invoke('webhook-integration', {
+          // Transcribir con Gemini
+          const { data, error } = await supabase.functions.invoke('transcribe-audio', {
             body: {
-              type: 'audio',
-              data: {
-                audioFormat: audioFormat,
-                content: base64Data.split(',')[1],
-              }
+              audioBase64,
+              audioFormat
             }
           });
 
           if (error) throw error;
 
-          const transcription = data?.respuesta || data?.response?.respuesta || data?.response?.mensaje || data?.response?.text || data?.response?.message;
+          const transcription = data?.transcription;
 
           if (transcription) {
             toast.success("Audio transcrito, generando respuesta...");
@@ -467,8 +537,8 @@ const Chat = () => {
 
             if (chatError) throw chatError;
           } else {
-            console.error('Respuesta del webhook sin texto:', data);
-            toast.error("El webhook respondió pero sin contenido de texto");
+            console.error('Sin transcripción:', data);
+            toast.error("No se pudo transcribir el audio");
           }
         } catch (innerError) {
           console.error('Error processing audio response:', innerError);
