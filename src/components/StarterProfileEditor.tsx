@@ -1,14 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
+  starterSchema,
+  StarterQuestion,
+} from "@/components/data/starterSchema";
 
 interface StarterProfileEditorProps {
   userId: string;
@@ -16,17 +34,61 @@ interface StarterProfileEditorProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProfileEditorProps) => {
+type AgeGroup = "7-12" | "12-17" | "";
+
+type ProfileData = Record<string, any>;
+
+// Helpers
+const inferAgeGroupFromAge = (age?: number | null): AgeGroup => {
+  if (typeof age !== "number" || Number.isNaN(age)) return "";
+  if (age >= 7 && age <= 11) return "7-12";
+  if (age >= 12 && age <= 17) return "12-17";
+  return "";
+};
+
+const coerceToArray = (value: any): string[] => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    return value
+      .split(/,|→/g)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const normalizeProfileData = (
+  raw: ProfileData,
+  ageGroup: AgeGroup
+): ProfileData => {
+  if (!ageGroup || !starterSchema[ageGroup]) return raw;
+  const normalized: ProfileData = { ...raw };
+
+  for (const q of starterSchema[ageGroup]) {
+    if (q.type === "multiple" || q.type === "ranking") {
+      normalized[q.id] = coerceToArray(raw[q.id]);
+    }
+  }
+
+  return normalized;
+};
+
+export const StarterProfileEditor = ({
+  userId,
+  open,
+  onOpenChange,
+}: StarterProfileEditorProps) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [profileData, setProfileData] = useState<any>(null);
-  const [ageGroup, setAgeGroup] = useState<string>("");
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [ageGroup, setAgeGroup] = useState<AgeGroup>("");
   const { toast } = useToast();
 
   useEffect(() => {
     if (open && userId) {
       loadProfile();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, userId]);
 
   const loadProfile = async () => {
@@ -41,19 +103,25 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
       if (error) throw error;
 
       if (data) {
-        setProfileData(data.profile_data);
-        setAgeGroup(data.age_group || "");
+        const rawProfile = (data.profile_data || {}) as ProfileData;
+
+        const ageFromRow: number | undefined =
+          data.age ?? rawProfile.age ?? undefined;
+
+        const inferredGroup: AgeGroup =
+          (data.age_group as AgeGroup) || inferAgeGroupFromAge(ageFromRow);
+
+        const normalized = normalizeProfileData(rawProfile, inferredGroup);
+
+        setProfileData({
+          ...normalized,
+          age: ageFromRow ?? normalized.age ?? "",
+        });
+        setAgeGroup(inferredGroup);
       } else {
-        // Crear un perfil vacío por defecto si no existe
+        // Perfil vacío por defecto
         setProfileData({
           age: "",
-          description: "",
-          uniqueData: "",
-          learningStyle: "",
-          studyTime: "",
-          interests: "",
-          learningGoal: "",
-          language: ""
         });
         setAgeGroup("");
       }
@@ -70,21 +138,41 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
   };
 
   const handleSave = async () => {
+    if (!profileData) return;
+
     try {
       setSaving(true);
-      
-      // Usar upsert para crear o actualizar
+
+      const ageValue =
+        typeof profileData.age === "number"
+          ? profileData.age
+          : parseInt(profileData.age, 10);
+
+      const cleanAge = Number.isNaN(ageValue) ? null : ageValue;
+
+      // Normalizamos por última vez antes de guardar
+      const finalAgeGroup: AgeGroup =
+        ageGroup || inferAgeGroupFromAge(cleanAge || undefined);
+
+      const finalProfileData = normalizeProfileData(
+        profileData,
+        finalAgeGroup
+      );
+
       const { error } = await supabase
         .from("starter_profiles")
-        .upsert({
-          user_id: userId,
-          age: profileData.age || null,
-          age_group: ageGroup || null,
-          profile_data: profileData,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
+        .upsert(
+          {
+            user_id: userId,
+            age: cleanAge,
+            age_group: finalAgeGroup || null,
+            profile_data: finalProfileData,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id",
+          }
+        );
 
       if (error) throw error;
 
@@ -107,7 +195,236 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
   };
 
   const updateField = (field: string, value: any) => {
-    setProfileData({ ...profileData, [field]: value });
+    setProfileData((prev) => ({
+      ...(prev || {}),
+      [field]: value,
+    }));
+  };
+
+  const handleAgeChange = (value: string) => {
+    const age = parseInt(value, 10);
+    updateField("age", value === "" ? "" : age);
+
+    const group = inferAgeGroupFromAge(age);
+    setAgeGroup(group);
+
+    if (profileData && group) {
+      setProfileData((prev) =>
+        normalizeProfileData(prev || {}, group)
+      );
+    }
+  };
+
+  const questionsForGroup = useMemo<StarterQuestion[]>(() => {
+    if (!ageGroup || !starterSchema[ageGroup]) return [];
+    return starterSchema[ageGroup];
+  }, [ageGroup]);
+
+  const basicQuestions = useMemo(
+    () => questionsForGroup.filter((q) => q.group === "basic" && q.id !== "age"),
+    [questionsForGroup]
+  );
+
+  const learningQuestions = useMemo(
+    () => questionsForGroup.filter((q) => q.group === "learning"),
+    [questionsForGroup]
+  );
+
+  const interestsQuestions = useMemo(
+    () => questionsForGroup.filter((q) => q.group === "interests"),
+    [questionsForGroup]
+  );
+
+  const getValue = (id: string): any => {
+    if (!profileData) return "";
+    return profileData[id] ?? "";
+  };
+
+  const getArrayValue = (id: string): string[] => {
+    const raw = getValue(id);
+    return coerceToArray(raw);
+  };
+
+  const toggleMultipleOption = (id: string, value: string, max?: number) => {
+    const current = getArrayValue(id);
+    if (current.includes(value)) {
+      updateField(
+        id,
+        current.filter((v) => v !== value)
+      );
+    } else {
+      if (max && current.length >= max) return;
+      updateField(id, [...current, value]);
+    }
+  };
+
+  const toggleRankingOption = (id: string, value: string) => {
+    const current = getArrayValue(id);
+    if (current.includes(value)) {
+      updateField(
+        id,
+        current.filter((v) => v !== value)
+      );
+    } else {
+      updateField(id, [...current, value]);
+    }
+  };
+
+  const renderQuestion = (q: StarterQuestion) => {
+    const value = getValue(q.id);
+
+    // Numero (edad u otros)
+    if (q.type === "number") {
+      return (
+        <div className="space-y-2" key={q.id}>
+          <Label htmlFor={q.id}>Edad</Label>
+          <Input
+            id={q.id}
+            type="number"
+            value={value === "" ? "" : value}
+            onChange={(e) => handleAgeChange(e.target.value)}
+            min={7}
+            max={17}
+          />
+          {ageGroup && (
+            <p className="text-xs text-muted-foreground">
+              Grupo actual: {ageGroup === "7-12" ? "7 a 12 años" : "12 a 17 años"}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    // Textarea
+    if (q.type === "textarea") {
+      return (
+        <div className="space-y-2" key={q.id}>
+          <Label htmlFor={q.id}>{q.question}</Label>
+          <Textarea
+            id={q.id}
+            rows={4}
+            value={value || ""}
+            onChange={(e) => updateField(q.id, e.target.value)}
+            placeholder={q.placeholder}
+          />
+        </div>
+      );
+    }
+
+    // Single (Select de shadcn)
+    if (q.type === "single" && q.options) {
+      const currentValue = typeof value === "string" ? value : "";
+      return (
+        <div className="space-y-2" key={q.id}>
+          <Label>{q.question}</Label>
+          <Select
+            value={currentValue || undefined}
+            onValueChange={(val) => updateField(q.id, val)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Selecciona una opción" />
+            </SelectTrigger>
+            <SelectContent>
+              {q.options.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    }
+
+    // Multiple (chips toggles)
+    if (q.type === "multiple" && q.options) {
+      const selected = getArrayValue(q.id);
+      return (
+        <div className="space-y-2" key={q.id}>
+          <Label>{q.question}</Label>
+          <div className="flex flex-wrap gap-2">
+            {q.options.map((opt) => {
+              const isSelected = selected.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() =>
+                    toggleMultipleOption(q.id, opt.value, q.max)
+                  }
+                  className={`px-3 py-1 rounded-full border text-sm transition-all ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-border hover:bg-accent"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Seleccionadas: {selected.length}
+            {q.max ? ` / ${q.max}` : null}
+          </p>
+        </div>
+      );
+    }
+
+    // Ranking (mismo UX que Starter: clic = orden)
+    if (q.type === "ranking" && q.options) {
+      const selected = getArrayValue(q.id);
+      return (
+        <div className="space-y-2" key={q.id}>
+          <Label>{q.question}</Label>
+          <div className="space-y-3">
+            {q.options.map((opt) => {
+              const idx = selected.indexOf(opt.value);
+              const isSelected = idx !== -1;
+              const displayRank = isSelected ? idx + 1 : "#";
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => toggleRankingOption(q.id, opt.value)}
+                  className={`w-full flex items-center gap-4 p-3 rounded-lg border text-left text-sm transition-all ${
+                    isSelected
+                      ? "bg-primary/10 border-primary"
+                      : "bg-background border-border hover:bg-accent"
+                  }`}
+                >
+                  <div
+                    className={`w-10 h-10 flex items-center justify-center rounded-md font-bold border ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted text-muted-foreground border-border"
+                    }`}
+                  >
+                    {displayRank}
+                  </div>
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Haz clic para asignar o quitar el orden de preferencia.
+          </p>
+        </div>
+      );
+    }
+
+    // Fallback (por si agregas algo nuevo en el futuro)
+    return (
+      <div className="space-y-2" key={q.id}>
+        <Label htmlFor={q.id}>{q.question}</Label>
+        <Input
+          id={q.id}
+          value={value || ""}
+          onChange={(e) => updateField(q.id, e.target.value)}
+        />
+      </div>
+    );
   };
 
   if (loading) {
@@ -125,15 +442,15 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
     );
   }
 
-  if (!profileData) {
-    return null;
-  }
+  if (!profileData) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle className="text-2xl">✨ Editar Mi Perfil de Aprendizaje</DialogTitle>
+          <DialogTitle className="text-2xl">
+            ✨ Editar Mi Perfil de Aprendizaje
+          </DialogTitle>
           <DialogDescription>
             Actualiza tu información para que pueda ayudarte mejor
           </DialogDescription>
@@ -147,243 +464,53 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
               <TabsTrigger value="interests">⭐ Intereses</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="basic" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="age">Edad</Label>
-                <Input
-                  id="age"
-                  type="number"
-                  value={profileData.age || ""}
-                  onChange={(e) => updateField("age", parseInt(e.target.value))}
-                />
-              </div>
+            <TabsContent value="basic" className="space-y-4 mt-4  px-2 md:px-4">
+              {/* Edad (siempre visible) */}
+              {renderQuestion({
+                id: "age",
+                question: "Edad",
+                type: "number",
+                group: "basic",
+              } as StarterQuestion)}
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción Personal</Label>
-                <Textarea
-                  id="description"
-                  rows={4}
-                  value={profileData.description || ""}
-                  onChange={(e) => updateField("description", e.target.value)}
-                  placeholder="Cuéntame sobre ti..."
-                />
-              </div>
-
-              {(profileData.uniqueData || profileData.uniqueCharacteristics) && (
-                <div className="space-y-2">
-                  <Label htmlFor="unique">
-                    {ageGroup === "7-12" ? "Datos Interesantes" : "Características Únicas"}
-                  </Label>
-                  <Textarea
-                    id="unique"
-                    rows={4}
-                    value={profileData.uniqueData || profileData.uniqueCharacteristics || ""}
-                    onChange={(e) => {
-                      const field = ageGroup === "7-12" ? "uniqueData" : "uniqueCharacteristics";
-                      updateField(field, e.target.value);
-                    }}
-                    placeholder="Algo importante que deba saber..."
-                  />
-                </div>
+              {!ageGroup && (
+                <p className="text-xs text-muted-foreground">
+                  Completa tu edad para ver las demás preguntas de tu grupo.
+                </p>
               )}
 
-              {profileData.language && (
-                <div className="space-y-2">
-                  <Label htmlFor="language">Idioma preferido</Label>
-                  <Input
-                    id="language"
-                    value={profileData.language || ""}
-                    onChange={(e) => updateField("language", e.target.value)}
-                    placeholder="Español, Inglés, Ambos..."
-                  />
-                </div>
+              {ageGroup &&
+                basicQuestions.map((q) => renderQuestion(q))}
+            </TabsContent>
+
+            <TabsContent value="learning" className="space-y-4 mt-4  px-2 md:px-4">
+              {!ageGroup && (
+                <p className="text-sm text-muted-foreground">
+                  Primero indica tu edad en la pestaña Básico para configurar tu perfil.
+                </p>
               )}
+              {ageGroup &&
+                learningQuestions.map((q) => renderQuestion(q))}
             </TabsContent>
 
-            <TabsContent value="learning" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="learningStyle">Estilo de Aprendizaje</Label>
-                <Input
-                  id="learningStyle"
-                  value={Array.isArray(profileData.learningStyle) 
-                    ? profileData.learningStyle.join(", ")
-                    : profileData.learningStyle || ""}
-                  onChange={(e) => updateField("learningStyle", e.target.value)}
-                  placeholder="Visual, Auditivo, Kinestésico..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="studyTime">Tiempo de Estudio Preferido</Label>
-                <Input
-                  id="studyTime"
-                  value={profileData.studyTime || ""}
-                  onChange={(e) => updateField("studyTime", e.target.value)}
-                  placeholder="Mañana, Tarde, Noche..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="sessionDuration">Duración de Sesión Ideal</Label>
-                <Input
-                  id="sessionDuration"
-                  value={profileData.sessionDuration || ""}
-                  onChange={(e) => updateField("sessionDuration", e.target.value)}
-                  placeholder="30 minutos, 1 hora..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="explanationStyle">Estilo de Explicación Preferido</Label>
-                <Input
-                  id="explanationStyle"
-                  value={Array.isArray(profileData.explanationStyle)
-                    ? profileData.explanationStyle.join(", ")
-                    : profileData.explanationStyle || ""}
-                  onChange={(e) => updateField("explanationStyle", e.target.value)}
-                  placeholder="Directo, Detallado, Con ejemplos..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="communicationStyle">Estilo de Comunicación</Label>
-                <Input
-                  id="communicationStyle"
-                  value={profileData.communicationStyle || ""}
-                  onChange={(e) => updateField("communicationStyle", e.target.value)}
-                  placeholder="Formal, Informal, Amigable..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="feelings">Cómo te sientes ante dificultades</Label>
-                <Input
-                  id="feelings"
-                  value={profileData.feelings || ""}
-                  onChange={(e) => updateField("feelings", e.target.value)}
-                  placeholder="Tranquilo, Confundido, Frustrado..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="autonomyLevel">Nivel de Autonomía</Label>
-                <Input
-                  id="autonomyLevel"
-                  value={profileData.autonomyLevel || ""}
-                  onChange={(e) => updateField("autonomyLevel", e.target.value)}
-                  placeholder="Guiado, Colaborativo, Autónomo..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="knowledgeContext">Contexto de Uso del Conocimiento</Label>
-                <Input
-                  id="knowledgeContext"
-                  value={profileData.knowledgeContext || ""}
-                  onChange={(e) => updateField("knowledgeContext", e.target.value)}
-                  placeholder="Académico, Profesional, Personal..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="learningGoal">Objetivo de Aprendizaje</Label>
-                <Textarea
-                  id="learningGoal"
-                  rows={3}
-                  value={profileData.learningGoal || ""}
-                  onChange={(e) => updateField("learningGoal", e.target.value)}
-                  placeholder="¿Para qué quieres aprender?"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="learningGoals">Metas de Aprendizaje (6 meses)</Label>
-                <Textarea
-                  id="learningGoals"
-                  rows={3}
-                  value={profileData.learningGoals || ""}
-                  onChange={(e) => updateField("learningGoals", e.target.value)}
-                  placeholder="Describe qué esperas lograr..."
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="interests" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="interests">Temas de Interés</Label>
-                <Textarea
-                  id="interests"
-                  rows={3}
-                  value={Array.isArray(profileData.interests)
-                    ? profileData.interests.join(", ")
-                    : profileData.interests || ""}
-                  onChange={(e) => updateField("interests", e.target.value)}
-                  placeholder="Ciencia, Arte, Deportes..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="passionateTopics">Temas que te Apasionan</Label>
-                <Textarea
-                  id="passionateTopics"
-                  rows={3}
-                  value={Array.isArray(profileData.passionateTopics)
-                    ? profileData.passionateTopics.join(", ")
-                    : profileData.passionateTopics || ""}
-                  onChange={(e) => updateField("passionateTopics", e.target.value)}
-                  placeholder="Lo que más te emociona aprender..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contentPreference">Preferencia de Contenido (Ranking)</Label>
-                <Input
-                  id="contentPreference"
-                  value={Array.isArray(profileData.contentPreference)
-                    ? profileData.contentPreference.join(" → ")
-                    : profileData.contentPreference || ""}
-                  onChange={(e) => updateField("contentPreference", e.target.value)}
-                  placeholder="Videos, Textos, Práctica (en orden de preferencia)..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="challenges">Enfoque ante Desafíos</Label>
-                <Input
-                  id="challenges"
-                  value={Array.isArray(profileData.challenges)
-                    ? profileData.challenges.join(", ")
-                    : profileData.challenges || ""}
-                  onChange={(e) => updateField("challenges", e.target.value)}
-                  placeholder="Cómo prefieres enfrentar retos..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="problemApproach">Enfoque de Resolución de Problemas</Label>
-                <Input
-                  id="problemApproach"
-                  value={profileData.problemApproach || ""}
-                  onChange={(e) => updateField("problemApproach", e.target.value)}
-                  placeholder="Analítico, Global, Metódico, Intuitivo..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="challengeTolerance">Tolerancia a Desafíos</Label>
-                <Input
-                  id="challengeTolerance"
-                  value={profileData.challengeTolerance || ""}
-                  onChange={(e) => updateField("challengeTolerance", e.target.value)}
-                  placeholder="Alta, Media, Baja, Variable..."
-                />
-              </div>
+            <TabsContent value="interests" className="space-y-4 mt-4  px-2 md:px-4">
+              {!ageGroup && (
+                <p className="text-sm text-muted-foreground">
+                  Primero indica tu edad en la pestaña Básico.
+                </p>
+              )}
+              {ageGroup &&
+                interestsQuestions.map((q) => renderQuestion(q))}
             </TabsContent>
           </Tabs>
         </ScrollArea>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={saving}>
