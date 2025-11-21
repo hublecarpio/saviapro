@@ -46,8 +46,8 @@
     --secondary-foreground: 0 0% 100%;
 
     /* Accent warm */
-    --accent: 35 100% 60%;
-    --accent-foreground: 210 15% 20%;
+    --accent: 210 51% 30%/ 0.2; /* #244B73 */
+    --accent-foreground: 0 0% 100% /0.3;
 
     /* Estado/Información */
     --muted: 210 20% 80%;
@@ -106,8 +106,8 @@
     --muted: 210 25% 25%;
     --muted-foreground: 210 10% 60%;
 
-    --accent: 35 100% 55%;
-    --accent-foreground: 210 25% 15%;
+    --accent: 210 35% 45% /0.3;
+    --accent-foreground: 210 25% 15%/0.3;
 
     /* Destructive */
     --destructive: 0 62% 30%;
