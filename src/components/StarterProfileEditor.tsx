@@ -4,29 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import {
-  starterSchema,
-  StarterQuestion,
-} from "@/components/data/starterSchema";
+import { starterSchema, StarterQuestion } from "@/data/components/starterSchema";
 
 interface StarterProfileEditorProps {
   userId: string;
@@ -57,10 +42,7 @@ const coerceToArray = (value: any): string[] => {
   return [];
 };
 
-const normalizeProfileData = (
-  raw: ProfileData,
-  ageGroup: AgeGroup
-): ProfileData => {
+const normalizeProfileData = (raw: ProfileData, ageGroup: AgeGroup): ProfileData => {
   if (!ageGroup || !starterSchema[ageGroup]) return raw;
   const normalized: ProfileData = { ...raw };
 
@@ -73,11 +55,7 @@ const normalizeProfileData = (
   return normalized;
 };
 
-export const StarterProfileEditor = ({
-  userId,
-  open,
-  onOpenChange,
-}: StarterProfileEditorProps) => {
+export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProfileEditorProps) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
@@ -94,22 +72,16 @@ export const StarterProfileEditor = ({
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("starter_profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const { data, error } = await supabase.from("starter_profiles").select("*").eq("user_id", userId).maybeSingle();
 
       if (error) throw error;
 
       if (data) {
         const rawProfile = (data.profile_data || {}) as ProfileData;
 
-        const ageFromRow: number | undefined =
-          data.age ?? rawProfile.age ?? undefined;
+        const ageFromRow: number | undefined = data.age ?? rawProfile.age ?? undefined;
 
-        const inferredGroup: AgeGroup =
-          (data.age_group as AgeGroup) || inferAgeGroupFromAge(ageFromRow);
+        const inferredGroup: AgeGroup = (data.age_group as AgeGroup) || inferAgeGroupFromAge(ageFromRow);
 
         const normalized = normalizeProfileData(rawProfile, inferredGroup);
 
@@ -143,36 +115,27 @@ export const StarterProfileEditor = ({
     try {
       setSaving(true);
 
-      const ageValue =
-        typeof profileData.age === "number"
-          ? profileData.age
-          : parseInt(profileData.age, 10);
+      const ageValue = typeof profileData.age === "number" ? profileData.age : parseInt(profileData.age, 10);
 
       const cleanAge = Number.isNaN(ageValue) ? null : ageValue;
 
       // Normalizamos por última vez antes de guardar
-      const finalAgeGroup: AgeGroup =
-        ageGroup || inferAgeGroupFromAge(cleanAge || undefined);
+      const finalAgeGroup: AgeGroup = ageGroup || inferAgeGroupFromAge(cleanAge || undefined);
 
-      const finalProfileData = normalizeProfileData(
-        profileData,
-        finalAgeGroup
+      const finalProfileData = normalizeProfileData(profileData, finalAgeGroup);
+
+      const { error } = await supabase.from("starter_profiles").upsert(
+        {
+          user_id: userId,
+          age: cleanAge,
+          age_group: finalAgeGroup || null,
+          profile_data: finalProfileData,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id",
+        },
       );
-
-      const { error } = await supabase
-        .from("starter_profiles")
-        .upsert(
-          {
-            user_id: userId,
-            age: cleanAge,
-            age_group: finalAgeGroup || null,
-            profile_data: finalProfileData,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id",
-          }
-        );
 
       if (error) throw error;
 
@@ -209,9 +172,7 @@ export const StarterProfileEditor = ({
     setAgeGroup(group);
 
     if (profileData && group) {
-      setProfileData((prev) =>
-        normalizeProfileData(prev || {}, group)
-      );
+      setProfileData((prev) => normalizeProfileData(prev || {}, group));
     }
   };
 
@@ -222,17 +183,14 @@ export const StarterProfileEditor = ({
 
   const basicQuestions = useMemo(
     () => questionsForGroup.filter((q) => q.group === "basic" && q.id !== "age"),
-    [questionsForGroup]
+    [questionsForGroup],
   );
 
-  const learningQuestions = useMemo(
-    () => questionsForGroup.filter((q) => q.group === "learning"),
-    [questionsForGroup]
-  );
+  const learningQuestions = useMemo(() => questionsForGroup.filter((q) => q.group === "learning"), [questionsForGroup]);
 
   const interestsQuestions = useMemo(
     () => questionsForGroup.filter((q) => q.group === "interests"),
-    [questionsForGroup]
+    [questionsForGroup],
   );
 
   const getValue = (id: string): any => {
@@ -250,7 +208,7 @@ export const StarterProfileEditor = ({
     if (current.includes(value)) {
       updateField(
         id,
-        current.filter((v) => v !== value)
+        current.filter((v) => v !== value),
       );
     } else {
       if (max && current.length >= max) return;
@@ -263,7 +221,7 @@ export const StarterProfileEditor = ({
     if (current.includes(value)) {
       updateField(
         id,
-        current.filter((v) => v !== value)
+        current.filter((v) => v !== value),
       );
     } else {
       updateField(id, [...current, value]);
@@ -317,10 +275,7 @@ export const StarterProfileEditor = ({
       return (
         <div className="space-y-2" key={q.id}>
           <Label>{q.question}</Label>
-          <Select
-            value={currentValue || undefined}
-            onValueChange={(val) => updateField(q.id, val)}
-          >
+          <Select value={currentValue || undefined} onValueChange={(val) => updateField(q.id, val)}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Selecciona una opción" />
             </SelectTrigger>
@@ -349,9 +304,7 @@ export const StarterProfileEditor = ({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() =>
-                    toggleMultipleOption(q.id, opt.value, q.max)
-                  }
+                  onClick={() => toggleMultipleOption(q.id, opt.value, q.max)}
                   className={`px-3 py-1 rounded-full border text-sm transition-all ${
                     isSelected
                       ? "bg-primary text-primary-foreground border-primary"
@@ -388,9 +341,7 @@ export const StarterProfileEditor = ({
                   type="button"
                   onClick={() => toggleRankingOption(q.id, opt.value)}
                   className={`w-full flex items-center gap-4 p-3 rounded-lg border text-left text-sm transition-all ${
-                    isSelected
-                      ? "bg-primary/10 border-primary"
-                      : "bg-background border-border hover:bg-accent"
+                    isSelected ? "bg-primary/10 border-primary" : "bg-background border-border hover:bg-accent"
                   }`}
                 >
                   <div
@@ -407,9 +358,7 @@ export const StarterProfileEditor = ({
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Haz clic para asignar o quitar el orden de preferencia.
-          </p>
+          <p className="text-xs text-muted-foreground">Haz clic para asignar o quitar el orden de preferencia.</p>
         </div>
       );
     }
@@ -418,11 +367,7 @@ export const StarterProfileEditor = ({
     return (
       <div className="space-y-2" key={q.id}>
         <Label htmlFor={q.id}>{q.question}</Label>
-        <Input
-          id={q.id}
-          value={value || ""}
-          onChange={(e) => updateField(q.id, e.target.value)}
-        />
+        <Input id={q.id} value={value || ""} onChange={(e) => updateField(q.id, e.target.value)} />
       </div>
     );
   };
@@ -448,12 +393,8 @@ export const StarterProfileEditor = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle className="text-2xl">
-            ✨ Editar Mi Perfil de Aprendizaje
-          </DialogTitle>
-          <DialogDescription>
-            Actualiza tu información para que pueda ayudarte mejor
-          </DialogDescription>
+          <DialogTitle className="text-2xl">✨ Editar Mi Perfil de Aprendizaje</DialogTitle>
+          <DialogDescription>Actualiza tu información para que pueda ayudarte mejor</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="h-[calc(85vh-200px)] pr-4">
@@ -479,8 +420,7 @@ export const StarterProfileEditor = ({
                 </p>
               )}
 
-              {ageGroup &&
-                basicQuestions.map((q) => renderQuestion(q))}
+              {ageGroup && basicQuestions.map((q) => renderQuestion(q))}
             </TabsContent>
 
             <TabsContent value="learning" className="space-y-4 mt-4  px-2 md:px-4">
@@ -489,28 +429,20 @@ export const StarterProfileEditor = ({
                   Primero indica tu edad en la pestaña Básico para configurar tu perfil.
                 </p>
               )}
-              {ageGroup &&
-                learningQuestions.map((q) => renderQuestion(q))}
+              {ageGroup && learningQuestions.map((q) => renderQuestion(q))}
             </TabsContent>
 
             <TabsContent value="interests" className="space-y-4 mt-4  px-2 md:px-4">
               {!ageGroup && (
-                <p className="text-sm text-muted-foreground">
-                  Primero indica tu edad en la pestaña Básico.
-                </p>
+                <p className="text-sm text-muted-foreground">Primero indica tu edad en la pestaña Básico.</p>
               )}
-              {ageGroup &&
-                interestsQuestions.map((q) => renderQuestion(q))}
+              {ageGroup && interestsQuestions.map((q) => renderQuestion(q))}
             </TabsContent>
           </Tabs>
         </ScrollArea>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={saving}>
