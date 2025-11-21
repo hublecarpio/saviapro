@@ -11,7 +11,7 @@ import { Loader2, Save } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { starterSchema, StarterQuestion } from "@/data/components/starterSchema";
+import { starterSchema, StarterQuestion } from "@/components/data/starterSchema";
 
 interface StarterProfileEditorProps {
   userId: string;
