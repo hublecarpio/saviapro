@@ -10,9 +10,9 @@ interface ChatToolsSidebarProps {
 
 export const ChatToolsSidebar = ({ isLoading, isRecording, onFileClick, onRecordToggle }: ChatToolsSidebarProps) => {
   return (
-    // border-r: Pone la línea a la derecha (correcto para sidebar izquierdo)
+    // border-l: Pone la línea a la izquierda (correcto para sidebar derecho)
     // h-full: Ocupa toda la altura
-    <aside className="h-full w-16 md:w-20 border-r bg-card/30 backdrop-blur-sm flex flex-col gap-3 py-6 items-center shrink-0 z-20">
+    <aside className="h-full w-16 md:w-20 border-l bg-card/30 backdrop-blur-sm flex flex-col gap-3 py-6 items-center shrink-0 z-20">
       {/* Botón: Adjuntar archivo */}
       <Button
         variant="ghost"

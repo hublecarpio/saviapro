@@ -637,13 +637,6 @@ const Chat = () => {
           onNewConversation={handleNewConversation}
         />
 
-        <ChatToolsSidebar
-          isLoading={isLoading}
-          isRecording={isRecording}
-          onFileClick={() => fileInputRef.current?.click()}
-          onRecordToggle={isRecording ? stopRecording : startRecording}
-        />
-
         <div className="flex flex-col flex-1">
           {/* Header */}
           <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
@@ -916,6 +909,13 @@ const Chat = () => {
             </div>
           </div>
         </div>
+
+        <ChatToolsSidebar
+          isLoading={isLoading}
+          isRecording={isRecording}
+          onFileClick={() => fileInputRef.current?.click()}
+          onRecordToggle={isRecording ? stopRecording : startRecording}
+        />
       </div>
 
       {/* Modal de edición de perfil */}
