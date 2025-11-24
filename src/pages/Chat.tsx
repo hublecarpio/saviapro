@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, UserCog } from "lucide-react";
+import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -636,6 +637,13 @@ const Chat = () => {
           onNewConversation={handleNewConversation}
         />
 
+        <ChatToolsSidebar
+          isLoading={isLoading}
+          isRecording={isRecording}
+          onFileClick={() => fileInputRef.current?.click()}
+          onRecordToggle={isRecording ? stopRecording : startRecording}
+        />
+
         <div className="flex flex-col flex-1">
           {/* Header */}
           <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
@@ -780,7 +788,7 @@ const Chat = () => {
                     <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 flex items-center gap-2 md:gap-3 shadow-sm">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        <span className="text-xs md:text-sm text-muted-foreground">SAVIA está analizando...</span>
+                        <span className="text-xs md:text-sm text-muted-foreground">BIEX está analizando...</span>
                       </div>
                     </div>
                   )}
@@ -895,51 +903,11 @@ const Chat = () => {
                   </Button>
                 </div>
 
-                {/* === TOOLBAR INFERIOR (UNA SOLA FILA, ESTILO CHATGPT) === */}
-                <div className="flex items-center gap-4 text-[11px] md:text-xs text-muted-foreground/70 px-2 py-1  ">
-                  {/* BOTÓN: ADJUNTAR ARCHIVO */}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading}
-                    className="
-      flex items-center gap-1
-      px-2 py-1
-      border
-      rounded-md
-      bg-accent/20
-      hover:bg-accent/30
-      text-black
-      transition
-    "
-                  >
-                    <Paperclip className="h-3.5 w-3.5" />
-                    <span>Adjuntar archivo</span>
-                  </button>
-
+                {/* === TOOLBAR INFERIOR === */}
+                <div className="flex items-center justify-end gap-2 text-[10px] md:text-xs text-muted-foreground/70 px-2 py-1">
                   <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" accept="*/*" />
-
-                  {/* BOTÓN: GRABAR AUDIO */}
-                  <button
-                    onClick={isRecording ? stopRecording : startRecording}
-                    disabled={isLoading && !isRecording}
-                    className="
-   flex items-center gap-1
-      px-2 py-1
-      border
-      rounded-md
-      bg-accent/20
-      hover:bg-accent/30
-      text-black
-      transition
-    "
-                  >
-                    {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                    <span>{isRecording ? "Detener" : "Grabar audio"}</span>
-                  </button>
-
-                  {/* TEXTO – EN LA MISMA FILA */}
-                  <p className="ml-auto text-[10px] md:text-xs text-muted-foreground/70 hidden md:block">
-                    Adjunta archivos o graba audio • Enter para enviar • Shift+Enter para nueva línea
+                  <p className="text-[10px] md:text-xs text-muted-foreground/70">
+                    Enter para enviar • Shift+Enter para nueva línea
                   </p>
                 </div>
 
