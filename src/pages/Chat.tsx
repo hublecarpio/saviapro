@@ -39,6 +39,7 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
   // Sincronizar conversationId de la URL con el estado
   useEffect(() => {
     if (conversationId) {
@@ -67,6 +68,25 @@ const Chat = () => {
     };
     checkAuth();
   }, []);
+
+  // Limpiar grabación al desmontar el componente
+  useEffect(() => {
+    return () => {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        try {
+          console.log("Cleaning up recording on unmount");
+          mediaRecorder.stop();
+        } catch (error) {
+          console.error("Error cleaning up recorder:", error);
+        }
+      }
+      // Limpiar stream si existe
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+      }
+    };
+  }, [mediaRecorder]);
 
   // Cargar mensajes y suscribirse a realtime cuando hay conversationId
   useEffect(() => {
@@ -341,85 +361,208 @@ const Chat = () => {
     }
   };
 
+  // Funciones de utilidad simplificadas para compatibilidad
+  const checkMediaRecorderSupport = (): boolean => {
+    // Solo bloquear si MediaRecorder no existe o es iOS Safari
+    if (typeof MediaRecorder === "undefined") {
+      return false;
+    }
+
+    // Bloquear solo iOS Safari (soporte muy limitado)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|Chromium/.test(navigator.userAgent);
+    if (isIOS && isSafari) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const getSupportedMimeType = (): string | null => {
+    // Intentar encontrar un tipo MIME soportado, pero permitir que el navegador use su tipo por defecto
+    if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
+      return null;
+    }
+
+    // Lista simplificada de tipos MIME más comunes
+    const mimeTypes = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/ogg",
+      "audio/mp4",
+    ];
+
+    for (const mimeType of mimeTypes) {
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        console.log("Using MIME type:", mimeType);
+        return mimeType;
+      }
+    }
+
+    // Si no se encuentra, permitir que el navegador use su tipo por defecto
+    console.log("No se encontró tipo MIME explícito, usando tipo por defecto del navegador");
+    return null;
+  };
+
   const startRecording = async () => {
     try {
-      // Verificar si el navegador soporta getUserMedia
+      // Verificación básica de soporte
+      if (!checkMediaRecorderSupport()) {
+        toast.error("Tu navegador no soporta grabación de audio. Por favor, usa Chrome, Firefox o Edge.");
+        return;
+      }
+
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Tu navegador no soporta grabación de audio");
+        toast.error("Tu navegador no soporta acceso al micrófono");
+        return;
       }
 
       console.log("Requesting microphone access...");
 
+      // Constraints simplificados - permitir que el navegador maneje la configuración
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 44100,
         },
       });
 
+      // Guardar referencia al stream para limpieza
+      audioStreamRef.current = stream;
       console.log("Microphone access granted");
 
-      // Detectar el tipo MIME soportado por el navegador
-      let mimeType = "audio/webm";
-      if (MediaRecorder.isTypeSupported("audio/mp4")) {
-        mimeType = "audio/mp4";
-      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
-        mimeType = "audio/webm;codecs=opus";
-      } else if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) {
-        mimeType = "audio/ogg;codecs=opus";
+      // Obtener tipo MIME soportado (opcional - el navegador puede usar su tipo por defecto)
+      const mimeType = getSupportedMimeType();
+      const recorderOptions: MediaRecorderOptions = {};
+      if (mimeType) {
+        recorderOptions.mimeType = mimeType;
       }
 
-      console.log("Using MIME type:", mimeType);
-
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(stream, recorderOptions);
       const chunks: Blob[] = [];
 
+      // Handler básico para errores del recorder
+      recorder.onerror = (event: Event) => {
+        console.error("MediaRecorder error:", event);
+        toast.error("Error en la grabación. Por favor, intenta de nuevo.");
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach((track) => track.stop());
+          audioStreamRef.current = null;
+        }
+        setIsRecording(false);
+        setMediaRecorder(null);
+      };
+
+      // Handler para cuando hay datos disponibles
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
+        if (e.data && e.data.size > 0) {
           chunks.push(e.data);
+          console.log(`Received chunk: ${e.data.size} bytes, total chunks: ${chunks.length}`);
         }
       };
 
+      // Handler cuando se detiene la grabación
       recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: mimeType });
-        console.log("Audio blob created:", blob.size, "bytes, type:", blob.type);
-        await processAudio(blob);
-        stream.getTracks().forEach((track) => track.stop());
+        console.log("Recording stopped, chunks received:", chunks.length);
+
+        // Crear blob - usar tipo detectado o permitir que el navegador lo determine
+        const finalMimeType = mimeType || recorder.mimeType || "audio/webm";
+        const blob = new Blob(chunks, { type: finalMimeType });
+        console.log(`Audio blob created: ${blob.size} bytes, type: ${blob.type}`);
+
+        // Validación mínima - solo verificar que haya algún contenido
+        if (blob.size === 0) {
+          console.error("Audio blob vacío");
+          toast.error("No se pudo grabar audio. Por favor, intenta de nuevo.");
+          if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach((track) => track.stop());
+            audioStreamRef.current = null;
+          }
+          setIsRecording(false);
+          setMediaRecorder(null);
+          return;
+        }
+
+        // Procesar audio
+        try {
+          await processAudio(blob);
+        } catch (error) {
+          console.error("Error processing audio:", error);
+          toast.error("Error procesando el audio");
+        } finally {
+          if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach((track) => track.stop());
+            audioStreamRef.current = null;
+          }
+          setIsRecording(false);
+          setMediaRecorder(null);
+        }
       };
 
-      recorder.start();
+      // Iniciar grabación con timeslice para mejor compatibilidad
+      recorder.start(100);
+      console.log("Recording started with MIME type:", mimeType || recorder.mimeType || "default");
+
       setMediaRecorder(recorder);
       setIsRecording(true);
     } catch (error: any) {
       console.error("Error starting recording:", error);
 
-      // Mostrar mensaje específico según el tipo de error
+      // Limpiar cualquier stream activo
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+      }
+      if (error.stream) {
+        error.stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+
+      // Mensajes de error simplificados
       let errorMessage = "No se pudo acceder al micrófono";
 
       if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        errorMessage =
-          "Permiso denegado. Por favor, permite el acceso al micrófono en la configuración de tu navegador";
-      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-        errorMessage = "No se encontró ningún micrófono en tu dispositivo";
-      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
-        errorMessage = "El micrófono está siendo usado por otra aplicación";
-      } else if (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError") {
-        errorMessage = "Tu dispositivo no cumple con los requisitos de audio";
-      } else if (error.name === "NotSupportedError") {
-        errorMessage = "Tu navegador no soporta grabación de audio";
-      } else if (error.name === "TypeError") {
-        errorMessage = "Error de configuración de audio";
+        errorMessage = "Permiso denegado. Por favor, permite el acceso al micrófono en la configuración de tu navegador.";
+      } else if (error.name === "NotFoundError") {
+        errorMessage = "No se encontró ningún micrófono en tu dispositivo.";
+      } else if (error.name === "NotReadableError") {
+        errorMessage = "El micrófono está siendo usado por otra aplicación.";
+      } else if (error.message) {
+        errorMessage = error.message;
       }
 
       toast.error(errorMessage);
+      setIsRecording(false);
+      setMediaRecorder(null);
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
+    if (!mediaRecorder || !isRecording) {
+      console.warn("Attempted to stop recording but no active recorder found");
+      return;
+    }
+
+    try {
+      // Verificar el estado del recorder antes de detener
+      if (mediaRecorder.state === "recording") {
+        console.log("Stopping recording...");
+        mediaRecorder.stop();
+      } else if (mediaRecorder.state === "paused") {
+        // Si está pausado, reanudar y luego detener
+        mediaRecorder.resume();
+        mediaRecorder.stop();
+      } else {
+        console.warn(`Recorder is in ${mediaRecorder.state} state, cannot stop`);
+        setIsRecording(false);
+        setMediaRecorder(null);
+      }
+      // No establecer setIsRecording(false) aquí porque onstop se encargará de eso
+    } catch (error: any) {
+      console.error("Error stopping recording:", error);
+      toast.error("Error al detener la grabación");
       setIsRecording(false);
+      setMediaRecorder(null);
     }
   };
 
@@ -657,7 +800,7 @@ const Chat = () => {
                 </div>
               </div>
             )}
-            <div className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8">
+            <div className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8 pr-20 md:pr-24">
               {messages.length === 0 ? (
                 <div className="space-y-6 md:space-y-8 py-6 md:py-12">
                   <div className="text-center space-y-2 md:space-y-3">
@@ -792,39 +935,9 @@ const Chat = () => {
             </div>
           </div>
 
-          {/* Resumen Buttons */}
-          {messages.length > 0 && (
-            <div className="border-t bg-card/30 backdrop-blur-sm">
-              <div className="max-w-5xl mx-auto px-3 md:px-6 py-3 md:py-4">
-                <div className="flex flex-col sm:flex-row gap-2 md:gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    size="default"
-                    onClick={() => handleGenerateResumen("video")}
-                    disabled={isLoading}
-                    className="gap-2 hover:bg-primary/10 hover:border-primary text-xs md:text-sm h-9 md:h-10"
-                  >
-                    <Video className="h-4 w-4 md:h-5 md:w-5" />
-                    <span className="truncate">Generar video resumen</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="default"
-                    onClick={() => handleGenerateResumen("podcast")}
-                    disabled={isLoading}
-                    className="gap-2 hover:bg-primary/10 hover:border-primary text-xs md:text-sm h-9 md:h-10"
-                  >
-                    <Podcast className="h-4 w-4 md:h-5 md:w-5" />
-                    <span className="truncate">Generar podcast resumen</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Input Area */}
           <div className="border-t bg-background/30 backdrop-blur-md ">
-            <div className="max-w-5xl mx-auto px-3 md:px-6 py-4">
+            <div className="max-w-5xl mx-auto px-3 md:px-6 py-4 pr-20 md:pr-24">
               {/* Contenedor principal estilo ScriptAI */}
               <div
                 className="
@@ -915,6 +1028,9 @@ const Chat = () => {
           isRecording={isRecording}
           onFileClick={() => fileInputRef.current?.click()}
           onRecordToggle={isRecording ? stopRecording : startRecording}
+          hasMessages={messages.length > 0}
+          onGenerateVideo={() => handleGenerateResumen("video")}
+          onGeneratePodcast={() => handleGenerateResumen("podcast")}
         />
       </div>
 
