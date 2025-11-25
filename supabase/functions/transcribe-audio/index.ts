@@ -6,9 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Process base64 in chunks to prevent memory issues
+function processBase64Chunks(base64String: string, chunkSize = 32768) {
+  const chunks: Uint8Array[] = [];
+  let position = 0;
+  
+  while (position < base64String.length) {
+    const chunk = base64String.slice(position, position + chunkSize);
+    const binaryChunk = atob(chunk);
+    const bytes = new Uint8Array(binaryChunk.length);
+    
+    for (let i = 0; i < binaryChunk.length; i++) {
+      bytes[i] = binaryChunk.charCodeAt(i);
+    }
+    
+    chunks.push(bytes);
+    position += chunkSize;
+  }
+
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return result;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -18,77 +48,83 @@ serve(async (req) => {
       throw new Error('No audio data provided');
     }
 
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const googleApiKey = Deno.env.get('GOOGLE_CLOUD_API_KEY');
+    if (!googleApiKey) {
+      throw new Error('GOOGLE_CLOUD_API_KEY not configured');
     }
 
-    // Convertir base64 a blob
-    const binaryString = atob(audioBase64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    // Crear data URL para enviar a Gemini
-    const mimeType = audioFormat === 'mp4' ? 'audio/mp4' : 
-                     audioFormat === 'ogg' ? 'audio/ogg' : 
-                     'audio/webm';
-    const dataUrl = `data:${mimeType};base64,${audioBase64}`;
-
-    console.log('Transcribing audio with Gemini...');
+    console.log('Processing audio with Google Speech-to-Text...');
+    console.log('Audio format:', audioFormat);
     
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Por favor transcribe este audio a texto en español. Solo devuelve el texto transcrito sin comentarios adicionales.'
-              },
-              {
-                type: 'audio_url',
-                audio_url: {
-                  url: dataUrl
-                }
-              }
-            ]
-          }
-        ],
-        temperature: 0.2,
-      }),
-    });
+    // Process audio in chunks to prevent memory issues
+    const binaryAudio = processBase64Chunks(audioBase64);
+    console.log('Audio size:', binaryAudio.length, 'bytes');
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('Gemini AI error:', aiResponse.status, errorText);
+    // Determine encoding based on format
+    let encoding = 'WEBM_OPUS';
+    if (audioFormat === 'mp4') encoding = 'MP3';
+    else if (audioFormat === 'ogg') encoding = 'OGG_OPUS';
+    else if (audioFormat === 'webm') encoding = 'WEBM_OPUS';
+
+    // Convert binary audio back to base64 for Google API
+    const base64ForGoogle = btoa(String.fromCharCode(...binaryAudio));
+
+    // Call Google Speech-to-Text API
+    const response = await fetch(
+      `https://speech.googleapis.com/v1/speech:recognize?key=${googleApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: {
+            encoding: encoding,
+            sampleRateHertz: 48000, // Common sample rate for web audio
+            languageCode: 'es-ES', // Spanish
+            alternativeLanguageCodes: ['es-MX', 'es-AR', 'es-CO'], // Latin American variants
+            enableAutomaticPunctuation: true,
+            model: 'default',
+            useEnhanced: true,
+          },
+          audio: {
+            content: base64ForGoogle,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Google Speech-to-Text error:', response.status, errorText);
       
-      if (aiResponse.status === 429) {
+      if (response.status === 400) {
+        throw new Error('Formato de audio no compatible. Por favor intenta de nuevo.');
+      }
+      if (response.status === 429) {
         throw new Error('Límite de solicitudes excedido. Por favor intenta más tarde.');
       }
-      if (aiResponse.status === 402) {
-        throw new Error('Créditos insuficientes. Por favor recarga tu saldo.');
+      if (response.status === 403) {
+        throw new Error('API key inválida. Por favor verifica tu configuración.');
       }
       
-      throw new Error(`AI error: ${aiResponse.status}`);
+      throw new Error(`Google API error: ${response.status}`);
     }
 
-    const aiData = await aiResponse.json();
-    const transcription = aiData.choices?.[0]?.message?.content;
+    const data = await response.json();
+    console.log('Google API response:', JSON.stringify(data, null, 2));
+
+    // Extract transcription from response
+    const transcription = data.results
+      ?.map((result: any) => result.alternatives?.[0]?.transcript)
+      .filter(Boolean)
+      .join(' ');
 
     if (!transcription) {
-      throw new Error('No transcription received from AI');
+      throw new Error('No se pudo transcribir el audio. Por favor intenta hablar más claro.');
     }
 
-    console.log('Transcription successful');
+    console.log('Transcription successful:', transcription);
 
     return new Response(
       JSON.stringify({ transcription }),
@@ -99,7 +135,7 @@ serve(async (req) => {
     console.error('Error in transcribe-audio function:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Error desconocido'
+        error: error instanceof Error ? error.message : 'Error desconocido al transcribir'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

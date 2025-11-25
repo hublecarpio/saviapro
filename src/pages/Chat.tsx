@@ -379,29 +379,30 @@ const Chat = () => {
   };
 
   const getSupportedMimeType = (): string | null => {
-    // Intentar encontrar un tipo MIME soportado, pero permitir que el navegador use su tipo por defecto
+    // Intentar encontrar un tipo MIME soportado compatible con Google Speech-to-Text
     if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
       return null;
     }
 
-    // Lista simplificada de tipos MIME más comunes
+    // Lista de tipos MIME ordenados por calidad y compatibilidad con Google Speech-to-Text
     const mimeTypes = [
-      "audio/webm;codecs=opus",
+      "audio/webm;codecs=opus", // Mejor calidad y compatibilidad
       "audio/webm",
       "audio/ogg;codecs=opus",
       "audio/ogg",
-      "audio/mp4",
+      "audio/mp4", // Fallback para Safari
+      "audio/mpeg", // Fallback adicional
     ];
 
     for (const mimeType of mimeTypes) {
       if (MediaRecorder.isTypeSupported(mimeType)) {
-        console.log("Using MIME type:", mimeType);
+        console.log("✓ Using MIME type:", mimeType);
         return mimeType;
       }
     }
 
     // Si no se encuentra, permitir que el navegador use su tipo por defecto
-    console.log("No se encontró tipo MIME explícito, usando tipo por defecto del navegador");
+    console.log("⚠ No MIME type found, using browser default");
     return null;
   };
 
@@ -418,21 +419,23 @@ const Chat = () => {
         return;
       }
 
-      console.log("Requesting microphone access...");
+      console.log("🎤 Requesting microphone access...");
 
-      // Constraints simplificados - permitir que el navegador maneje la configuración
+      // Constraints optimizados para mejor calidad y compatibilidad
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000, // Alta calidad para mejor transcripción
         },
       });
 
       // Guardar referencia al stream para limpieza
       audioStreamRef.current = stream;
-      console.log("Microphone access granted");
+      console.log("✓ Microphone access granted");
 
-      // Obtener tipo MIME soportado (opcional - el navegador puede usar su tipo por defecto)
+      // Obtener tipo MIME soportado
       const mimeType = getSupportedMimeType();
       const recorderOptions: MediaRecorderOptions = {};
       if (mimeType) {
@@ -442,9 +445,14 @@ const Chat = () => {
       const recorder = new MediaRecorder(stream, recorderOptions);
       const chunks: Blob[] = [];
 
+      console.log("📹 Recorder initialized:", {
+        mimeType: mimeType || recorder.mimeType,
+        state: recorder.state
+      });
+
       // Handler básico para errores del recorder
       recorder.onerror = (event: Event) => {
-        console.error("MediaRecorder error:", event);
+        console.error("❌ MediaRecorder error:", event);
         toast.error("Error en la grabación. Por favor, intenta de nuevo.");
         if (audioStreamRef.current) {
           audioStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -458,23 +466,24 @@ const Chat = () => {
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
           chunks.push(e.data);
-          console.log(`Received chunk: ${e.data.size} bytes, total chunks: ${chunks.length}`);
+          console.log(`📦 Chunk received: ${e.data.size} bytes (total: ${chunks.length} chunks)`);
         }
       };
 
       // Handler cuando se detiene la grabación
       recorder.onstop = async () => {
-        console.log("Recording stopped, chunks received:", chunks.length);
+        console.log("⏹ Recording stopped");
+        console.log(`📊 Total chunks: ${chunks.length}, Total size: ${chunks.reduce((acc, c) => acc + c.size, 0)} bytes`);
 
-        // Crear blob - usar tipo detectado o permitir que el navegador lo determine
+        // Crear blob - usar tipo detectado
         const finalMimeType = mimeType || recorder.mimeType || "audio/webm";
         const blob = new Blob(chunks, { type: finalMimeType });
-        console.log(`Audio blob created: ${blob.size} bytes, type: ${blob.type}`);
+        console.log(`🎵 Audio blob created: ${blob.size} bytes, type: ${blob.type}`);
 
-        // Validación mínima - solo verificar que haya algún contenido
-        if (blob.size === 0) {
-          console.error("Audio blob vacío");
-          toast.error("No se pudo grabar audio. Por favor, intenta de nuevo.");
+        // Validación de tamaño mínimo (100 bytes como mínimo razonable)
+        if (blob.size < 100) {
+          console.error("❌ Audio blob too small or empty:", blob.size);
+          toast.error("Grabación muy corta. Por favor, intenta de nuevo hablando más tiempo.");
           if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach((track) => track.stop());
             audioStreamRef.current = null;
@@ -486,9 +495,10 @@ const Chat = () => {
 
         // Procesar audio
         try {
+          console.log("🔄 Processing audio...");
           await processAudio(blob);
         } catch (error) {
-          console.error("Error processing audio:", error);
+          console.error("❌ Error processing audio:", error);
           toast.error("Error procesando el audio");
         } finally {
           if (audioStreamRef.current) {
@@ -500,14 +510,15 @@ const Chat = () => {
         }
       };
 
-      // Iniciar grabación con timeslice para mejor compatibilidad
-      recorder.start(100);
-      console.log("Recording started with MIME type:", mimeType || recorder.mimeType || "default");
+      // Iniciar grabación con timeslice para capturar datos de forma más continua
+      recorder.start(250); // Capturar cada 250ms para mejor compatibilidad
+      console.log("▶ Recording started");
+      toast.success("Grabando... Habla claramente hacia el micrófono");
 
       setMediaRecorder(recorder);
       setIsRecording(true);
     } catch (error: any) {
-      console.error("Error starting recording:", error);
+      console.error("❌ Error starting recording:", error);
 
       // Limpiar cualquier stream activo
       if (audioStreamRef.current) {
@@ -577,54 +588,65 @@ const Chat = () => {
     }
 
     setIsLoading(true);
-    toast.info("Transcribiendo audio...");
+    toast.info("Transcribiendo audio con Google Speech-to-Text...");
 
     try {
       const audioFormat = audioBlob.type.split("/")[1].split(";")[0];
+      console.log(`🎵 Processing audio: ${audioBlob.size} bytes, format: ${audioFormat}, type: ${audioBlob.type}`);
 
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
           const base64Data = event.target?.result as string;
+          const base64Audio = base64Data.split(",")[1];
 
-          const { data, error } = await supabase.functions.invoke("webhook-integration", {
+          console.log("📤 Sending to Google Speech-to-Text API...");
+
+          const { data, error } = await supabase.functions.invoke("transcribe-audio", {
             body: {
-              type: "audio",
-              data: {
-                audioFormat: audioFormat,
-                content: base64Data.split(",")[1],
-              },
+              audioBase64: base64Audio,
+              audioFormat: audioFormat,
             },
           });
 
-          if (error) throw error;
-
-          const transcription =
-            data?.respuesta ||
-            data?.response?.respuesta ||
-            data?.response?.mensaje ||
-            data?.response?.text ||
-            data?.response?.message;
-
-          if (transcription) {
-            toast.success("Audio transcrito, generando respuesta...");
-
-            const { error: chatError } = await supabase.functions.invoke("chat", {
-              body: {
-                message: transcription,
-                conversation_id: conversationId,
-                user_id: user.id,
-              },
-            });
-
-            if (chatError) throw chatError;
-          } else {
-            console.error("Respuesta del webhook sin texto:", data);
-            toast.error("El webhook respondió pero sin contenido de texto");
+          if (error) {
+            console.error("❌ Transcription error:", error);
+            throw error;
           }
+
+          const transcription = data?.transcription;
+
+          if (!transcription) {
+            console.error("❌ No transcription received:", data);
+            toast.error("No se pudo obtener la transcripción del audio");
+            setIsLoading(false);
+            return;
+          }
+
+          console.log("✅ Transcription received:", transcription);
+          toast.success("Audio transcrito correctamente!");
+
+          // Enviar la transcripción al chat
+          console.log("💬 Sending transcription to chat...");
+          const { error: chatError } = await supabase.functions.invoke("chat", {
+            body: {
+              message: transcription,
+              conversation_id: conversationId,
+              user_id: user.id,
+            },
+          });
+
+          if (chatError) {
+            console.error("❌ Chat error:", chatError);
+            throw chatError;
+          }
+
+          console.log("✅ Message sent to chat successfully");
+
         } catch (innerError) {
-          console.error("Error processing audio response:", innerError);
-          toast.error("Error procesando el audio");
+          console.error("❌ Error processing audio response:", innerError);
+          const errorMsg = innerError instanceof Error ? innerError.message : "Error procesando el audio";
+          toast.error(errorMsg);
         } finally {
           setIsLoading(false);
         }
