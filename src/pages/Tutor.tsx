@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { User,  UserPlus, Eye, EyeOff, X } from "lucide-react";
+import { User,  UserPlus, Eye, EyeOff, X, MessageSquare, Brain, Calendar } from "lucide-react";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 
 interface Student {
@@ -17,10 +17,18 @@ interface Student {
   starter_completed: boolean;
 }
 
+interface StudentMetrics {
+  totalMessages: number;
+  totalConversations: number;
+  totalMindMaps: number;
+  lastActivity: string | null;
+}
+
 const Tutor = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
+  const [studentMetrics, setStudentMetrics] = useState<Record<string, StudentMetrics>>({});
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
@@ -80,6 +88,7 @@ const Tutor = () => {
 
       if (!relations || relations.length === 0) {
         setStudents([]);
+        setStudentMetrics({});
         return;
       }
 
@@ -93,9 +102,62 @@ const Tutor = () => {
       if (profError) throw profError;
 
       setStudents(profiles || []);
+
+      // Cargar métricas para cada estudiante
+      const metrics: Record<string, StudentMetrics> = {};
+      for (const studentId of studentIds) {
+        metrics[studentId] = await loadStudentMetrics(studentId);
+      }
+      setStudentMetrics(metrics);
     } catch (error) {
       console.error("Error loading students:", error);
       toast.error("Error al cargar estudiantes");
+    }
+  };
+
+  const loadStudentMetrics = async (studentId: string): Promise<StudentMetrics> => {
+    try {
+      // Contar mensajes
+      const { count: messagesCount } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", studentId);
+
+      // Contar conversaciones
+      const { count: conversationsCount } = await supabase
+        .from("conversations")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", studentId);
+
+      // Contar mapas mentales
+      const { count: mindMapsCount } = await supabase
+        .from("mind_maps")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", studentId);
+
+      // Obtener última actividad
+      const { data: lastMessage } = await supabase
+        .from("messages")
+        .select("created_at")
+        .eq("user_id", studentId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      return {
+        totalMessages: messagesCount || 0,
+        totalConversations: conversationsCount || 0,
+        totalMindMaps: mindMapsCount || 0,
+        lastActivity: lastMessage?.created_at || null,
+      };
+    } catch (error) {
+      console.error("Error loading metrics:", error);
+      return {
+        totalMessages: 0,
+        totalConversations: 0,
+        totalMindMaps: 0,
+        lastActivity: null,
+      };
     }
   };
 
@@ -113,83 +175,24 @@ const Tutor = () => {
     try {
       setCreating(true);
 
-      // Verificar si ya existe un usuario con ese correo
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id, email")
-        .eq("email", newStudentEmail.toLowerCase())
-        .maybeSingle();
-
-      if (existingProfile) {
-        toast.error("Ya existe un usuario registrado con ese correo");
-        return;
-      }
-
-      // Agregar el email a invited_users
-      const { error: inviteError } = await supabase.from("invited_users").insert({
-        email: newStudentEmail.toLowerCase(),
-        created_by: user.id,
-      });
-
-      if (inviteError) {
-        console.error("Error inviting user:", inviteError);
-        toast.error("Error al invitar usuario");
-        return;
-      }
-
-      // Crear el usuario
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: newStudentEmail.toLowerCase(),
-        password: newStudentPassword,
-        options: {
-          data: {
-            name: newStudentName || newStudentEmail.split("@")[0],
-          },
+      // Llamar a la edge function para crear el estudiante
+      const { data, error } = await supabase.functions.invoke("create-student", {
+        body: {
+          email: newStudentEmail.toLowerCase(),
+          password: newStudentPassword,
+          name: newStudentName || newStudentEmail.split("@")[0],
         },
       });
 
-      if (signUpError) {
-        console.error("Error signing up:", signUpError);
-        toast.error("Error al crear usuario");
+      if (error) {
+        console.error("Error creating student:", error);
+        toast.error(error.message || "Error al crear estudiante");
         return;
       }
 
-      if (!signUpData.user) {
-        toast.error("Error al crear usuario");
+      if (!data.success) {
+        toast.error(data.error || "Error al crear estudiante");
         return;
-      }
-
-      // Asignar rol de estudiante
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: signUpData.user.id,
-        role: "student",
-      });
-
-      if (roleError) {
-        console.error("Error assigning role:", roleError);
-        toast.error("Error al asignar rol");
-        return;
-      }
-
-      // Relacionar tutor con estudiante
-      const { error: relationError } = await supabase.from("tutor_students").insert({
-        tutor_id: user.id,
-        student_id: signUpData.user.id,
-      });
-
-      if (relationError) {
-        console.error("Error creating relation:", relationError);
-        toast.error("Error al relacionar estudiante");
-        return;
-      }
-
-      // Marcar invitación como usada
-      const { error: markError } = await supabase.rpc("mark_invited_user_used", {
-        user_email: newStudentEmail.toLowerCase(),
-      });
-
-      if (markError) {
-        console.error("Error marking invitation:", markError);
       }
 
       toast.success("Estudiante creado exitosamente");
@@ -281,14 +284,44 @@ const Tutor = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${student.starter_completed ? "bg-green-500" : "bg-yellow-500"
-                          }`}
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {student.starter_completed ? "Perfil completado" : "Perfil pendiente"}
-                      </span>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${student.starter_completed ? "bg-green-500" : "bg-yellow-500"
+                            }`}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {student.starter_completed ? "Perfil completado" : "Perfil pendiente"}
+                        </span>
+                      </div>
+                      
+                      {/* Métricas del estudiante */}
+                      {studentMetrics[student.id] && (
+                        <div className="grid grid-cols-3 gap-4 pt-3 border-t">
+                          <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
+                            <MessageSquare className="h-4 w-4 text-primary mb-1" />
+                            <span className="text-xs text-muted-foreground">Mensajes</span>
+                            <span className="text-lg font-semibold">{studentMetrics[student.id].totalMessages}</span>
+                          </div>
+                          <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
+                            <Brain className="h-4 w-4 text-primary mb-1" />
+                            <span className="text-xs text-muted-foreground">Mapas</span>
+                            <span className="text-lg font-semibold">{studentMetrics[student.id].totalMindMaps}</span>
+                          </div>
+                          <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
+                            <Calendar className="h-4 w-4 text-primary mb-1" />
+                            <span className="text-xs text-muted-foreground">Última actividad</span>
+                            <span className="text-xs font-medium">
+                              {studentMetrics[student.id].lastActivity
+                                ? new Date(studentMetrics[student.id].lastActivity!).toLocaleDateString('es-ES', {
+                                    day: '2-digit',
+                                    month: 'short'
+                                  })
+                                : "Sin actividad"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
