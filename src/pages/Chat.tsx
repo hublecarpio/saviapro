@@ -797,18 +797,23 @@ const Chat = () => {
     try {
       // Crear resumen corto del tema basado en los mensajes
       const conversationSummary = messages
-        .slice(0, 5) // Tomar solo los primeros mensajes para el tema
+        .slice(0, 5)
         .map((msg) => msg.message)
         .join(" ")
-        .substring(0, 100); // Limitar a 100 caracteres
+        .substring(0, 100);
+
+      console.log("Generando mapa mental para tema:", conversationSummary);
 
       const response = await fetch(
         "https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9",
         {
-          method: "GET",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            tema: conversationSummary
+          }),
         }
       );
 
@@ -816,11 +821,11 @@ const Chat = () => {
         throw new Error(`Error en webhook: ${response.status}`);
       }
 
-      const data = await response.json();
-      const htmlContent = data?.html || data?.response || data?.data?.html;
+      const htmlContent = await response.text();
+      console.log("HTML recibido del mapa mental");
 
-      if (!htmlContent) {
-        throw new Error("No se recibió contenido HTML del mapa mental");
+      if (!htmlContent || !htmlContent.includes("DOCTYPE") && !htmlContent.includes("<html")) {
+        throw new Error("No se recibió contenido HTML válido del mapa mental");
       }
 
       // Guardar en la base de datos
