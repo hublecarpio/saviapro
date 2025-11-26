@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, UserCog, FileUp } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, UserCog, FileUp } from "lucide-react";
 import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
 import { MindMapDisplay } from "@/components/MindMapDisplay";
 import { User as SupabaseUser } from "@supabase/supabase-js";
@@ -949,7 +949,7 @@ const Chat = () => {
                 </div>
               </div>
             )}
-            <div className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8 pr-20 md:pr-24">
+            <div className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8 pr-3 md:pr-24">
               {messages.length === 0 ? (
                 <div className="space-y-6 md:space-y-8 py-6 md:py-12">
                   <div className="text-center space-y-2 md:space-y-3">
@@ -1089,45 +1089,84 @@ const Chat = () => {
 
           {/* Input Area */}
           <div className="border-t bg-background/30 backdrop-blur-md">
-            <div className="max-w-5xl mx-auto px-3 md:px-6 py-2 md:py-4 pr-20 md:pr-24">
+            <div className="max-w-5xl mx-auto px-3 md:px-6 py-2 md:py-4 pr-3 md:pr-24">
               {/* Contenedor principal */}
               <div className="w-full rounded-2xl border bg-background shadow-sm flex flex-col transition-all duration-300 focus-within:border-primary focus-within:shadow-md">
                 
-                {/* MÓVIL: Botones arriba, INPUT + SEND */}
+                {/* MÓVIL: Botones arriba - Archivo/Audio izquierda, Herramientas derecha */}
                 <div className="flex md:hidden items-center gap-1 px-2 pt-1.5 pb-1 border-b">
                   <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" accept="*/*" />
                   
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading}
-                    className="h-7 w-7 rounded-lg hover:bg-accent/50"
-                    title="Adjuntar archivo"
-                  >
-                    <FileUp className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
+                  {/* Botones izquierda: Archivo y Audio */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading}
+                      className="h-7 w-7 rounded-lg hover:bg-accent/50"
+                      title="Adjuntar archivo"
+                    >
+                      <FileUp className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={isRecording ? stopRecording : startRecording}
-                    disabled={isLoading && !isRecording}
-                    className={`h-7 w-7 rounded-lg hover:bg-accent/50 ${
-                      isRecording ? "bg-destructive/10 text-destructive" : ""
-                    }`}
-                    title={isRecording ? "Detener grabación" : "Grabar audio"}
-                  >
-                    {isRecording ? (
-                      <MicOff className="h-3.5 w-3.5 animate-pulse" />
-                    ) : (
-                      <Mic className="h-3.5 w-3.5 text-muted-foreground" />
-                    )}
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={isLoading && !isRecording}
+                      className={`h-7 w-7 rounded-lg hover:bg-accent/50 ${
+                        isRecording ? "bg-destructive/10 text-destructive" : ""
+                      }`}
+                      title={isRecording ? "Detener grabación" : "Grabar audio"}
+                    >
+                      {isRecording ? (
+                        <MicOff className="h-3.5 w-3.5 animate-pulse" />
+                      ) : (
+                        <Mic className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
 
-                  <span className="flex-1 text-[9px] text-muted-foreground/50 text-center">
-                    {isRecording ? "Grabando..." : "Archivo • Audio"}
-                  </span>
+                  <span className="flex-1" />
+
+                  {/* Botones derecha: Video, Podcast, Mapas (solo si hay mensajes) */}
+                  {messages.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleGenerateResumen("video")}
+                        disabled={isLoading}
+                        className="h-7 w-7 rounded-lg hover:bg-accent/50"
+                        title="Generar video"
+                      >
+                        <Video className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleGenerateResumen("podcast")}
+                        disabled={isLoading}
+                        className="h-7 w-7 rounded-lg hover:bg-accent/50"
+                        title="Generar podcast"
+                      >
+                        <Podcast className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleGenerateMindMap}
+                        disabled={isLoading}
+                        className="h-7 w-7 rounded-lg hover:bg-accent/50"
+                        title="Generar mapa mental"
+                      >
+                        <Brain className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {/* INPUT + SEND BUTTON */}
