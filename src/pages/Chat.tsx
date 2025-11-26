@@ -163,8 +163,8 @@ const Chat = () => {
     loadInitialMindMaps();
 
     // Suscribirse a nuevos mensajes
-    const channelName = `chat-${currentConversationId}-${Date.now()}`;
-    console.log("🔌 Setting up realtime channel:", channelName);
+    const channelName = `chat-${currentConversationId}`;
+    console.log("🔌 Setting up realtime channel:", channelName, "for conversation:", currentConversationId);
     
     const channel = supabase
       .channel(channelName)
@@ -219,7 +219,16 @@ const Chat = () => {
           });
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("📡 Realtime subscription status:", status);
+        if (status === 'SUBSCRIBED') {
+          console.log("✅ Successfully subscribed to realtime updates");
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error("❌ Realtime subscription error");
+        } else if (status === 'TIMED_OUT') {
+          console.error("⏱️ Realtime subscription timed out");
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
