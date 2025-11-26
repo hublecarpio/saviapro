@@ -803,6 +803,7 @@ const Chat = () => {
         .substring(0, 100);
 
       console.log("📝 Generando mapa mental para tema:", conversationSummary);
+      toast.info("🧠 Generando mapa mental...", { duration: 2000 });
 
       const response = await fetch(
         "https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9",
@@ -848,7 +849,7 @@ const Chat = () => {
       }
 
       console.log("✅ Mapa mental guardado exitosamente");
-      toast.success("Mapa mental generado exitosamente");
+      toast.success("✅ Mapa mental listo", { duration: 3000 });
     } catch (error) {
       console.error("❌ Error generating mind map:", error);
       toast.error("Error al generar el mapa mental");
