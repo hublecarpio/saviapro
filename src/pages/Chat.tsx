@@ -432,9 +432,22 @@ const Chat = () => {
         },
       });
 
+      // Verificar que el stream tiene tracks activos
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        throw new Error("No se detectó ninguna pista de audio en el stream");
+      }
+
+      console.log("✓ Microphone access granted. Active tracks:", audioTracks.length);
+      console.log("📊 Track info:", {
+        label: audioTracks[0].label,
+        enabled: audioTracks[0].enabled,
+        muted: audioTracks[0].muted,
+        readyState: audioTracks[0].readyState
+      });
+
       // Guardar referencia al stream para limpieza
       audioStreamRef.current = stream;
-      console.log("✓ Microphone access granted");
 
       // Obtener tipo MIME soportado
       const mimeType = getSupportedMimeType();
@@ -445,6 +458,7 @@ const Chat = () => {
 
       const recorder = new MediaRecorder(stream, recorderOptions);
       const chunks: Blob[] = [];
+      const recordingStartTime = Date.now();
 
       console.log("📹 Recorder initialized:", {
         mimeType: mimeType || recorder.mimeType,
@@ -473,18 +487,46 @@ const Chat = () => {
 
       // Handler cuando se detiene la grabación
       recorder.onstop = async () => {
+        const recordingDuration = Date.now() - recordingStartTime;
         console.log("⏹ Recording stopped");
+        console.log(`⏱️ Recording duration: ${recordingDuration}ms`);
         console.log(`📊 Total chunks: ${chunks.length}, Total size: ${chunks.reduce((acc, c) => acc + c.size, 0)} bytes`);
+
+        // Validar que se grabó por tiempo mínimo
+        if (recordingDuration < 500) {
+          console.error("❌ Recording too short:", recordingDuration, "ms");
+          toast.error("⚠️ Grabación demasiado corta. Mantén presionado el botón al menos 1 segundo.");
+          if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach((track) => track.stop());
+            audioStreamRef.current = null;
+          }
+          setIsRecording(false);
+          setMediaRecorder(null);
+          return;
+        }
+
+        // Validar que hay chunks
+        if (chunks.length === 0) {
+          console.error("❌ No audio chunks captured");
+          toast.error("⚠️ No se capturó audio. Asegúrate de que el micrófono funciona.");
+          if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach((track) => track.stop());
+            audioStreamRef.current = null;
+          }
+          setIsRecording(false);
+          setMediaRecorder(null);
+          return;
+        }
 
         // Crear blob - usar tipo detectado
         const finalMimeType = mimeType || recorder.mimeType || "audio/webm";
         const blob = new Blob(chunks, { type: finalMimeType });
         console.log(`🎵 Audio blob created: ${blob.size} bytes, type: ${blob.type}`);
 
-        // Validación de tamaño mínimo (100 bytes como mínimo razonable)
+        // Validación de tamaño mínimo
         if (blob.size < 100) {
           console.error("❌ Audio blob too small or empty:", blob.size);
-          toast.error("Grabación muy corta. Por favor, intenta de nuevo hablando más tiempo.");
+          toast.error("⚠️ Audio muy corto o vacío. Intenta hablar más cerca del micrófono.");
           if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach((track) => track.stop());
             audioStreamRef.current = null;
@@ -514,7 +556,7 @@ const Chat = () => {
       // Iniciar grabación con timeslice para capturar datos de forma más continua
       recorder.start(250); // Capturar cada 250ms para mejor compatibilidad
       console.log("▶ Recording started");
-      toast.success("Grabando... Habla claramente hacia el micrófono");
+      toast.success("🎤 Grabando... Mantén presionado y habla claramente", { duration: 5000 });
 
       setMediaRecorder(recorder);
       setIsRecording(true);
@@ -551,30 +593,41 @@ const Chat = () => {
 
   const stopRecording = () => {
     if (!mediaRecorder || !isRecording) {
-      console.warn("Attempted to stop recording but no active recorder found");
+      console.warn("⚠️ Attempted to stop recording but no active recorder found");
       return;
     }
 
     try {
+      console.log("🛑 Attempting to stop recording. Current state:", mediaRecorder.state);
+      
       // Verificar el estado del recorder antes de detener
       if (mediaRecorder.state === "recording") {
-        console.log("Stopping recording...");
+        console.log("⏹️ Stopping active recording...");
         mediaRecorder.stop();
+        toast.info("⏸️ Procesando audio...");
       } else if (mediaRecorder.state === "paused") {
         // Si está pausado, reanudar y luego detener
+        console.log("▶️ Resuming and stopping paused recording...");
         mediaRecorder.resume();
         mediaRecorder.stop();
       } else {
-        console.warn(`Recorder is in ${mediaRecorder.state} state, cannot stop`);
+        console.warn(`⚠️ Recorder is in ${mediaRecorder.state} state, cannot stop`);
+        toast.warning("La grabación ya finalizó");
         setIsRecording(false);
         setMediaRecorder(null);
       }
       // No establecer setIsRecording(false) aquí porque onstop se encargará de eso
     } catch (error: any) {
-      console.error("Error stopping recording:", error);
+      console.error("❌ Error stopping recording:", error);
       toast.error("Error al detener la grabación");
       setIsRecording(false);
       setMediaRecorder(null);
+      
+      // Limpiar stream si existe
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+      }
     }
   };
 
