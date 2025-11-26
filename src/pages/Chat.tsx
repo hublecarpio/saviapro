@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, UserCog, FileUp } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, UserCog, FileUp } from "lucide-react";
 
 import { MindMapDisplay } from "@/components/MindMapDisplay";
 import { User as SupabaseUser } from "@supabase/supabase-js";
@@ -838,6 +838,22 @@ const Chat = () => {
     }
   };
 
+  const handleRequestMindMap = () => {
+    if (!currentConversationId || messages.length === 0 || isLoading) {
+      toast.error("No hay conversación para crear un mapa mental");
+      return;
+    }
+    handleSend("Por favor, genera un mapa mental del tema que hemos estado discutiendo");
+  };
+
+  const handleRequestInforme = () => {
+    if (!currentConversationId || messages.length === 0 || isLoading) {
+      toast.error("No hay conversación para generar un informe");
+      return;
+    }
+    handleSend("Por favor, genera un informe completo de nuestra conversación");
+  };
+
   console.log(user);
   if (!user || !user.id) {
     return (
@@ -1058,7 +1074,7 @@ const Chat = () => {
 
                   <span className="flex-1" />
 
-                  {/* Botones derecha: Video, Podcast (solo si hay mensajes) */}
+                  {/* Botones derecha: Video, Podcast, Mapa Mental, Informe (solo si hay mensajes) */}
                   {messages.length > 0 && (
                     <div className="flex items-center gap-1">
                       <Button
@@ -1081,6 +1097,28 @@ const Chat = () => {
                         title="Generar podcast"
                       >
                         <Podcast className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleRequestMindMap}
+                        disabled={isLoading}
+                        className="h-7 w-7 rounded-lg hover:bg-accent/50"
+                        title="Solicitar mapa mental"
+                      >
+                        <Brain className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleRequestInforme}
+                        disabled={isLoading}
+                        className="h-7 w-7 rounded-lg hover:bg-accent/50"
+                        title="Solicitar informe"
+                      >
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     </div>
                   )}
