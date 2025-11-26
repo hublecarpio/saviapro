@@ -3,10 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, UserCog, FileUp } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, UserCog, FileUp, ExternalLink } from "lucide-react";
 
-import { MindMapDisplay } from "@/components/MindMapDisplay";
 import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -23,6 +23,19 @@ interface Message {
   conversation_id: string;
 }
 
+interface MindMap {
+  id: string;
+  html_content: string;
+  tema: string;
+  created_at: string;
+  conversation_id: string;
+  user_id: string;
+}
+
+type ChatItem = 
+  | { type: 'message'; data: Message }
+  | { type: 'mindmap'; data: MindMap };
+
 const Chat = () => {
   const navigate = useNavigate();
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -30,6 +43,8 @@ const Chat = () => {
   const user = useUserStore((s) => s.user);
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [mindMaps, setMindMaps] = useState<MindMap[]>([]);
+  const [chatItems, setChatItems] = useState<ChatItem[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -38,6 +53,8 @@ const Chat = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [selectedMindMap, setSelectedMindMap] = useState<MindMap | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +73,28 @@ const Chat = () => {
   };
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, mindMaps]);
+
+  // Combinar mensajes y mapas mentales en un solo array ordenado
+  useEffect(() => {
+    const messageItems: ChatItem[] = messages.map(msg => ({
+      type: 'message' as const,
+      data: msg
+    }));
+
+    const mindMapItems: ChatItem[] = mindMaps.map(map => ({
+      type: 'mindmap' as const,
+      data: map
+    }));
+
+    const combined = [...messageItems, ...mindMapItems].sort((a, b) => {
+      const dateA = new Date(a.data.created_at).getTime();
+      const dateB = new Date(b.data.created_at).getTime();
+      return dateA - dateB;
+    });
+
+    setChatItems(combined);
+  }, [messages, mindMaps]);
 
   // Verificar autenticación una sola vez al montar
   useEffect(() => {
@@ -90,9 +128,11 @@ const Chat = () => {
     };
   }, [mediaRecorder]);
 
-  // Cargar mensajes y suscribirse a realtime cuando hay conversationId
+  // Cargar mensajes y mapas mentales, suscribirse a realtime cuando hay conversationId
   useEffect(() => {
     if (!currentConversationId) {
+      setMessages([]);
+      setMindMaps([]);
       return;
     }
 
@@ -113,10 +153,27 @@ const Chat = () => {
       setMessages((data || []) as Message[]);
     };
 
+    // Cargar mapas mentales existentes
+    const loadInitialMindMaps = async () => {
+      const { data, error } = await supabase
+        .from("mind_maps")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error loading mind maps:", error);
+        return;
+      }
+
+      setMindMaps((data || []) as MindMap[]);
+    };
+
     loadInitialMessages();
+    loadInitialMindMaps();
 
     // Suscribirse a nuevos mensajes
-    const channelName = `messages-${currentConversationId}-${Date.now()}`;
+    const channelName = `chat-${currentConversationId}-${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -137,6 +194,22 @@ const Chat = () => {
           if (newMessage.role === "assistant") {
             setIsLoading(false);
           }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "mind_maps",
+          filter: `conversation_id=eq.${currentConversationId}`,
+        },
+        (payload) => {
+          const newMindMap = payload.new as MindMap;
+          setMindMaps((prev) => {
+            if (prev.some((m) => m.id === newMindMap.id)) return prev;
+            return [...prev, newMindMap];
+          });
         },
       )
       .subscribe();
@@ -206,11 +279,6 @@ const Chat = () => {
     setInput("");
     setIsLoading(true);
 
-    const timeoutId = setTimeout(() => {
-      setIsLoading(false);
-      toast.error("La respuesta está tomando más tiempo del esperado");
-    }, 30000);
-
     try {
       let conversationId = currentConversationId;
 
@@ -218,7 +286,6 @@ const Chat = () => {
       if (!conversationId) {
         conversationId = await createNewConversation(textToSend);
         if (!conversationId) {
-          clearTimeout(timeoutId);
           toast.error("Error creando conversación");
           setIsLoading(false);
           return;
@@ -238,11 +305,9 @@ const Chat = () => {
       });
 
       if (error) {
-        clearTimeout(timeoutId);
         throw error;
       }
     } catch (error) {
-      clearTimeout(timeoutId);
       console.error("Error sending message:", error);
       toast.error("Error enviando mensaje");
       setIsLoading(false);
@@ -903,7 +968,7 @@ const Chat = () => {
               </div>
             )}
             <div className="max-w-5xl mx-auto px-3 md:px-6 md:pr-24 py-4 md:py-8 w-full">
-              {messages.length === 0 ? (
+              {chatItems.length === 0 ? (
                 <div className="space-y-6 md:space-y-8 py-6 md:py-12">
                   <div className="text-center space-y-2 md:space-y-3">
                     <div className="w-12 h-12 md:w-16 md:h-16 mx-auto rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-3 md:mb-4">
@@ -914,112 +979,168 @@ const Chat = () => {
                 </div>
               ) : (
                 <div className="space-y-3 md:space-y-6">
-                  {messages.map((msg) => {
-                    // Detectar si el mensaje contiene una URL de video/audio/pdf
-                    const urlMatch = msg.message.match(/(https?:\/\/[^\s]+)/);
-                    const hasMedia =
-                      urlMatch && (msg.message.includes("Video resumen") || msg.message.includes("Podcast resumen"));
-                    const hasPdf = urlMatch && msg.message.includes("📄");
-                    const isVideo = msg.message.includes("Video resumen");
+                  {chatItems.map((item) => {
+                    if (item.type === 'message') {
+                      const msg = item.data;
+                      // Detectar si el mensaje contiene una URL de video/audio/pdf
+                      const urlMatch = msg.message.match(/(https?:\/\/[^\s]+)/);
+                      const hasMedia =
+                        urlMatch && (msg.message.includes("Video resumen") || msg.message.includes("Podcast resumen"));
+                      const hasPdf = urlMatch && msg.message.includes("📄");
+                      const isVideo = msg.message.includes("Video resumen");
 
-                    return (
-                      <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                         <div
-                          className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 overflow-hidden ${
-                            msg.role === "user"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm"
-                          }`}
-                        >
-                          {hasPdf && urlMatch ? (
-                            <div className="space-y-3">
-                              <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                {msg.message.split(urlMatch[0])[0]}
-                              </p>
-                              <Button
-                                onClick={async () => {
-                                  try {
-                                    toast.info("Descargando PDF...");
-                                    const response = await fetch(urlMatch[0], {
-                                      mode: "cors",
-                                      credentials: "omit",
-                                    });
+                      return (
+                        <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                           <div
+                            className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 overflow-hidden ${
+                              msg.role === "user"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm"
+                            }`}
+                          >
+                            {hasPdf && urlMatch ? (
+                              <div className="space-y-3">
+                                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                  {msg.message.split(urlMatch[0])[0]}
+                                </p>
+                                <Button
+                                  onClick={async () => {
+                                    try {
+                                      toast.info("Descargando PDF...");
+                                      const response = await fetch(urlMatch[0], {
+                                        mode: "cors",
+                                        credentials: "omit",
+                                      });
 
-                                    if (!response.ok) {
-                                      throw new Error("Error descargando el archivo");
+                                      if (!response.ok) {
+                                        throw new Error("Error descargando el archivo");
+                                      }
+
+                                      const blob = await response.blob();
+                                      const url = window.URL.createObjectURL(blob);
+                                      const link = document.createElement("a");
+                                      link.href = url;
+                                      link.download = `Informe_SAVIA_${new Date().toISOString().split("T")[0]}.pdf`;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      window.URL.revokeObjectURL(url);
+                                      toast.success("¡PDF descargado!");
+                                    } catch (error) {
+                                      console.error("Error downloading PDF:", error);
+                                      toast.error("Error al descargar. Intenta copiar el enlace manualmente");
                                     }
-
-                                    const blob = await response.blob();
-                                    const url = window.URL.createObjectURL(blob);
-                                    const link = document.createElement("a");
-                                    link.href = url;
-                                    link.download = `Informe_SAVIA_${new Date().toISOString().split("T")[0]}.pdf`;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                    window.URL.revokeObjectURL(url);
-                                    toast.success("¡PDF descargado!");
-                                  } catch (error) {
-                                    console.error("Error downloading PDF:", error);
-                                    toast.error("Error al descargar. Intenta copiar el enlace manualmente");
-                                  }
-                                }}
-                                className="w-full gap-2 h-auto py-4"
-                                size="lg"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="20"
-                                  height="20"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                  <polyline points="7 10 12 15 17 10"></polyline>
-                                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
-                                Descargar Informe PDF
-                              </Button>
-                              <p className="text-xs text-muted-foreground text-center">
-                                Si el botón no funciona,{" "}
-                                <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(urlMatch[0]);
-                                    toast.success("¡Link copiado!");
                                   }}
-                                  className="underline hover:text-foreground"
+                                  className="w-full gap-2 h-auto py-4"
+                                  size="lg"
                                 >
-                                  copia este enlace
-                                </button>
-                              </p>
-                            </div>
-                           ) : hasMedia && urlMatch ? (
-                            <div className="space-y-3 w-full overflow-hidden">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M21 15 v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                  </svg>
+                                  Descargar Informe PDF
+                                </Button>
+                                <p className="text-xs text-muted-foreground text-center">
+                                  Si el botón no funciona,{" "}
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(urlMatch[0]);
+                                      toast.success("¡Link copiado!");
+                                    }}
+                                    className="underline hover:text-foreground"
+                                  >
+                                    copia este enlace
+                                  </button>
+                                </p>
+                              </div>
+                             ) : hasMedia && urlMatch ? (
+                              <div className="space-y-3 w-full overflow-hidden">
+                                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                  {msg.message.split(urlMatch[0])[0]}
+                                </p>
+                                {isVideo ? (
+                                  <video controls className="w-full rounded-lg max-h-[400px]" src={urlMatch[0]}>
+                                    Tu navegador no soporta video HTML5.
+                                  </video>
+                                ) : (
+                                  <audio controls className="w-full" src={urlMatch[0]}>
+                                    Tu navegador no soporta audio HTML5.
+                                  </audio>
+                                )}
+                              </div>
+                            ) : (
                               <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                {msg.message.split(urlMatch[0])[0]}
+                                {msg.message}
                               </p>
-                              {isVideo ? (
-                                <video controls className="w-full rounded-lg max-h-[400px]" src={urlMatch[0]}>
-                                  Tu navegador no soporta video HTML5.
-                                </video>
-                              ) : (
-                                <audio controls className="w-full" src={urlMatch[0]}>
-                                  Tu navegador no soporta audio HTML5.
-                                </audio>
-                              )}
-                            </div>
-                          ) : (
-                            <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                              {msg.message}
-                            </p>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
+                      );
+                    } else {
+                      // Renderizar mapa mental
+                      const mindMap = item.data;
+                      return (
+                        <div key={mindMap.id} className="flex justify-start">
+                          <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl overflow-hidden shadow-sm">
+                            {/* Preview compacto del mapa */}
+                            <div className="relative h-48 md:h-56 overflow-hidden bg-background/50">
+                              <iframe
+                                srcDoc={mindMap.html_content}
+                                className="w-full h-full border-0 pointer-events-none scale-75 origin-top-left"
+                                title={`Preview: ${mindMap.tema}`}
+                                sandbox="allow-scripts allow-same-origin"
+                                style={{ width: '133%', height: '133%' }}
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                            </div>
+
+                            {/* Info y botones */}
+                            <div className="flex items-center gap-3 p-3 md:p-4">
+                              <Brain className="h-5 w-5 text-primary shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm md:text-base font-medium text-foreground truncate">
+                                  {mindMap.tema}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(mindMap.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="flex gap-2 shrink-0">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedMindMap(mindMap);
+                                    setIsDialogOpen(true);
+                                  }}
+                                >
+                                  Ver completo
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/mindmap/${currentConversationId}`)}
+                                  title="Abrir en página completa"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
                   })}
 
                   {isLoading && (
@@ -1030,9 +1151,6 @@ const Chat = () => {
                       </div>
                     </div>
                   )}
-
-                  {/* Mapas mentales integrados en el flujo */}
-                  {currentConversationId && <MindMapDisplay conversationId={currentConversationId} />}
 
                   <div ref={messagesEndRef} />
                 </div>
@@ -1220,6 +1338,37 @@ const Chat = () => {
 
       {/* Modal de edición de perfil */}
       {user && <StarterProfileEditor userId={user.id} open={showProfileEditor} onOpenChange={setShowProfileEditor} />}
+
+      {/* Modal de mapa mental completo */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-[95vw] md:max-w-5xl max-h-[90vh] p-3 md:p-6 flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+              <span className="text-sm md:text-base truncate">{selectedMindMap?.tema}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/mindmap/${currentConversationId}`)}
+                className="gap-2 w-full md:w-auto"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Abrir en página
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedMindMap && (
+            <div className="flex-1 flex items-center justify-center overflow-hidden">
+              <iframe
+                srcDoc={selectedMindMap.html_content}
+                className="w-full h-full border-0 rounded-lg"
+                title={`Mapa mental: ${selectedMindMap.tema}`}
+                sandbox="allow-scripts allow-same-origin"
+                style={{ minHeight: '400px', maxHeight: '600px' }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 };
