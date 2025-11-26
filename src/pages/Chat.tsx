@@ -328,10 +328,21 @@ const Chat = () => {
       if (error) {
         throw error;
       }
+      
+      // Si no hay error, el mensaje se guardó correctamente
+      // El realtime listener manejará la actualización de la UI
+      console.log("✅ Message sent successfully, waiting for realtime update");
+      
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Error enviando mensaje");
-      setIsLoading(false);
+      // Limpiar el mensaje optimista en caso de error
+      setMessages((prev) => prev.filter(m => !m.id.startsWith('temp-')));
+    } finally {
+      // Siempre detener el loading después de 10 segundos como fallback
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 10000);
     }
   };
 
