@@ -319,11 +319,19 @@ const Chat = () => {
           setIsLoading(false);
           return;
         }
-        // Navegar a la nueva conversación
         navigate(`/chat/${conversationId}`, { replace: true });
-        // Esperar a que se configure el realtime
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
+
+      // Mostrar mensaje del usuario inmediatamente
+      const userMessage: Message = {
+        id: `temp-user-${Date.now()}`,
+        message: textToSend,
+        role: "user",
+        conversation_id: conversationId,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
 
       console.log("📤 Sending message to edge function...");
       const { error } = await supabase.functions.invoke("chat", {
@@ -338,7 +346,22 @@ const Chat = () => {
         throw error;
       }
       
-      console.log("✅ Message sent, edge function will save to DB and trigger realtime");
+      console.log("✅ Message sent, reloading messages...");
+      
+      // Recargar mensajes como fallback si realtime no funciona
+      setTimeout(async () => {
+        const { data } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: true });
+        
+        if (data) {
+          console.log("📥 Manually reloaded", data.length, "messages");
+          setMessages(data as Message[]);
+          setIsLoading(false);
+        }
+      }, 2000);
       
     } catch (error) {
       console.error("❌ Error sending message:", error);
