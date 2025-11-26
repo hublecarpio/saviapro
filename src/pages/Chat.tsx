@@ -175,13 +175,19 @@ const Chat = () => {
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         (payload) => {
+          console.log("🔔 Realtime message received:", payload.new);
           const newMessage = payload.new as Message;
           setMessages((prev) => {
-            if (prev.some((m) => m.id === newMessage.id)) return prev;
+            if (prev.some((m) => m.id === newMessage.id)) {
+              console.log("⚠️ Message already exists, ignoring:", newMessage.id);
+              return prev;
+            }
+            console.log("✅ Adding new message:", newMessage);
             return [...prev, newMessage];
           });
 
           if (newMessage.role === "assistant") {
+            console.log("🤖 Assistant message detected, stopping loading");
             setIsLoading(false);
           }
         },
@@ -308,6 +314,7 @@ const Chat = () => {
         created_at: new Date().toISOString(),
       };
       
+      console.log("📝 Adding optimistic message:", optimisticUserMessage);
       setMessages((prev) => [...prev, optimisticUserMessage]);
 
       const { data, error } = await supabase.functions.invoke("chat", {
