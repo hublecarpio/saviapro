@@ -273,6 +273,9 @@ serve(async (req) => {
       throw new Error('No response from AI');
     }
 
+    // Limpiar "**" de la respuesta
+    const cleanedResponse = assistantResponse.replaceAll('**', '');
+
     console.log('AI response received, saving to database...');
 
     // Save assistant response
@@ -282,7 +285,7 @@ serve(async (req) => {
         user_id: user_id,
         conversation_id: conversation_id,
         role: 'assistant',
-        message: assistantResponse
+        message: cleanedResponse
       });
 
     if (insertAssistantError) {
