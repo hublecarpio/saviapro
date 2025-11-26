@@ -58,6 +58,7 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const processingTranscriptionRef = useRef(false);
 
   // Hook de grabación de audio
   const { isRecording, toggleRecording } = useAudioRecorder({
@@ -210,12 +211,16 @@ const Chat = () => {
 
   // Procesar transcripción de audio cuando llegue
   useEffect(() => {
-    if (transcribedText && !isLoading) {
+    if (transcribedText && !processingTranscriptionRef.current) {
+      processingTranscriptionRef.current = true;
       console.log("📤 Sending transcribed text to chat:", transcribedText);
-      handleSend(transcribedText);
-      setTranscribedText(null); // Limpiar después de enviar
+      
+      handleSend(transcribedText).finally(() => {
+        setTranscribedText(null);
+        processingTranscriptionRef.current = false;
+      });
     }
-  }, [transcribedText, isLoading]);
+  }, [transcribedText]);
 
   const loadMessages = async (conversationId: string) => {
     console.log("Loading messages for conversation:", conversationId);
