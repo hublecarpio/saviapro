@@ -43,8 +43,18 @@ export const useAudioRecorder = ({ webhookUrl, onTranscriptionReceived }: UseAud
 
           const data = await res.json();
 
-          if (data?.transcription || data?.respuesta) {
-            onTranscriptionReceived(data.transcription || data.respuesta);
+          // Extraer el texto de la respuesta del webhook
+          const responseText = 
+            data?.response || 
+            data?.transcription || 
+            data?.respuesta ||
+            data?.text ||
+            data?.message;
+
+          if (responseText) {
+            onTranscriptionReceived(responseText);
+          } else {
+            console.error("No se encontró texto en la respuesta del webhook:", data);
           }
         } catch (err) {
           console.error("Error enviando audio:", err);
