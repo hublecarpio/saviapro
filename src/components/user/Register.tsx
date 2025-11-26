@@ -64,18 +64,16 @@ export const Register = () => {
         throw signUpError;
       }
       if (authData.user) {
-        // Asignar rol de estudiante
-        await supabase.from("user_roles").insert({
-          user_id: authData.user.id,
-          role: "student",
-        });
-
         // Marcar usuario invitado como usado
         await supabase.rpc("mark_invited_user_used", {
           user_email: validated.email.toLowerCase(),
         });
+        
+        toast.success("Cuenta creada exitosamente. ¡Bienvenido!");
+        
+        // El trigger automático ya asignó el rol de estudiante
+        // El onAuthStateChange en useAuth manejará la redirección
       }
-      toast.success("Cuenta creada exitosamente. ¡Bienvenido!");
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
