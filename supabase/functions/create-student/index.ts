@@ -52,10 +52,10 @@ serve(async (req) => {
     }
 
     // Obtener datos del request
-    const { email, password, name } = await req.json();
+    const { email } = await req.json();
 
-    if (!email || !password) {
-      throw new Error("Email y contraseña son obligatorios");
+    if (!email) {
+      throw new Error("Email es obligatorio");
     }
 
     // Verificar cantidad de estudiantes
@@ -91,53 +91,33 @@ serve(async (req) => {
 
     if (inviteError) throw inviteError;
 
-    // Crear usuario usando admin API
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: email.toLowerCase(),
-      password: password,
-      email_confirm: true, // Auto-confirmar email
-      user_metadata: {
-        name: name || email.split("@")[0],
-      },
-    });
+    // Enviar email al webhook para que se envíe la invitación
+    const webhookUrl = "https://webhook.hubleconsulting.com/webhook/apicorreo88a1a578-5653-457a-b408-ae3cbb06cff6";
+    
+    try {
+      const webhookResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+        }),
+      });
 
-    if (createError || !newUser.user) {
-      throw new Error("Error al crear usuario: " + (createError?.message || "Usuario no creado"));
+      if (!webhookResponse.ok) {
+        console.error("Error al enviar al webhook:", await webhookResponse.text());
+      }
+    } catch (webhookError) {
+      console.error("Error al llamar webhook:", webhookError);
+      // No lanzamos error aquí para que la invitación se cree de todas formas
     }
-
-    // Asignar rol de estudiante
-    const { error: roleError } = await supabaseAdmin
-      .from("user_roles")
-      .insert({
-        user_id: newUser.user.id,
-        role: "student",
-      });
-
-    if (roleError) throw roleError;
-
-    // Relacionar tutor con estudiante
-    const { error: relationError } = await supabaseAdmin
-      .from("tutor_students")
-      .insert({
-        tutor_id: tutor.id,
-        student_id: newUser.user.id,
-      });
-
-    if (relationError) throw relationError;
-
-    // Marcar invitación como usada
-    await supabaseAdmin.rpc("mark_invited_user_used", {
-      user_email: email.toLowerCase(),
-    });
 
     return new Response(
       JSON.stringify({
         success: true,
-        student: {
-          id: newUser.user.id,
-          email: newUser.user.email,
-          name: newUser.user.user_metadata?.name,
-        },
+        message: "Invitación enviada correctamente",
+        email: email.toLowerCase(),
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
