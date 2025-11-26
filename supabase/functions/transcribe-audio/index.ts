@@ -62,9 +62,17 @@ serve(async (req) => {
 
     // Determine encoding based on format
     let encoding = 'WEBM_OPUS';
-    if (audioFormat === 'mp4') encoding = 'MP3';
-    else if (audioFormat === 'ogg') encoding = 'OGG_OPUS';
-    else if (audioFormat === 'webm') encoding = 'WEBM_OPUS';
+    if (audioFormat === 'mp4' || audioFormat === 'm4a' || audioFormat === 'x-m4a') {
+      encoding = 'MP3'; // Google acepta MP3 para audio/mp4
+    } else if (audioFormat === 'ogg') {
+      encoding = 'OGG_OPUS';
+    } else if (audioFormat === 'webm') {
+      encoding = 'WEBM_OPUS';
+    } else if (audioFormat === 'wav') {
+      encoding = 'LINEAR16';
+    }
+
+    console.log('Using encoding:', encoding, 'for format:', audioFormat);
 
     // Convert binary audio back to base64 for Google API
     const base64ForGoogle = btoa(String.fromCharCode(...binaryAudio));

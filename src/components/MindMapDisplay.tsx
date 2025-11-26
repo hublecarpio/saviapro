@@ -75,9 +75,9 @@ export const MindMapDisplay = ({ conversationId }: MindMapDisplayProps) => {
   }
 
   return (
-    <>
+    <div className="space-y-4">
       {mindMaps.map((mindMap) => (
-        <div key={mindMap.id} className="flex justify-start mb-4">
+        <div key={mindMap.id} className="flex justify-start">
           <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl overflow-hidden shadow-sm">
             {/* Preview compacto del mapa */}
             <div className="relative h-48 md:h-56 overflow-hidden bg-background/50">
@@ -160,6 +160,6 @@ export const MindMapDisplay = ({ conversationId }: MindMapDisplayProps) => {
           </div>
         </div>
       ))}
-    </>
+    </div>
   );
 };
