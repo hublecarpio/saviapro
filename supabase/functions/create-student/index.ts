@@ -20,23 +20,26 @@ serve(async (req) => {
 
     // Verificar autenticación del tutor
     const authHeader = req.headers.get("Authorization");
-    console.log("Auth header present:", !!authHeader);
     
     if (!authHeader) {
       throw new Error("No autorizado - falta header de autenticación");
     }
 
+    // Extraer el token del header
+    const token = authHeader.replace("Bearer ", "");
+    
+    // Crear cliente de Supabase con anon key
     const supabaseClient = createClient(
       supabaseUrl,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_ANON_KEY")!
     );
 
-    const { data: { user: tutor }, error: authError } = await supabaseClient.auth.getUser();
-    console.log("User authenticated:", !!tutor, "Auth error:", authError?.message);
+    // Validar el token y obtener el usuario
+    const { data: { user: tutor }, error: authError } = await supabaseClient.auth.getUser(token);
     
     if (authError || !tutor) {
-      throw new Error("No autorizado - usuario no válido: " + (authError?.message || "sin usuario"));
+      console.error("Auth error:", authError);
+      throw new Error("No autorizado - sesión inválida");
     }
 
     // Verificar que el usuario sea tutor
