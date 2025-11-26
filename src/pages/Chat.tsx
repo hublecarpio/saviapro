@@ -1088,84 +1088,83 @@ const Chat = () => {
           </div>
 
           {/* Input Area */}
-          <div className="border-t bg-background/30 backdrop-blur-md ">
-            <div className="max-w-5xl mx-auto px-3 md:px-6 py-4 pr-20 md:pr-24">
-              {/* Contenedor principal estilo ScriptAI */}
-              <div
-                className="
-        w-full rounded-2xl border bg-background shadow-sm
-    flex flex-col gap-2
-    transition-all duration-300
+          <div className="border-t bg-background/30 backdrop-blur-md">
+            <div className="max-w-5xl mx-auto px-3 md:px-6 py-2 md:py-4 pr-20 md:pr-24">
+              {/* Contenedor principal */}
+              <div className="w-full rounded-2xl border bg-background shadow-sm flex flex-col transition-all duration-300 focus-within:border-primary focus-within:shadow-md">
+                
+                {/* MÓVIL: Botones arriba, INPUT + SEND */}
+                <div className="flex md:hidden items-center gap-1 px-2 pt-1.5 pb-1 border-b">
+                  <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" accept="*/*" />
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                    className="h-7 w-7 rounded-lg hover:bg-accent/50"
+                    title="Adjuntar archivo"
+                  >
+                    <FileUp className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
 
-    focus-within:border-primary
-    focus-within:shadow-md
-      "
-              >
-                {/* === INPUT SUPERIOR (igual que screenshot) === */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={isLoading && !isRecording}
+                    className={`h-7 w-7 rounded-lg hover:bg-accent/50 ${
+                      isRecording ? "bg-destructive/10 text-destructive" : ""
+                    }`}
+                    title={isRecording ? "Detener grabación" : "Grabar audio"}
+                  >
+                    {isRecording ? (
+                      <MicOff className="h-3.5 w-3.5 animate-pulse" />
+                    ) : (
+                      <Mic className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                  </Button>
+
+                  <span className="flex-1 text-[9px] text-muted-foreground/50 text-center">
+                    {isRecording ? "Grabando..." : "Archivo • Audio"}
+                  </span>
+                </div>
+
                 {/* INPUT + SEND BUTTON */}
-                <div className="flex items-end gap-3 w-full border-b pb-1 px-2">
-                  {/* === Textarea estilo ChatGPT === */}
+                <div className="flex items-end gap-2 md:gap-3 w-full px-2 py-1">
                   <textarea
                     ref={textareaRef}
                     value={input}
                     onChange={(e) => {
                       setInput(e.target.value);
-
-                      // Auto-ajuste
                       const el = e.target;
-                      el.style.height = "auto"; // reset
-                      el.style.height = `${Math.min(el.scrollHeight, 200)}px`; // máximo 200px (~9 líneas)
+                      el.style.height = "auto";
+                      el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
                     }}
                     onKeyDown={handleKeyPress}
                     placeholder="Escribe tu consulta..."
                     disabled={isLoading}
-                    className="
-      flex-1
-      bg-transparent
-      shadow-none
-      outline-none
-      border-none
-      text-[15px]
-      leading-relaxed
-      placeholder:text-muted-foreground/60
-
-      /* comportamiento pro */
-      resize-none
-      overflow-y-auto
-
-      /* padding */
-      px-1 py-2.5 md:py-3
-
-      /* smooth transitions */
-      transition-all
-    "
+                    className="flex-1 bg-transparent shadow-none outline-none border-none text-[14px] md:text-[15px] leading-relaxed placeholder:text-muted-foreground/60 resize-none overflow-y-auto px-1 py-2 md:py-2.5 transition-all"
                     style={{
-                      maxHeight: "200px", // límite de expansión (~9 líneas)
-                      minHeight: "40px", // altura mínima
+                      maxHeight: "120px",
+                      minHeight: "36px",
                     }}
                   />
 
-                  {/* === SEND BUTTON === */}
                   <Button
                     onClick={() => handleSend()}
                     disabled={!input.trim() || isLoading}
                     size="icon"
-                    className="
-      h-9 w-9 md:h-11 md:w-11 rounded-xl shrink-0
-      bg-primary text-primary-foreground 
-      hover:bg-primary-hover
-      transition-all
-    "
+                    className="h-8 w-8 md:h-11 md:w-11 rounded-xl shrink-0 bg-primary text-primary-foreground hover:bg-primary-hover transition-all"
                   >
-                    <Send className="h-5 w-5" />
+                    <Send className="h-4 w-4 md:h-5 md:w-5" />
                   </Button>
                 </div>
 
-                {/* === TOOLBAR INFERIOR === */}
-                <div className="flex items-center justify-between gap-2 text-[10px] md:text-xs text-muted-foreground/70 px-2 py-1">
+                {/* DESKTOP: Toolbar inferior con botones */}
+                <div className="hidden md:flex items-center justify-between gap-2 text-xs text-muted-foreground/70 px-2 py-1.5 border-t">
                   <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" accept="*/*" />
                   
-                  {/* Botones de archivo y audio */}
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
@@ -1196,12 +1195,10 @@ const Chat = () => {
                     </Button>
                   </div>
 
-                  <p className="text-[10px] md:text-xs text-muted-foreground/70">
+                  <p className="text-xs text-muted-foreground/70">
                     Enter para enviar • Shift+Enter para nueva línea
                   </p>
                 </div>
-
-                {/* === FOOTER TEXT === */}
               </div>
             </div>
           </div>
