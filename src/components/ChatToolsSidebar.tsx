@@ -17,7 +17,7 @@ export const ChatToolsSidebar = ({
   onGenerateMindMap,
 }: ChatToolsSidebarProps) => {
   return (
-    <aside className="hidden md:flex fixed right-0 top-[64px] h-[calc(100vh-64px)] w-16 md:w-20 border-l bg-card/30 backdrop-blur-sm flex-col gap-3 py-6 items-center shrink-0 z-20 overflow-y-auto">
+    <aside className="hidden md:flex fixed right-0 top-[64px] h-[calc(100vh-64px)] w-20 border-l bg-card/30 backdrop-blur-sm flex-col gap-3 py-6 items-center shrink-0 z-20 overflow-y-auto">
       {hasMessages && (
         <>
           <Button

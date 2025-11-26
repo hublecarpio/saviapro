@@ -921,7 +921,7 @@ const Chat = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex min-h-screen w-full bg-background overflow-hidden">
         <AppSidebar
           user={user}
           currentConversationId={currentConversationId}
@@ -929,13 +929,13 @@ const Chat = () => {
           onNewConversation={handleNewConversation}
         />
 
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 w-full overflow-hidden">
           {/* Header */}
           <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
 
           {/* Messages Area */}
           <div
-            className="flex-1 overflow-y-auto relative"
+            className="flex-1 overflow-y-auto overflow-x-hidden relative w-full"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -949,7 +949,7 @@ const Chat = () => {
                 </div>
               </div>
             )}
-            <div className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8 pr-3 md:pr-24">
+            <div className="max-w-5xl mx-auto px-3 md:px-6 md:pr-24 py-4 md:py-8 w-full">
               {messages.length === 0 ? (
                 <div className="space-y-6 md:space-y-8 py-6 md:py-12">
                   <div className="text-center space-y-2 md:space-y-3">
@@ -971,8 +971,8 @@ const Chat = () => {
 
                     return (
                       <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div
-                          className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 ${
+                         <div
+                          className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 overflow-hidden ${
                             msg.role === "user"
                               ? "bg-primary text-primary-foreground"
                               : "bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm"
@@ -1044,8 +1044,8 @@ const Chat = () => {
                                 </button>
                               </p>
                             </div>
-                          ) : hasMedia && urlMatch ? (
-                            <div className="space-y-3">
+                           ) : hasMedia && urlMatch ? (
+                            <div className="space-y-3 w-full overflow-hidden">
                               <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
                                 {msg.message.split(urlMatch[0])[0]}
                               </p>
@@ -1088,8 +1088,8 @@ const Chat = () => {
           </div>
 
           {/* Input Area */}
-          <div className="border-t bg-background/30 backdrop-blur-md">
-            <div className="max-w-5xl mx-auto px-3 md:px-6 py-2 md:py-4 pr-3 md:pr-24">
+          <div className="border-t bg-background/30 backdrop-blur-md w-full">
+            <div className="max-w-5xl mx-auto px-3 md:px-6 md:pr-24 py-2 md:py-4 w-full">
               {/* Contenedor principal */}
               <div className="w-full rounded-2xl border bg-background shadow-sm flex flex-col transition-all duration-300 focus-within:border-primary focus-within:shadow-md">
                 
