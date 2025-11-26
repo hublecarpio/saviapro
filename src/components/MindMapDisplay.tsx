@@ -111,7 +111,7 @@ export const MindMapDisplay = ({ conversationId }: MindMapDisplayProps) => {
                   Ver
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+              <DialogContent className="max-w-4xl max-h-[80vh]">
                 <DialogHeader>
                   <DialogTitle className="flex items-center justify-between">
                     <span>Mapa Mental: {selectedMindMap?.tema}</span>
@@ -127,9 +127,11 @@ export const MindMapDisplay = ({ conversationId }: MindMapDisplayProps) => {
                   </DialogTitle>
                 </DialogHeader>
                 {selectedMindMap && (
-                  <div
-                    className="mind-map-content w-full overflow-auto bg-white rounded-lg p-4"
-                    dangerouslySetInnerHTML={{ __html: selectedMindMap.html_content }}
+                  <iframe
+                    srcDoc={selectedMindMap.html_content}
+                    className="w-full h-[500px] border-0 rounded-lg"
+                    title={`Mapa mental: ${selectedMindMap.tema}`}
+                    sandbox="allow-scripts allow-same-origin"
                   />
                 )}
               </DialogContent>
