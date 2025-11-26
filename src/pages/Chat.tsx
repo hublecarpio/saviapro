@@ -720,58 +720,35 @@ const Chat = () => {
         audioFormat = "mp4";
       }
       
-      console.log(`🎵 Uploading audio: ${audioBlob.size} bytes, format: ${audioFormat}, type: ${audioBlob.type}`);
+      console.log(`🎵 Sending audio to webhook: ${audioBlob.size} bytes, format: ${audioFormat}, type: ${audioBlob.type}`);
 
-      // Subir audio a Supabase Storage
-      const fileName = `${conversationId}/${Date.now()}-audio.${audioFormat}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("chat-files")
-        .upload(fileName, audioBlob, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: audioBlob.type,
-        });
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw uploadError;
-      }
-
-      console.log("✅ Audio uploaded successfully:", fileName);
-
-      // Obtener URL firmada
-      const { data: urlData } = await supabase.storage
-        .from("chat-files")
-        .createSignedUrl(fileName, 3600);
-
-      if (!urlData?.signedUrl) {
-        throw new Error("No se pudo generar URL del audio");
-      }
+      // Crear FormData para enviar como multipart/form-data
+      const formData = new FormData();
+      const audioFile = new File([audioBlob], `audio-${Date.now()}.${audioFormat}`, {
+        type: audioBlob.type,
+      });
+      formData.append("file", audioFile);
 
       console.log("📤 Sending audio to webhook...");
 
-      // Enviar a webhook para procesamiento
-      const { data, error } = await supabase.functions.invoke("webhook-integration", {
-        body: {
-          type: "audio",
-          data: {
-            fileName: `audio.${audioFormat}`,
-            fileType: audioBlob.type,
-            fileSize: audioBlob.size,
-            url: urlData.signedUrl,
-          },
-        },
-      });
+      // Enviar directamente al webhook usando fetch
+      const response = await fetch(
+        "https://webhook.hubleconsulting.com/webhook/c9763ae5-02d6-46e8-ab9e-7300d98756a0",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-      if (error) {
-        console.error("Webhook error:", error);
-        throw error;
+      if (!response.ok) {
+        throw new Error(`Webhook error: ${response.status} ${response.statusText}`);
       }
 
+      const data = await response.json();
       console.log("Webhook response:", data);
 
       // Extraer respuesta del webhook
-      const response =
+      const webhookResponse =
         data?.respuesta ||
         data?.response?.respuesta ||
         data?.response?.mensaje ||
@@ -779,11 +756,11 @@ const Chat = () => {
         data?.response?.message ||
         data?.response?.content;
 
-      if (response) {
+      if (webhookResponse) {
         console.log("✅ Audio processed, sending to chat...");
         
         // Enviar la respuesta del webhook al chat
-        await handleSend(response);
+        await handleSend(webhookResponse);
       } else {
         console.error("No response from webhook:", data);
         toast.error("El webhook respondió pero sin contenido");
@@ -1192,34 +1169,15 @@ const Chat = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        if (!isRecording && !isLoading) startRecording();
-                      }}
-                      onMouseUp={(e) => {
-                        e.preventDefault();
-                        if (isRecording) stopRecording();
-                      }}
-                      onMouseLeave={(e) => {
-                        e.preventDefault();
-                        if (isRecording) stopRecording();
-                      }}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        if (!isRecording && !isLoading) startRecording();
-                      }}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        if (isRecording) stopRecording();
-                      }}
+                      onClick={isRecording ? stopRecording : startRecording}
                       disabled={isLoading}
-                      className={`h-7 w-7 rounded-lg hover:bg-accent/50 transition-all select-none ${
-                        isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground scale-110" : ""
+                      className={`h-7 w-7 rounded-lg hover:bg-accent/50 transition-all ${
+                        isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground scale-110 animate-pulse" : ""
                       }`}
-                      title={isRecording ? "Grabando... (suelta para enviar)" : "Mantén presionado para grabar"}
+                      title={isRecording ? "Detener grabación" : "Iniciar grabación de audio"}
                     >
                       {isRecording ? (
-                        <MicOff className="h-3.5 w-3.5 animate-pulse" />
+                        <MicOff className="h-3.5 w-3.5" />
                       ) : (
                         <Mic className="h-3.5 w-3.5 text-muted-foreground" />
                       )}
