@@ -874,16 +874,16 @@ const Chat = () => {
         />
 
         <div className="flex flex-col flex-1 w-full overflow-hidden">
-          {/* Header */}
-          <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
-
-          {/* Messages Area */}
+          {/* Messages Area con Header Sticky */}
           <div
             className="flex-1 overflow-y-auto overflow-x-hidden relative w-full"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
+            {/* Header Sticky */}
+            <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
+            
             {isDragging && (
               <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm z-50 flex items-center justify-center border-2 border-dashed border-primary">
                 <div className="text-center">
