@@ -299,6 +299,17 @@ const Chat = () => {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
+      // Agregar mensaje del usuario inmediatamente a la UI (optimistic update)
+      const optimisticUserMessage: Message = {
+        id: `temp-${Date.now()}`,
+        message: textToSend,
+        role: "user",
+        conversation_id: conversationId,
+        created_at: new Date().toISOString(),
+      };
+      
+      setMessages((prev) => [...prev, optimisticUserMessage]);
+
       const { data, error } = await supabase.functions.invoke("chat", {
         body: {
           message: textToSend,
