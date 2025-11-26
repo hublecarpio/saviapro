@@ -20,8 +20,10 @@ serve(async (req) => {
 
     // Verificar autenticación del tutor
     const authHeader = req.headers.get("Authorization");
+    console.log("Auth header present:", !!authHeader);
+    
     if (!authHeader) {
-      throw new Error("No autorizado");
+      throw new Error("No autorizado - falta header de autenticación");
     }
 
     const supabaseClient = createClient(
@@ -31,8 +33,10 @@ serve(async (req) => {
     );
 
     const { data: { user: tutor }, error: authError } = await supabaseClient.auth.getUser();
+    console.log("User authenticated:", !!tutor, "Auth error:", authError?.message);
+    
     if (authError || !tutor) {
-      throw new Error("No autorizado");
+      throw new Error("No autorizado - usuario no válido: " + (authError?.message || "sin usuario"));
     }
 
     // Verificar que el usuario sea tutor
