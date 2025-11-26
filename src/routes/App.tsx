@@ -9,6 +9,7 @@ import Starter from "../pages/Starter";
 import Admin from "../pages/Admin";
 import Tutor from "../pages/Tutor";
 import NotFound from "../pages/NotFound";
+import MindMap from "../pages/MindMap";
 import { ProtectedRoute } from "./ProtetectedRoute";
 import AdminBeta from "@/pages/AdminBeta";
 import { DashboardLayout } from "@/layout/DashboardLaout";
@@ -39,6 +40,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Chat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mindmap/:conversationId"
+            element={
+              <ProtectedRoute>
+                <MindMap />
               </ProtectedRoute>
             }
           />
