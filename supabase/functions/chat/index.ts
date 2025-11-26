@@ -53,7 +53,11 @@ TU REGLA MÁS IMPORTANTE: Debes seguir un flujo de trabajo estructurado en FASES
 * Perfil Cognitivo y de Aprendizaje: ${perfilTexto}
 ---
 
-NOTA IMPORTANTE: Si te piden un "informe", "reporte" o "documento PDF", responde amablemente indicando que lo estás generando y que lo recibirán en breve. El sistema generará el PDF automáticamente.
+NOTA IMPORTANTE SOBRE RESPUESTAS: 
+- NUNCA uses formato markdown en tus respuestas (no uses **, ##, listas con -, etc.)
+- Responde siempre en texto claro y natural
+- Si te piden un "informe", "reporte" o "documento PDF", responde amablemente indicando que lo estás generando y que lo recibirán en breve. El sistema generará el PDF automáticamente.
+- Si te piden un "mapa mental", "mapa conceptual" o "esquema visual", responde amablemente indicando que lo estás creando y que aparecerá en breve. El sistema lo generará automáticamente.
 
 ### FLUJO DE TRABAJO OBLIGATORIO ###
 
@@ -273,8 +277,12 @@ serve(async (req) => {
       throw new Error('No response from AI');
     }
 
-    // Limpiar "**" de la respuesta
-    const cleanedResponse = assistantResponse.replaceAll('**', '');
+    // Limpiar markdown de la respuesta (**, ##, listas, etc.)
+    let cleanedResponse = assistantResponse
+      .replaceAll('**', '')
+      .replaceAll('##', '')
+      .replace(/^\s*[-*]\s+/gm, '')
+      .replace(/^\s*\d+\.\s+/gm, '');
 
     console.log('AI response received, saving to database...');
 
@@ -299,6 +307,10 @@ serve(async (req) => {
     const informeKeywords = ['informe', 'reporte', 'pdf', 'documento'];
     const userMessageLower = message.toLowerCase();
     const requestsInforme = informeKeywords.some(keyword => userMessageLower.includes(keyword));
+    
+    // Detectar si el usuario pidió un mapa mental
+    const mindMapKeywords = ['mapa mental', 'mapa conceptual', 'esquema', 'diagrama'];
+    const requestsMindMap = mindMapKeywords.some(keyword => userMessageLower.includes(keyword));
 
     if (requestsInforme) {
       console.log('Informe request detected, inserting loading message...');
@@ -380,6 +392,91 @@ serve(async (req) => {
               conversation_id: conversation_id,
               role: 'assistant',
               message: '❌ Hubo un error inesperado generando el informe. Por favor intenta de nuevo.'
+            });
+        }
+      })();
+    }
+
+    // Generar mapa mental si fue solicitado
+    if (requestsMindMap) {
+      console.log('Mind map request detected, generating...');
+      
+      // Insertar mensaje de carga
+      await supabaseAdmin
+        .from('messages')
+        .insert({
+          user_id: user_id,
+          conversation_id: conversation_id,
+          role: 'assistant',
+          message: '🧠 Estoy creando tu mapa mental, esto puede tomar unos segundos...'
+        });
+      
+      // Ejecutar generación de mapa mental en background
+      (async () => {
+        try {
+          // Crear resumen corto del tema
+          const conversationSummary = recentMessages && recentMessages.length > 0 
+            ? recentMessages.slice(0, 5).map(m => m.message).join(' ').substring(0, 100)
+            : message.substring(0, 100);
+          
+          console.log('📝 Generando mapa mental para tema:', conversationSummary);
+          
+          const mindMapResponse = await fetch(
+            'https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tema: conversationSummary })
+            }
+          );
+
+          if (mindMapResponse.ok) {
+            const htmlContent = await mindMapResponse.text();
+            
+            if (htmlContent && htmlContent.length >= 50) {
+              console.log('📄 Mapa mental generado, guardando en BD...');
+              
+              await supabaseAdmin
+                .from('mind_maps')
+                .insert({
+                  user_id: user_id,
+                  conversation_id: conversation_id,
+                  tema: conversationSummary,
+                  html_content: htmlContent
+                });
+              
+              console.log('✅ Mapa mental guardado exitosamente');
+            } else {
+              console.error('❌ HTML vacío o muy corto');
+              await supabaseAdmin
+                .from('messages')
+                .insert({
+                  user_id: user_id,
+                  conversation_id: conversation_id,
+                  role: 'assistant',
+                  message: '❌ Hubo un problema generando el mapa mental. Por favor intenta de nuevo.'
+                });
+            }
+          } else {
+            console.error('Webhook error:', mindMapResponse.status);
+            await supabaseAdmin
+              .from('messages')
+              .insert({
+                user_id: user_id,
+                conversation_id: conversation_id,
+                role: 'assistant',
+                message: '❌ Hubo un problema generando el mapa mental. Por favor intenta de nuevo más tarde.'
+              });
+          }
+        } catch (mindMapError) {
+          console.error('Error generating mind map:', mindMapError);
+          await supabaseAdmin
+            .from('messages')
+            .insert({
+              user_id: user_id,
+              conversation_id: conversation_id,
+              role: 'assistant',
+              message: '❌ Hubo un error inesperado generando el mapa mental. Por favor intenta de nuevo.'
             });
         }
       })();

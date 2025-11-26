@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, UserCog, FileUp } from "lucide-react";
-import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, UserCog, FileUp } from "lucide-react";
+
 import { MindMapDisplay } from "@/components/MindMapDisplay";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -838,78 +838,6 @@ const Chat = () => {
     }
   };
 
-  const handleGenerateMindMap = async () => {
-    if (!currentConversationId || messages.length === 0 || isLoading || !user) {
-      toast.error("No hay conversación para crear un mapa mental");
-      return;
-    }
-
-    setIsLoading(true);
-    toast.info("Generando mapa mental...");
-
-    try {
-      // Crear resumen corto del tema basado en los mensajes
-      const conversationSummary = messages
-        .slice(0, 5)
-        .map((msg) => msg.message)
-        .join(" ")
-        .substring(0, 100);
-
-      console.log("📝 Generando mapa mental para tema:", conversationSummary);
-      toast.info("🧠 Generando mapa mental...", { duration: 2000 });
-
-      const response = await fetch(
-        "https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            tema: conversationSummary
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        console.error("❌ Error en webhook:", response.status, response.statusText);
-        throw new Error(`Error en webhook: ${response.status}`);
-      }
-
-      // La webhook devuelve directamente el HTML como texto
-      const htmlContent = await response.text();
-      
-      console.log("📄 Respuesta de webhook (primeros 200 chars):", htmlContent.substring(0, 200));
-      console.log("📏 Longitud del HTML:", htmlContent.length);
-
-      if (!htmlContent || htmlContent.length < 50) {
-        console.error("❌ HTML vacío o muy corto");
-        throw new Error("No se recibió contenido HTML válido del mapa mental");
-      }
-
-      // Guardar en la base de datos
-      console.log("💾 Guardando en base de datos...");
-      const { error: insertError } = await supabase.from("mind_maps").insert({
-        user_id: user.id,
-        conversation_id: currentConversationId,
-        tema: conversationSummary,
-        html_content: htmlContent,
-      });
-
-      if (insertError) {
-        console.error("❌ Error insertando en BD:", insertError);
-        throw insertError;
-      }
-
-      console.log("✅ Mapa mental guardado exitosamente");
-      toast.success("✅ Mapa mental listo", { duration: 3000 });
-    } catch (error) {
-      console.error("❌ Error generating mind map:", error);
-      toast.error("Error al generar el mapa mental");
-    } finally {
-      setIsLoading(false);
-    }
-  };
   console.log(user);
   if (!user || !user.id) {
     return (
@@ -1130,7 +1058,7 @@ const Chat = () => {
 
                   <span className="flex-1" />
 
-                  {/* Botones derecha: Video, Podcast, Mapas (solo si hay mensajes) */}
+                  {/* Botones derecha: Video, Podcast (solo si hay mensajes) */}
                   {messages.length > 0 && (
                     <div className="flex items-center gap-1">
                       <Button
@@ -1153,17 +1081,6 @@ const Chat = () => {
                         title="Generar podcast"
                       >
                         <Podcast className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleGenerateMindMap}
-                        disabled={isLoading}
-                        className="h-7 w-7 rounded-lg hover:bg-accent/50"
-                        title="Generar mapa mental"
-                      >
-                        <Brain className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     </div>
                   )}
@@ -1242,14 +1159,6 @@ const Chat = () => {
             </div>
           </div>
         </div>
-
-        <ChatToolsSidebar
-          isLoading={isLoading}
-          hasMessages={messages.length > 0}
-          onGenerateVideo={() => handleGenerateResumen("video")}
-          onGeneratePodcast={() => handleGenerateResumen("podcast")}
-          onGenerateMindMap={handleGenerateMindMap}
-        />
       </div>
 
       {/* Modal de edición de perfil */}
