@@ -363,37 +363,42 @@ const Chat = () => {
     }
   };
 
-  // Funciones de utilidad simplificadas para compatibilidad
+  // Detectar navegador Safari
+  const isSafari = (): boolean => {
+    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  };
+
+  // Funciones de utilidad mejoradas para compatibilidad con todos los navegadores
   const checkMediaRecorderSupport = (): boolean => {
-    // Solo bloquear si MediaRecorder no existe o es iOS Safari
     if (typeof MediaRecorder === "undefined") {
       return false;
     }
-
-    // Bloquear solo iOS Safari (soporte muy limitado)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|Chromium/.test(navigator.userAgent);
-    if (isIOS && isSafari) {
-      return false;
-    }
-
     return true;
   };
 
   const getSupportedMimeType = (): string | null => {
-    // Intentar encontrar un tipo MIME soportado compatible con Google Speech-to-Text
     if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
       return null;
     }
 
-    // Lista de tipos MIME ordenados por calidad y compatibilidad con Google Speech-to-Text
+    // Safari funciona mejor con audio/mp4 o WAV
+    if (isSafari()) {
+      if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        console.log("✓ Using Safari-optimized MIME type: audio/mp4");
+        return "audio/mp4";
+      }
+      // Fallback para Safari
+      console.log("✓ Using Safari default");
+      return null; // Permitir que Safari use su formato por defecto
+    }
+
+    // Para otros navegadores (Chrome, Firefox, Edge)
     const mimeTypes = [
-      "audio/webm;codecs=opus", // Mejor calidad y compatibilidad
+      "audio/webm;codecs=opus", // Mejor para Chrome/Firefox
       "audio/webm",
       "audio/ogg;codecs=opus",
       "audio/ogg",
-      "audio/mp4", // Fallback para Safari
-      "audio/mpeg", // Fallback adicional
+      "audio/mp4",
     ];
 
     for (const mimeType of mimeTypes) {
@@ -403,8 +408,7 @@ const Chat = () => {
       }
     }
 
-    // Si no se encuentra, permitir que el navegador use su tipo por defecto
-    console.log("⚠ No MIME type found, using browser default");
+    console.log("⚠ No specific MIME type found, using browser default");
     return null;
   };
 
@@ -412,7 +416,7 @@ const Chat = () => {
     try {
       // Verificación básica de soporte
       if (!checkMediaRecorderSupport()) {
-        toast.error("Tu navegador no soporta grabación de audio. Por favor, usa Chrome, Firefox o Edge.");
+        toast.error("Tu navegador no soporta grabación de audio. Por favor, usa Chrome, Firefox, Safari o Edge.");
         return;
       }
 
@@ -422,15 +426,22 @@ const Chat = () => {
       }
 
       console.log("🎤 Requesting microphone access...");
+      console.log("📱 Browser detected:", isSafari() ? "Safari" : "Other");
 
-      // Constraints optimizados para mejor calidad y compatibilidad
+      // Constraints optimizados según el navegador
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+
+      // Safari funciona mejor con configuración más simple
+      if (!isSafari()) {
+        audioConstraints.sampleRate = 48000;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000, // Alta calidad para mejor transcripción
-        },
+        audio: audioConstraints,
       });
 
       // Verificar que el stream tiene tracks activos
@@ -638,16 +649,30 @@ const Chat = () => {
     let conversationId = currentConversationId;
     if (!conversationId) {
       conversationId = await createNewConversation("Mensaje de audio");
-      if (!conversationId) return;
-      setCurrentConversationId(conversationId);
+      if (!conversationId) {
+        toast.error("Error creando conversación");
+        return;
+      }
+      // Navegar a la nueva conversación
+      navigate(`/chat/${conversationId}`, { replace: true });
+      // Esperar a que se configure el realtime
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     setIsLoading(true);
-    toast.info("Transcribiendo audio con Google Speech-to-Text...");
+    toast.info("Transcribiendo audio...");
 
     try {
-      const audioFormat = audioBlob.type.split("/")[1].split(";")[0];
+      // Normalizar el tipo de audio
+      let audioFormat = audioBlob.type.split("/")[1]?.split(";")[0] || "webm";
+      
+      // Manejar formatos específicos de Safari
+      if (audioFormat === "x-m4a" || audioFormat === "m4a") {
+        audioFormat = "mp4";
+      }
+      
       console.log(`🎵 Processing audio: ${audioBlob.size} bytes, format: ${audioFormat}, type: ${audioBlob.type}`);
+      console.log("📱 Browser:", isSafari() ? "Safari" : "Other");
 
       const reader = new FileReader();
       reader.onload = async (event) => {
@@ -655,7 +680,7 @@ const Chat = () => {
           const base64Data = event.target?.result as string;
           const base64Audio = base64Data.split(",")[1];
 
-          console.log("📤 Sending to Google Speech-to-Text API...");
+          console.log("📤 Sending to transcription service...");
 
           const { data, error } = await supabase.functions.invoke("transcribe-audio", {
             body: {
@@ -671,9 +696,9 @@ const Chat = () => {
 
           const transcription = data?.transcription;
 
-          if (!transcription) {
+          if (!transcription || transcription.trim() === "") {
             console.error("❌ No transcription received:", data);
-            toast.error("No se pudo obtener la transcripción del audio");
+            toast.error("No se pudo transcribir el audio. Intenta hablar más claro.");
             setIsLoading(false);
             return;
           }
@@ -681,35 +706,26 @@ const Chat = () => {
           console.log("✅ Transcription received:", transcription);
           toast.success("Audio transcrito correctamente!");
 
-          // Enviar la transcripción al chat
-          console.log("💬 Sending transcription to chat...");
-          const { error: chatError } = await supabase.functions.invoke("chat", {
-            body: {
-              message: transcription,
-              conversation_id: conversationId,
-              user_id: user.id,
-            },
-          });
-
-          if (chatError) {
-            console.error("❌ Chat error:", chatError);
-            throw chatError;
-          }
-
-          console.log("✅ Message sent to chat successfully");
+          // Enviar la transcripción al chat como un mensaje normal
+          await handleSend(transcription);
 
         } catch (innerError) {
           console.error("❌ Error processing audio response:", innerError);
           const errorMsg = innerError instanceof Error ? innerError.message : "Error procesando el audio";
           toast.error(errorMsg);
-        } finally {
           setIsLoading(false);
         }
       };
 
+      reader.onerror = () => {
+        console.error("❌ FileReader error");
+        toast.error("Error leyendo el archivo de audio");
+        setIsLoading(false);
+      };
+
       reader.readAsDataURL(audioBlob);
     } catch (error) {
-      console.error("Error processing audio:", error);
+      console.error("❌ Error processing audio:", error);
       toast.error("Error procesando el audio");
       setIsLoading(false);
     }
