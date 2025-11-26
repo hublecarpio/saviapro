@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, UserCog } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, UserCog, FileUp } from "lucide-react";
 import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
+import { MindMapDisplay } from "@/components/MindMapDisplay";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -783,6 +784,63 @@ const Chat = () => {
       setIsLoading(false);
     }
   };
+
+  const handleGenerateMindMap = async () => {
+    if (!currentConversationId || messages.length === 0 || isLoading || !user) {
+      toast.error("No hay conversación para crear un mapa mental");
+      return;
+    }
+
+    setIsLoading(true);
+    toast.info("Generando mapa mental...");
+
+    try {
+      // Crear resumen corto del tema basado en los mensajes
+      const conversationSummary = messages
+        .slice(0, 5) // Tomar solo los primeros mensajes para el tema
+        .map((msg) => msg.message)
+        .join(" ")
+        .substring(0, 100); // Limitar a 100 caracteres
+
+      const response = await fetch(
+        "https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error en webhook: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const htmlContent = data?.html || data?.response || data?.data?.html;
+
+      if (!htmlContent) {
+        throw new Error("No se recibió contenido HTML del mapa mental");
+      }
+
+      // Guardar en la base de datos
+      const { error: insertError } = await supabase.from("mind_maps").insert({
+        user_id: user.id,
+        conversation_id: currentConversationId,
+        tema: conversationSummary,
+        html_content: htmlContent,
+      });
+
+      if (insertError) throw insertError;
+
+      toast.success("Mapa mental generado exitosamente");
+    } catch (error) {
+      console.error("Error generating mind map:", error);
+      toast.error("Error al generar el mapa mental");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   console.log(user);
   if (!user || !user.id) {
     return (
@@ -951,6 +1009,9 @@ const Chat = () => {
                     </div>
                   )}
 
+                  {/* Mapas mentales */}
+                  {currentConversationId && <MindMapDisplay conversationId={currentConversationId} />}
+
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -1032,8 +1093,40 @@ const Chat = () => {
                 </div>
 
                 {/* === TOOLBAR INFERIOR === */}
-                <div className="flex items-center justify-end gap-2 text-[10px] md:text-xs text-muted-foreground/70 px-2 py-1">
+                <div className="flex items-center justify-between gap-2 text-[10px] md:text-xs text-muted-foreground/70 px-2 py-1">
                   <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" accept="*/*" />
+                  
+                  {/* Botones de archivo y audio */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading}
+                      className="h-8 w-8 rounded-lg hover:bg-accent/50"
+                      title="Adjuntar archivo"
+                    >
+                      <FileUp className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={isLoading && !isRecording}
+                      className={`h-8 w-8 rounded-lg hover:bg-accent/50 ${
+                        isRecording ? "bg-destructive/10 text-destructive" : ""
+                      }`}
+                      title={isRecording ? "Detener grabación" : "Grabar audio"}
+                    >
+                      {isRecording ? (
+                        <MicOff className="h-4 w-4 animate-pulse" />
+                      ) : (
+                        <Mic className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+
                   <p className="text-[10px] md:text-xs text-muted-foreground/70">
                     Enter para enviar • Shift+Enter para nueva línea
                   </p>
@@ -1047,12 +1140,10 @@ const Chat = () => {
 
         <ChatToolsSidebar
           isLoading={isLoading}
-          isRecording={isRecording}
-          onFileClick={() => fileInputRef.current?.click()}
-          onRecordToggle={isRecording ? stopRecording : startRecording}
           hasMessages={messages.length > 0}
           onGenerateVideo={() => handleGenerateResumen("video")}
           onGeneratePodcast={() => handleGenerateResumen("podcast")}
+          onGenerateMindMap={handleGenerateMindMap}
         />
       </div>
 
