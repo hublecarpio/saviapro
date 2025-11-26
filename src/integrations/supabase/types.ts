@@ -115,6 +115,41 @@ export type Database = {
           },
         ]
       }
+      mind_maps: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          html_content: string
+          id: string
+          tema: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          html_content: string
+          id?: string
+          tema: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          html_content?: string
+          id?: string
+          tema?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mind_maps_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
