@@ -91,10 +91,12 @@ const MindMap = () => {
                   Creado: {new Date(mindMap.created_at).toLocaleString()}
                 </p>
               </div>
-              <div className="p-6 bg-background/50">
-                <div
-                  className="mind-map-content w-full overflow-auto bg-white rounded-lg p-4"
-                  dangerouslySetInnerHTML={{ __html: mindMap.html_content }}
+              <div className="bg-white">
+                <iframe
+                  srcDoc={mindMap.html_content}
+                  className="w-full h-[600px] border-0"
+                  title={`Mapa mental: ${mindMap.tema}`}
+                  sandbox="allow-scripts allow-same-origin"
                 />
               </div>
             </div>

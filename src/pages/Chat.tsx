@@ -802,7 +802,7 @@ const Chat = () => {
         .join(" ")
         .substring(0, 100);
 
-      console.log("Generando mapa mental para tema:", conversationSummary);
+      console.log("📝 Generando mapa mental para tema:", conversationSummary);
 
       const response = await fetch(
         "https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9",
@@ -818,17 +818,23 @@ const Chat = () => {
       );
 
       if (!response.ok) {
+        console.error("❌ Error en webhook:", response.status, response.statusText);
         throw new Error(`Error en webhook: ${response.status}`);
       }
 
+      // La webhook devuelve directamente el HTML como texto
       const htmlContent = await response.text();
-      console.log("HTML recibido del mapa mental");
+      
+      console.log("📄 Respuesta de webhook (primeros 200 chars):", htmlContent.substring(0, 200));
+      console.log("📏 Longitud del HTML:", htmlContent.length);
 
-      if (!htmlContent || !htmlContent.includes("DOCTYPE") && !htmlContent.includes("<html")) {
+      if (!htmlContent || htmlContent.length < 50) {
+        console.error("❌ HTML vacío o muy corto");
         throw new Error("No se recibió contenido HTML válido del mapa mental");
       }
 
       // Guardar en la base de datos
+      console.log("💾 Guardando en base de datos...");
       const { error: insertError } = await supabase.from("mind_maps").insert({
         user_id: user.id,
         conversation_id: currentConversationId,
@@ -836,11 +842,15 @@ const Chat = () => {
         html_content: htmlContent,
       });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("❌ Error insertando en BD:", insertError);
+        throw insertError;
+      }
 
+      console.log("✅ Mapa mental guardado exitosamente");
       toast.success("Mapa mental generado exitosamente");
     } catch (error) {
-      console.error("Error generating mind map:", error);
+      console.error("❌ Error generating mind map:", error);
       toast.error("Error al generar el mapa mental");
     } finally {
       setIsLoading(false);
