@@ -572,6 +572,7 @@ const Chat = () => {
         // Validar que hay chunks
         if (chunks.length === 0) {
           console.error("❌ No audio chunks captured");
+          toast.error("No se capturó audio. Mantén presionado el botón mientras hablas.");
           if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach((track) => track.stop());
             audioStreamRef.current = null;
@@ -589,6 +590,7 @@ const Chat = () => {
         // Validación de tamaño mínimo
         if (blob.size < 100) {
           console.error("❌ Audio blob too small or empty:", blob.size);
+          toast.error("Audio muy corto. Mantén presionado el botón mientras hablas.");
           if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach((track) => track.stop());
             audioStreamRef.current = null;
@@ -617,8 +619,7 @@ const Chat = () => {
 
       // Iniciar grabación - usar timeslice más largo para asegurar captura de datos
       recorder.start(100); // Capturar cada 100ms
-      console.log("▶ Recording started");
-      console.log("⏱️ Mantén el botón presionado mientras hablas, luego suéltalo");
+      console.log("▶ Recording started - mantén presionado el botón");
 
       setMediaRecorder(recorder);
       setIsRecording(true);
@@ -1191,12 +1192,31 @@ const Chat = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={isRecording ? stopRecording : startRecording}
-                      disabled={isLoading && !isRecording}
-                      className={`h-7 w-7 rounded-lg hover:bg-accent/50 transition-all ${
-                        isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground" : ""
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        if (!isRecording && !isLoading) startRecording();
+                      }}
+                      onMouseUp={(e) => {
+                        e.preventDefault();
+                        if (isRecording) stopRecording();
+                      }}
+                      onMouseLeave={(e) => {
+                        e.preventDefault();
+                        if (isRecording) stopRecording();
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        if (!isRecording && !isLoading) startRecording();
+                      }}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        if (isRecording) stopRecording();
+                      }}
+                      disabled={isLoading}
+                      className={`h-7 w-7 rounded-lg hover:bg-accent/50 transition-all select-none ${
+                        isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground scale-110" : ""
                       }`}
-                      title={isRecording ? "Detener grabación (habla y suelta)" : "Iniciar grabación de audio"}
+                      title={isRecording ? "Grabando... (suelta para enviar)" : "Mantén presionado para grabar"}
                     >
                       {isRecording ? (
                         <MicOff className="h-3.5 w-3.5 animate-pulse" />
