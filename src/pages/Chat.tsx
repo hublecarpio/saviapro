@@ -569,18 +569,6 @@ const Chat = () => {
         console.log(`⏱️ Recording duration: ${recordingDuration}ms`);
         console.log(`📊 Total chunks: ${chunks.length}, Total size: ${chunks.reduce((acc, c) => acc + c.size, 0)} bytes`);
 
-        // Validar que se grabó por tiempo mínimo
-        if (recordingDuration < 500) {
-          console.error("❌ Recording too short:", recordingDuration, "ms");
-          if (audioStreamRef.current) {
-            audioStreamRef.current.getTracks().forEach((track) => track.stop());
-            audioStreamRef.current = null;
-          }
-          setIsRecording(false);
-          setMediaRecorder(null);
-          return;
-        }
-
         // Validar que hay chunks
         if (chunks.length === 0) {
           console.error("❌ No audio chunks captured");
@@ -627,9 +615,10 @@ const Chat = () => {
         }
       };
 
-      // Iniciar grabación con timeslice para capturar datos de forma más continua
-      recorder.start(250); // Capturar cada 250ms para mejor compatibilidad
+      // Iniciar grabación - usar timeslice más largo para asegurar captura de datos
+      recorder.start(100); // Capturar cada 100ms
       console.log("▶ Recording started");
+      console.log("⏱️ Mantén el botón presionado mientras hablas, luego suéltalo");
 
       setMediaRecorder(recorder);
       setIsRecording(true);
@@ -1186,10 +1175,10 @@ const Chat = () => {
                       size="icon"
                       onClick={isRecording ? stopRecording : startRecording}
                       disabled={isLoading && !isRecording}
-                      className={`h-7 w-7 rounded-lg hover:bg-accent/50 ${
-                        isRecording ? "bg-destructive/10 text-destructive" : ""
+                      className={`h-7 w-7 rounded-lg hover:bg-accent/50 transition-all ${
+                        isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground" : ""
                       }`}
-                      title={isRecording ? "Detener grabación" : "Grabar audio"}
+                      title={isRecording ? "Detener grabación (habla y suelta)" : "Iniciar grabación de audio"}
                     >
                       {isRecording ? (
                         <MicOff className="h-3.5 w-3.5 animate-pulse" />
