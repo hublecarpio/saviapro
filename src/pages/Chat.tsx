@@ -708,6 +708,7 @@ const Chat = () => {
     }
 
     setIsLoading(true);
+    toast.info("Procesando audio...");
 
     try {
       // Normalizar el tipo de audio
@@ -718,61 +719,78 @@ const Chat = () => {
         audioFormat = "mp4";
       }
       
-      console.log(`🎵 Processing audio: ${audioBlob.size} bytes, format: ${audioFormat}, type: ${audioBlob.type}`);
-      console.log("📱 Browser:", isSafari() ? "Safari" : "Other");
+      console.log(`🎵 Uploading audio: ${audioBlob.size} bytes, format: ${audioFormat}, type: ${audioBlob.type}`);
 
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const base64Data = event.target?.result as string;
-          const base64Audio = base64Data.split(",")[1];
+      // Subir audio a Supabase Storage
+      const fileName = `${conversationId}/${Date.now()}-audio.${audioFormat}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("chat-files")
+        .upload(fileName, audioBlob, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: audioBlob.type,
+        });
 
-          console.log("📤 Sending to transcription service...");
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
 
-          const { data, error } = await supabase.functions.invoke("transcribe-audio", {
-            body: {
-              audioBase64: base64Audio,
-              audioFormat: audioFormat,
-            },
-          });
+      console.log("✅ Audio uploaded successfully:", fileName);
 
-          if (error) {
-            console.error("❌ Transcription error:", error);
-            throw error;
-          }
+      // Obtener URL firmada
+      const { data: urlData } = await supabase.storage
+        .from("chat-files")
+        .createSignedUrl(fileName, 3600);
 
-          const transcription = data?.transcription;
+      if (!urlData?.signedUrl) {
+        throw new Error("No se pudo generar URL del audio");
+      }
 
-          if (!transcription || transcription.trim() === "") {
-            console.error("❌ No transcription received:", data);
-            toast.error("No se pudo transcribir el audio. Intenta hablar más claro.");
-            setIsLoading(false);
-            return;
-          }
+      console.log("📤 Sending audio to webhook...");
 
-          console.log("✅ Transcription received:", transcription);
+      // Enviar a webhook para procesamiento
+      const { data, error } = await supabase.functions.invoke("webhook-integration", {
+        body: {
+          type: "audio",
+          data: {
+            fileName: `audio.${audioFormat}`,
+            fileType: audioBlob.type,
+            fileSize: audioBlob.size,
+            url: urlData.signedUrl,
+          },
+        },
+      });
 
-          // Enviar la transcripción al chat como un mensaje normal
-          await handleSend(transcription);
+      if (error) {
+        console.error("Webhook error:", error);
+        throw error;
+      }
 
-        } catch (innerError) {
-          console.error("❌ Error processing audio response:", innerError);
-          const errorMsg = innerError instanceof Error ? innerError.message : "Error procesando el audio";
-          toast.error(errorMsg);
-          setIsLoading(false);
-        }
-      };
+      console.log("Webhook response:", data);
 
-      reader.onerror = () => {
-        console.error("❌ FileReader error");
-        toast.error("Error leyendo el archivo de audio");
+      // Extraer respuesta del webhook
+      const response =
+        data?.respuesta ||
+        data?.response?.respuesta ||
+        data?.response?.mensaje ||
+        data?.response?.text ||
+        data?.response?.message ||
+        data?.response?.content;
+
+      if (response) {
+        console.log("✅ Audio processed, sending to chat...");
+        
+        // Enviar la respuesta del webhook al chat
+        await handleSend(response);
+      } else {
+        console.error("No response from webhook:", data);
+        toast.error("El webhook respondió pero sin contenido");
         setIsLoading(false);
-      };
-
-      reader.readAsDataURL(audioBlob);
+      }
     } catch (error) {
       console.error("❌ Error processing audio:", error);
-      toast.error("Error procesando el audio");
+      toast.error(error instanceof Error ? error.message : "Error procesando el audio");
       setIsLoading(false);
     }
   };
