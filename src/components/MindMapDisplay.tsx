@@ -79,11 +79,11 @@ export const MindMapDisplay = ({ conversationId }: MindMapDisplayProps) => {
   }
 
   return (
-    <div className="space-y-2 mt-3">
+    <div className="space-y-2 mt-3 w-full">
       {mindMaps.map((mindMap) => (
         <div
           key={mindMap.id}
-          className="group relative rounded-lg border border-border/50 bg-card/30 overflow-hidden hover:border-primary/50 transition-all"
+          className="group relative rounded-lg border border-border/50 bg-card/30 overflow-hidden hover:border-primary/50 transition-all w-full"
         >
           {/* Preview compacto del mapa */}
           <div className="relative h-32 md:h-40 overflow-hidden bg-background/50">
