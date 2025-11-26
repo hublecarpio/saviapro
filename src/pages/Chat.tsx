@@ -164,6 +164,8 @@ const Chat = () => {
 
     // Suscribirse a nuevos mensajes
     const channelName = `chat-${currentConversationId}-${Date.now()}`;
+    console.log("🔌 Setting up realtime channel:", channelName);
+    
     const channel = supabase
       .channel(channelName)
       .on(
@@ -175,19 +177,28 @@ const Chat = () => {
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         (payload) => {
-          console.log("🔔 Realtime message received:", payload.new);
+          console.log("🔔 Realtime INSERT received:", payload);
           const newMessage = payload.new as Message;
+          
           setMessages((prev) => {
+            // Verificar si ya existe
             if (prev.some((m) => m.id === newMessage.id)) {
-              console.log("⚠️ Message already exists, ignoring:", newMessage.id);
+              console.log("⚠️ Message already exists, ignoring");
               return prev;
             }
-            console.log("✅ Adding new message:", newMessage);
+            
+            console.log("✅ Adding message to UI:", {
+              id: newMessage.id,
+              role: newMessage.role,
+              preview: newMessage.message.substring(0, 50)
+            });
+            
             return [...prev, newMessage];
           });
 
+          // Si es un mensaje del asistente, detener loading
           if (newMessage.role === "assistant") {
-            console.log("🤖 Assistant message detected, stopping loading");
+            console.log("🤖 Assistant message received, stopping loading");
             setIsLoading(false);
           }
         },
@@ -302,22 +313,11 @@ const Chat = () => {
         // Navegar a la nueva conversación
         navigate(`/chat/${conversationId}`, { replace: true });
         // Esperar a que se configure el realtime
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      // Agregar mensaje del usuario inmediatamente a la UI (optimistic update)
-      const optimisticUserMessage: Message = {
-        id: `temp-${Date.now()}`,
-        message: textToSend,
-        role: "user",
-        conversation_id: conversationId,
-        created_at: new Date().toISOString(),
-      };
-      
-      console.log("📝 Adding optimistic message:", optimisticUserMessage);
-      setMessages((prev) => [...prev, optimisticUserMessage]);
-
-      const { data, error } = await supabase.functions.invoke("chat", {
+      console.log("📤 Sending message to edge function...");
+      const { error } = await supabase.functions.invoke("chat", {
         body: {
           message: textToSend,
           conversation_id: conversationId,
@@ -329,20 +329,12 @@ const Chat = () => {
         throw error;
       }
       
-      // Si no hay error, el mensaje se guardó correctamente
-      // El realtime listener manejará la actualización de la UI
-      console.log("✅ Message sent successfully, waiting for realtime update");
+      console.log("✅ Message sent, edge function will save to DB and trigger realtime");
       
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("❌ Error sending message:", error);
       toast.error("Error enviando mensaje");
-      // Limpiar el mensaje optimista en caso de error
-      setMessages((prev) => prev.filter(m => !m.id.startsWith('temp-')));
-    } finally {
-      // Siempre detener el loading después de 10 segundos como fallback
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 10000);
+      setIsLoading(false);
     }
   };
 
