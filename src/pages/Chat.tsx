@@ -873,17 +873,17 @@ const Chat = () => {
           onNewConversation={handleNewConversation}
         />
 
-        <div className="flex flex-col flex-1 w-full overflow-hidden">
-          {/* Messages Area con Header Sticky */}
+        <div className="flex flex-col flex-1 w-full overflow-hidden h-screen">
+          {/* Header Fijo */}
+          <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
+
+          {/* Messages Area con scroll propio */}
           <div
             className="flex-1 overflow-y-auto overflow-x-hidden relative w-full"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {/* Header Sticky */}
-            <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
-            
             {isDragging && (
               <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm z-50 flex items-center justify-center border-2 border-dashed border-primary">
                 <div className="text-center">
@@ -1031,8 +1031,8 @@ const Chat = () => {
             </div>
           </div>
 
-          {/* Input Area */}
-          <div className="border-t bg-background/30 backdrop-blur-md w-full">
+          {/* Input Area Fijo */}
+          <div className="border-t bg-background/30 backdrop-blur-md w-full shrink-0">
             <div className="max-w-5xl mx-auto px-3 md:px-6 md:pr-24 py-2 md:py-4 w-full">
               {/* Contenedor principal */}
               <div className="w-full rounded-2xl border bg-background shadow-sm flex flex-col transition-all duration-300 focus-within:border-primary focus-within:shadow-md">
