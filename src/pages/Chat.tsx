@@ -507,7 +507,6 @@ const Chat = () => {
         // Validar que se grabó por tiempo mínimo
         if (recordingDuration < 500) {
           console.error("❌ Recording too short:", recordingDuration, "ms");
-          toast.error("⚠️ Grabación demasiado corta. Mantén presionado el botón al menos 1 segundo.");
           if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach((track) => track.stop());
             audioStreamRef.current = null;
@@ -520,7 +519,6 @@ const Chat = () => {
         // Validar que hay chunks
         if (chunks.length === 0) {
           console.error("❌ No audio chunks captured");
-          toast.error("⚠️ No se capturó audio. Asegúrate de que el micrófono funciona.");
           if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach((track) => track.stop());
             audioStreamRef.current = null;
@@ -538,7 +536,6 @@ const Chat = () => {
         // Validación de tamaño mínimo
         if (blob.size < 100) {
           console.error("❌ Audio blob too small or empty:", blob.size);
-          toast.error("⚠️ Audio muy corto o vacío. Intenta hablar más cerca del micrófono.");
           if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach((track) => track.stop());
             audioStreamRef.current = null;
@@ -568,7 +565,6 @@ const Chat = () => {
       // Iniciar grabación con timeslice para capturar datos de forma más continua
       recorder.start(250); // Capturar cada 250ms para mejor compatibilidad
       console.log("▶ Recording started");
-      toast.success("🎤 Grabando... Mantén presionado y habla claramente", { duration: 5000 });
 
       setMediaRecorder(recorder);
       setIsRecording(true);
@@ -616,7 +612,6 @@ const Chat = () => {
       if (mediaRecorder.state === "recording") {
         console.log("⏹️ Stopping active recording...");
         mediaRecorder.stop();
-        toast.info("⏸️ Procesando audio...");
       } else if (mediaRecorder.state === "paused") {
         // Si está pausado, reanudar y luego detener
         console.log("▶️ Resuming and stopping paused recording...");
@@ -624,7 +619,6 @@ const Chat = () => {
         mediaRecorder.stop();
       } else {
         console.warn(`⚠️ Recorder is in ${mediaRecorder.state} state, cannot stop`);
-        toast.warning("La grabación ya finalizó");
         setIsRecording(false);
         setMediaRecorder(null);
       }
@@ -660,7 +654,6 @@ const Chat = () => {
     }
 
     setIsLoading(true);
-    toast.info("Transcribiendo audio...");
 
     try {
       // Normalizar el tipo de audio
@@ -704,7 +697,6 @@ const Chat = () => {
           }
 
           console.log("✅ Transcription received:", transcription);
-          toast.success("Audio transcrito correctamente!");
 
           // Enviar la transcripción al chat como un mensaje normal
           await handleSend(transcription);
