@@ -54,6 +54,7 @@ const Chat = () => {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [selectedMindMap, setSelectedMindMap] = useState<MindMap | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [transcribedText, setTranscribedText] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,8 +62,9 @@ const Chat = () => {
   // Hook de grabación de audio
   const { isRecording, toggleRecording } = useAudioRecorder({
     webhookUrl: "https://webhook.hubleconsulting.com/webhook/c9763ae5-02d6-46e8-ab9e-7300d98756a0",
-    onTranscriptionReceived: async (text) => {
-      await handleSend(text);
+    onTranscriptionReceived: (text) => {
+      console.log("✅ Transcription received:", text);
+      setTranscribedText(text);
     },
   });
   // Sincronizar conversationId de la URL con el estado
@@ -205,6 +207,15 @@ const Chat = () => {
       supabase.removeChannel(channel);
     };
   }, [currentConversationId]);
+
+  // Procesar transcripción de audio cuando llegue
+  useEffect(() => {
+    if (transcribedText && !isLoading) {
+      console.log("📤 Sending transcribed text to chat:", transcribedText);
+      handleSend(transcribedText);
+      setTranscribedText(null); // Limpiar después de enviar
+    }
+  }, [transcribedText, isLoading]);
 
   const loadMessages = async (conversationId: string) => {
     console.log("Loading messages for conversation:", conversationId);
