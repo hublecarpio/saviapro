@@ -1,8 +1,13 @@
 import { useLocation, Link } from "react-router-dom";
 import { SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '../ui/sidebar'
-import { Settings, UserPlus, Users } from 'lucide-react'
+import { Settings, UserPlus, Users, LayoutDashboard } from 'lucide-react'
 
 const items = [
+    {
+        title: "Dashboard",
+        url: "/tutor/dashboard",
+        icon: LayoutDashboard,
+    },
     {
         title: "Lista de estudiantes",
         url: "/tutor",

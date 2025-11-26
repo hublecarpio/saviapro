@@ -8,6 +8,7 @@ import Chat from "../pages/Chat";
 import Starter from "../pages/Starter";
 import Admin from "../pages/Admin";
 import Tutor from "../pages/Tutor";
+import TutorDashboard from "../pages/TutorDashboard";
 import NotFound from "../pages/NotFound";
 import MindMap from "../pages/MindMap";
 import { ProtectedRoute } from "./ProtetectedRoute";
@@ -78,15 +79,20 @@ const App = () => (
             </ProtectedRoute>
           } />
           {/**end admin */}
+          <Route path="/tutor/dashboard" element={ 
+            <ProtectedRoute>
+              <DashboardLayout>
+                <TutorDashboard />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/tutor" element={ 
             <ProtectedRoute>
               <DashboardLayout>
-            <Tutor />
-            
+                <Tutor />
               </DashboardLayout>
             </ProtectedRoute>
-            
-            } />
+          } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
