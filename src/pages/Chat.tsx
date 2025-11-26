@@ -1022,7 +1022,7 @@ const Chat = () => {
                     </div>
                   )}
 
-                  {/* Mapas mentales */}
+                  {/* Mapas mentales integrados en el flujo */}
                   {currentConversationId && <MindMapDisplay conversationId={currentConversationId} />}
 
                   <div ref={messagesEndRef} />
