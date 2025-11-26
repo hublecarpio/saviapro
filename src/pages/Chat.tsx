@@ -569,10 +569,9 @@ const Chat = () => {
         console.log(`⏱️ Recording duration: ${recordingDuration}ms`);
         console.log(`📊 Total chunks: ${chunks.length}, Total size: ${chunks.reduce((acc, c) => acc + c.size, 0)} bytes`);
 
-        // Validar que hay chunks
+        // Si no hay chunks, simplemente limpiar y salir sin error molesto
         if (chunks.length === 0) {
-          console.error("❌ No audio chunks captured");
-          toast.error("No se capturó audio. Mantén presionado el botón mientras hablas.");
+          console.warn("⚠️ No audio chunks captured - recording too short");
           if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach((track) => track.stop());
             audioStreamRef.current = null;
@@ -587,20 +586,7 @@ const Chat = () => {
         const blob = new Blob(chunks, { type: finalMimeType });
         console.log(`🎵 Audio blob created: ${blob.size} bytes, type: ${blob.type}`);
 
-        // Validación de tamaño mínimo
-        if (blob.size < 100) {
-          console.error("❌ Audio blob too small or empty:", blob.size);
-          toast.error("Audio muy corto. Mantén presionado el botón mientras hablas.");
-          if (audioStreamRef.current) {
-            audioStreamRef.current.getTracks().forEach((track) => track.stop());
-            audioStreamRef.current = null;
-          }
-          setIsRecording(false);
-          setMediaRecorder(null);
-          return;
-        }
-
-        // Procesar audio
+        // Procesar audio sin validaciones molestas - el webhook decidirá si es válido
         try {
           console.log("🔄 Processing audio...");
           await processAudio(blob);
@@ -617,9 +603,9 @@ const Chat = () => {
         }
       };
 
-      // Iniciar grabación - usar timeslice más largo para asegurar captura de datos
-      recorder.start(100); // Capturar cada 100ms
-      console.log("▶ Recording started - mantén presionado el botón");
+      // Iniciar grabación con intervalo más largo para mejor captura
+      recorder.start(250); // Capturar cada 250ms
+      console.log("▶ Recording started - click nuevamente para detener");
 
       setMediaRecorder(recorder);
       setIsRecording(true);
