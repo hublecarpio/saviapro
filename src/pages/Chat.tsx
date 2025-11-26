@@ -15,6 +15,7 @@ import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 import { destroyUser } from "@/hooks/useLogout";
 import { NavBarUser } from "@/components/NavBarUser";
 import { useUserStore } from "@/store/useUserStore";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -48,8 +49,6 @@ const Chat = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -58,7 +57,14 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const audioStreamRef = useRef<MediaStream | null>(null);
+
+  // Hook de grabación de audio
+  const { isRecording, toggleRecording } = useAudioRecorder({
+    webhookUrl: "https://webhook.hubleconsulting.com/webhook/c9763ae5-02d6-46e8-ab9e-7300d98756a0",
+    onTranscriptionReceived: async (text) => {
+      await handleSend(text);
+    },
+  });
   // Sincronizar conversationId de la URL con el estado
   useEffect(() => {
     if (conversationId) {
@@ -108,25 +114,6 @@ const Chat = () => {
     };
     checkAuth();
   }, []);
-
-  // Limpiar grabación al desmontar el componente
-  useEffect(() => {
-    return () => {
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        try {
-          console.log("Cleaning up recording on unmount");
-          mediaRecorder.stop();
-        } catch (error) {
-          console.error("Error cleaning up recorder:", error);
-        }
-      }
-      // Limpiar stream si existe
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach((track) => track.stop());
-        audioStreamRef.current = null;
-      }
-    };
-  }, [mediaRecorder]);
 
   // Cargar mensajes y mapas mentales, suscribirse a realtime cuando hay conversationId
   useEffect(() => {
@@ -425,337 +412,6 @@ const Chat = () => {
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       await processFile(files[0]);
-    }
-  };
-
-  // Detectar navegador Safari
-  const isSafari = (): boolean => {
-    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  };
-
-  // Funciones de utilidad mejoradas para compatibilidad con todos los navegadores
-  const checkMediaRecorderSupport = (): boolean => {
-    if (typeof MediaRecorder === "undefined") {
-      return false;
-    }
-    return true;
-  };
-
-  const getSupportedMimeType = (): string | null => {
-    if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
-      return null;
-    }
-
-    // Safari funciona mejor con audio/mp4 o WAV
-    if (isSafari()) {
-      if (MediaRecorder.isTypeSupported("audio/mp4")) {
-        console.log("✓ Using Safari-optimized MIME type: audio/mp4");
-        return "audio/mp4";
-      }
-      // Fallback para Safari
-      console.log("✓ Using Safari default");
-      return null; // Permitir que Safari use su formato por defecto
-    }
-
-    // Para otros navegadores (Chrome, Firefox, Edge)
-    const mimeTypes = [
-      "audio/webm;codecs=opus", // Mejor para Chrome/Firefox
-      "audio/webm",
-      "audio/ogg;codecs=opus",
-      "audio/ogg",
-      "audio/mp4",
-    ];
-
-    for (const mimeType of mimeTypes) {
-      if (MediaRecorder.isTypeSupported(mimeType)) {
-        console.log("✓ Using MIME type:", mimeType);
-        return mimeType;
-      }
-    }
-
-    console.log("⚠ No specific MIME type found, using browser default");
-    return null;
-  };
-
-  const startRecording = async () => {
-    try {
-      // Verificación básica de soporte
-      if (!checkMediaRecorderSupport()) {
-        toast.error("Tu navegador no soporta grabación de audio. Por favor, usa Chrome, Firefox, Safari o Edge.");
-        return;
-      }
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        toast.error("Tu navegador no soporta acceso al micrófono");
-        return;
-      }
-
-      console.log("🎤 Requesting microphone access...");
-      console.log("📱 Browser detected:", isSafari() ? "Safari" : "Other");
-
-      // Constraints optimizados según el navegador
-      const audioConstraints: MediaTrackConstraints = {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      };
-
-      // Safari funciona mejor con configuración más simple
-      if (!isSafari()) {
-        audioConstraints.sampleRate = 48000;
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: audioConstraints,
-      });
-
-      // Verificar que el stream tiene tracks activos
-      const audioTracks = stream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        throw new Error("No se detectó ninguna pista de audio en el stream");
-      }
-
-      console.log("✓ Microphone access granted. Active tracks:", audioTracks.length);
-      console.log("📊 Track info:", {
-        label: audioTracks[0].label,
-        enabled: audioTracks[0].enabled,
-        muted: audioTracks[0].muted,
-        readyState: audioTracks[0].readyState
-      });
-
-      // Guardar referencia al stream para limpieza
-      audioStreamRef.current = stream;
-
-      // Obtener tipo MIME soportado
-      const mimeType = getSupportedMimeType();
-      const recorderOptions: MediaRecorderOptions = {};
-      if (mimeType) {
-        recorderOptions.mimeType = mimeType;
-      }
-
-      const recorder = new MediaRecorder(stream, recorderOptions);
-      const chunks: Blob[] = [];
-      const recordingStartTime = Date.now();
-
-      console.log("📹 Recorder initialized:", {
-        mimeType: mimeType || recorder.mimeType,
-        state: recorder.state
-      });
-
-      // Handler básico para errores del recorder
-      recorder.onerror = (event: Event) => {
-        console.error("❌ MediaRecorder error:", event);
-        toast.error("Error en la grabación. Por favor, intenta de nuevo.");
-        if (audioStreamRef.current) {
-          audioStreamRef.current.getTracks().forEach((track) => track.stop());
-          audioStreamRef.current = null;
-        }
-        setIsRecording(false);
-        setMediaRecorder(null);
-      };
-
-      // Handler para cuando hay datos disponibles
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          chunks.push(e.data);
-          console.log(`📦 Chunk received: ${e.data.size} bytes (total: ${chunks.length} chunks)`);
-        }
-      };
-
-      // Handler cuando se detiene la grabación
-      recorder.onstop = async () => {
-        const recordingDuration = Date.now() - recordingStartTime;
-        console.log("⏹ Recording stopped");
-        console.log(`⏱️ Recording duration: ${recordingDuration}ms`);
-        console.log(`📊 Total chunks: ${chunks.length}, Total size: ${chunks.reduce((acc, c) => acc + c.size, 0)} bytes`);
-
-        // Si no hay chunks, simplemente limpiar y salir sin error molesto
-        if (chunks.length === 0) {
-          console.warn("⚠️ No audio chunks captured - recording too short");
-          if (audioStreamRef.current) {
-            audioStreamRef.current.getTracks().forEach((track) => track.stop());
-            audioStreamRef.current = null;
-          }
-          setIsRecording(false);
-          setMediaRecorder(null);
-          return;
-        }
-
-        // Crear blob - usar tipo detectado
-        const finalMimeType = mimeType || recorder.mimeType || "audio/webm";
-        const blob = new Blob(chunks, { type: finalMimeType });
-        console.log(`🎵 Audio blob created: ${blob.size} bytes, type: ${blob.type}`);
-
-        // Procesar audio sin validaciones molestas - el webhook decidirá si es válido
-        try {
-          console.log("🔄 Processing audio...");
-          await processAudio(blob);
-        } catch (error) {
-          console.error("❌ Error processing audio:", error);
-          toast.error("Error procesando el audio");
-        } finally {
-          if (audioStreamRef.current) {
-            audioStreamRef.current.getTracks().forEach((track) => track.stop());
-            audioStreamRef.current = null;
-          }
-          setIsRecording(false);
-          setMediaRecorder(null);
-        }
-      };
-
-      // Iniciar grabación con intervalo más largo para mejor captura
-      recorder.start(250); // Capturar cada 250ms
-      console.log("▶ Recording started - click nuevamente para detener");
-
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-    } catch (error: any) {
-      console.error("❌ Error starting recording:", error);
-
-      // Limpiar cualquier stream activo
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach((track) => track.stop());
-        audioStreamRef.current = null;
-      }
-      if (error.stream) {
-        error.stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-      }
-
-      // Mensajes de error simplificados
-      let errorMessage = "No se pudo acceder al micrófono";
-
-      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        errorMessage = "Permiso denegado. Por favor, permite el acceso al micrófono en la configuración de tu navegador.";
-      } else if (error.name === "NotFoundError") {
-        errorMessage = "No se encontró ningún micrófono en tu dispositivo.";
-      } else if (error.name === "NotReadableError") {
-        errorMessage = "El micrófono está siendo usado por otra aplicación.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      toast.error(errorMessage);
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
-  };
-
-  const stopRecording = () => {
-    if (!mediaRecorder || !isRecording) {
-      console.warn("⚠️ Attempted to stop recording but no active recorder found");
-      return;
-    }
-
-    try {
-      console.log("🛑 Attempting to stop recording. Current state:", mediaRecorder.state);
-      
-      // Verificar el estado del recorder antes de detener
-      if (mediaRecorder.state === "recording") {
-        console.log("⏹️ Stopping active recording...");
-        mediaRecorder.stop();
-      } else if (mediaRecorder.state === "paused") {
-        // Si está pausado, reanudar y luego detener
-        console.log("▶️ Resuming and stopping paused recording...");
-        mediaRecorder.resume();
-        mediaRecorder.stop();
-      } else {
-        console.warn(`⚠️ Recorder is in ${mediaRecorder.state} state, cannot stop`);
-        setIsRecording(false);
-        setMediaRecorder(null);
-      }
-      // No establecer setIsRecording(false) aquí porque onstop se encargará de eso
-    } catch (error: any) {
-      console.error("❌ Error stopping recording:", error);
-      toast.error("Error al detener la grabación");
-      setIsRecording(false);
-      setMediaRecorder(null);
-      
-      // Limpiar stream si existe
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach((track) => track.stop());
-        audioStreamRef.current = null;
-      }
-    }
-  };
-
-  const processAudio = async (audioBlob: Blob) => {
-    if (!user || isLoading) return;
-
-    let conversationId = currentConversationId;
-    if (!conversationId) {
-      conversationId = await createNewConversation("Mensaje de audio");
-      if (!conversationId) {
-        toast.error("Error creando conversación");
-        return;
-      }
-      // Navegar a la nueva conversación
-      navigate(`/chat/${conversationId}`, { replace: true });
-      // Esperar a que se configure el realtime
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
-    setIsLoading(true);
-    toast.info("Procesando audio...");
-
-    try {
-      // Normalizar el tipo de audio
-      let audioFormat = audioBlob.type.split("/")[1]?.split(";")[0] || "webm";
-      
-      // Manejar formatos específicos de Safari
-      if (audioFormat === "x-m4a" || audioFormat === "m4a") {
-        audioFormat = "mp4";
-      }
-      
-      console.log(`🎵 Sending audio to webhook: ${audioBlob.size} bytes, format: ${audioFormat}, type: ${audioBlob.type}`);
-
-      // Crear FormData para enviar como multipart/form-data
-      const formData = new FormData();
-      const audioFile = new File([audioBlob], `audio-${Date.now()}.${audioFormat}`, {
-        type: audioBlob.type,
-      });
-      formData.append("file", audioFile);
-
-      console.log("📤 Sending audio to webhook...");
-
-      // Enviar directamente al webhook usando fetch
-      const response = await fetch(
-        "https://webhook.hubleconsulting.com/webhook/c9763ae5-02d6-46e8-ab9e-7300d98756a0",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Webhook error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log("Webhook response:", data);
-
-      // Extraer respuesta del webhook
-      const webhookResponse =
-        data?.respuesta ||
-        data?.response?.respuesta ||
-        data?.response?.mensaje ||
-        data?.response?.text ||
-        data?.response?.message ||
-        data?.response?.content;
-
-      if (webhookResponse) {
-        console.log("✅ Audio processed, sending to chat...");
-        
-        // Enviar la respuesta del webhook al chat
-        await handleSend(webhookResponse);
-      } else {
-        console.error("No response from webhook:", data);
-        toast.error("El webhook respondió pero sin contenido");
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error("❌ Error processing audio:", error);
-      toast.error(error instanceof Error ? error.message : "Error procesando el audio");
-      setIsLoading(false);
     }
   };
 
@@ -1155,10 +811,10 @@ const Chat = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={isRecording ? stopRecording : startRecording}
+                      onClick={toggleRecording}
                       disabled={isLoading}
-                      className={`h-7 w-7 rounded-lg hover:bg-accent/50 transition-all ${
-                        isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground scale-110 animate-pulse" : ""
+                      className={`h-7 w-7 rounded-full hover:bg-accent/50 transition-all ${
+                        isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground animate-pulse" : ""
                       }`}
                       title={isRecording ? "Detener grabación" : "Iniciar grabación de audio"}
                     >
@@ -1272,15 +928,15 @@ const Chat = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={isRecording ? stopRecording : startRecording}
-                      disabled={isLoading && !isRecording}
-                      className={`h-8 w-8 rounded-lg hover:bg-accent/50 ${
-                        isRecording ? "bg-destructive/10 text-destructive" : ""
+                      onClick={toggleRecording}
+                      disabled={isLoading}
+                      className={`h-8 w-8 rounded-full hover:bg-accent/50 transition-all ${
+                        isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground animate-pulse" : ""
                       }`}
                       title={isRecording ? "Detener grabación" : "Grabar audio"}
                     >
                       {isRecording ? (
-                        <MicOff className="h-4 w-4 animate-pulse" />
+                        <MicOff className="h-4 w-4" />
                       ) : (
                         <Mic className="h-4 w-4 text-muted-foreground" />
                       )}
