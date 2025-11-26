@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { User,  UserPlus, Eye, EyeOff, X, MessageSquare, Brain, Calendar } from "lucide-react";
+import { User,  UserPlus, Eye, X, MessageSquare, Brain, Calendar } from "lucide-react";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 
 interface Student {
@@ -34,10 +34,7 @@ const Tutor = () => {
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [newStudentEmail, setNewStudentEmail] = useState("");
-  const [newStudentName, setNewStudentName] = useState("");
-  const [newStudentPassword, setNewStudentPassword] = useState("");
   const [creating, setCreating] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -162,8 +159,8 @@ const Tutor = () => {
   };
 
   const handleCreateStudent = async () => {
-    if (!newStudentEmail || !newStudentPassword) {
-      toast.error("Email y contraseña son obligatorios");
+    if (!newStudentEmail) {
+      toast.error("Por favor ingresa un correo electrónico");
       return;
     }
 
@@ -175,35 +172,41 @@ const Tutor = () => {
     try {
       setCreating(true);
 
-      // Llamar a la edge function para crear el estudiante
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("No hay sesión activa");
+        return;
+      }
+
+      // Llamar a la edge function para invitar al estudiante
       const { data, error } = await supabase.functions.invoke("create-student", {
         body: {
           email: newStudentEmail.toLowerCase(),
-          password: newStudentPassword,
-          name: newStudentName || newStudentEmail.split("@")[0],
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
       if (error) {
-        console.error("Error creating student:", error);
-        toast.error(error.message || "Error al crear estudiante");
+        console.error("Error inviting student:", error);
+        toast.error(error.message || "Error al enviar invitación");
         return;
       }
 
       if (!data.success) {
-        toast.error(data.error || "Error al crear estudiante");
+        toast.error(data.error || "Error al enviar invitación");
         return;
       }
 
-      toast.success("Estudiante creado exitosamente");
+      toast.success("Invitación enviada al estudiante");
       setShowCreateDialog(false);
       setNewStudentEmail("");
-      setNewStudentName("");
-      setNewStudentPassword("");
       await loadStudents(user.id);
     } catch (error) {
-      console.error("Error creating student:", error);
-      toast.error("Error al crear estudiante");
+      console.error("Error inviting student:", error);
+      toast.error("Error al enviar invitación");
     } finally {
       setCreating(false);
     }
@@ -212,9 +215,6 @@ const Tutor = () => {
   const handleCloseCreateDialog = () => {
     setShowCreateDialog(false);
     setNewStudentEmail("");
-    setNewStudentName("");
-    setNewStudentPassword("");
-    setShowPassword(false);
   };
 
   const handleViewProfile = (studentId: string) => {
@@ -246,7 +246,7 @@ const Tutor = () => {
             {students.length < 2 && (
               <Button onClick={() => setShowCreateDialog(true)}>
                 <UserPlus className="mr-2 h-4 w-4" />
-                Crear Estudiante
+                Invitar Estudiante
               </Button>
             )}
           </div>
@@ -255,10 +255,10 @@ const Tutor = () => {
               <CardContent className="py-12 text-center">
                 <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">No tienes estudiantes</h3>
-                <p className="text-muted-foreground mb-4">Crea tu primer estudiante para comenzar</p>
+                <p className="text-muted-foreground mb-4">Invita a tu primer estudiante para comenzar</p>
                 <Button onClick={() => setShowCreateDialog(true)}>
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Crear Estudiante
+                  Invitar Estudiante
                 </Button>
               </CardContent>
             </Card>
@@ -347,50 +347,23 @@ const Tutor = () => {
             <span className="sr-only">Cerrar</span>
           </button>
           <DialogHeader>
-            <DialogTitle>Crear Nuevo Estudiante</DialogTitle>
-            <DialogDescription>Completa los datos para crear una cuenta de estudiante</DialogDescription>
+            <DialogTitle>Invitar Nuevo Estudiante</DialogTitle>
+            <DialogDescription>El estudiante recibirá un correo para crear su cuenta</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nombre (opcional)</Label>
-              <Input
-                id="name"
-                placeholder="Nombre del estudiante"
-                value={newStudentName}
-                onChange={(e) => setNewStudentName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="email@ejemplo.com"
+                placeholder="estudiante@ejemplo.com"
                 value={newStudentEmail}
                 onChange={(e) => setNewStudentEmail(e.target.value)}
                 required
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña *</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Mínimo 6 caracteres"
-                  value={newStudentPassword}
-                  onChange={(e) => setNewStudentPassword(e.target.value)}
-                  required
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Se enviará un correo de invitación para que el estudiante cree su cuenta.
+              </p>
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -398,7 +371,7 @@ const Tutor = () => {
               Cancelar
             </Button>
             <Button onClick={handleCreateStudent} disabled={creating}>
-              {creating ? "Creando..." : "Crear Estudiante"}
+              {creating ? "Enviando..." : "Enviar Invitación"}
             </Button>
           </div>
         </DialogContent>
