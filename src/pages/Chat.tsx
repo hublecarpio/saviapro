@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, UserCog, FileUp } from "lucide-react";
 
 import { MindMapDisplay } from "@/components/MindMapDisplay";
+import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -1197,6 +1198,16 @@ const Chat = () => {
             </div>
           </div>
         </div>
+
+        {/* Sidebar derecho con herramientas - Solo Desktop/Tablet */}
+        <ChatToolsSidebar
+          isLoading={isLoading}
+          hasMessages={messages.length > 0}
+          onGenerateVideo={() => handleGenerateResumen("video")}
+          onGeneratePodcast={() => handleGenerateResumen("podcast")}
+          onRequestMindMap={handleRequestMindMap}
+          onRequestInforme={handleRequestInforme}
+        />
       </div>
 
       {/* Modal de edición de perfil */}
