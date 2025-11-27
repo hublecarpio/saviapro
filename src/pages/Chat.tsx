@@ -191,9 +191,11 @@ const Chat = () => {
             
             // Detectar si es un mensaje de generación de mapa mental
             if (newMessage.role === "assistant" && 
-                (newMessage.message.includes("generando tu mapa mental") || 
-                 newMessage.message.includes("creando tu mapa mental"))) {
+                (newMessage.message.toLowerCase().includes("mapa mental") || 
+                 newMessage.message.includes("🧠"))) {
+              console.log("🎨 Mind map generation detected, showing progress bar");
               setIsGeneratingMindMap(true);
+              setIsLoading(false); // Desactivar el loading genérico
             }
             
             console.log("✅ Adding message to UI:", {
@@ -221,12 +223,18 @@ const Chat = () => {
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         (payload) => {
+          console.log("🗺️ New mind map received via realtime:", payload);
           const newMindMap = payload.new as MindMap;
           setMindMaps((prev) => {
-            if (prev.some((m) => m.id === newMindMap.id)) return prev;
+            if (prev.some((m) => m.id === newMindMap.id)) {
+              console.log("⚠️ Mind map already exists, ignoring");
+              return prev;
+            }
+            console.log("✅ Adding mind map to UI");
             return [...prev, newMindMap];
           });
           // Detener indicador de generación al recibir el mapa
+          console.log("🎉 Mind map generation complete, hiding progress bar");
           setIsGeneratingMindMap(false);
         },
       )
@@ -357,22 +365,36 @@ const Chat = () => {
         throw error;
       }
       
-      console.log("✅ Message sent, reloading messages...");
+      console.log("✅ Message sent, reloading messages and mind maps...");
       
-      // Recargar mensajes como fallback si realtime no funciona
+      // Recargar mensajes y mapas mentales como fallback si realtime no funciona
       setTimeout(async () => {
-        const { data } = await supabase
-          .from("messages")
-          .select("*")
-          .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: true });
+        const [messagesResult, mindMapsResult] = await Promise.all([
+          supabase
+            .from("messages")
+            .select("*")
+            .eq("conversation_id", conversationId)
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("mind_maps")
+            .select("*")
+            .eq("conversation_id", conversationId)
+            .order("created_at", { ascending: false })
+        ]);
         
-        if (data) {
-          console.log("📥 Manually reloaded", data.length, "messages");
-          setMessages(data as Message[]);
-          setIsLoading(false);
+        if (messagesResult.data) {
+          console.log("📥 Manually reloaded", messagesResult.data.length, "messages");
+          setMessages(messagesResult.data as Message[]);
         }
-      }, 2000);
+        
+        if (mindMapsResult.data) {
+          console.log("📥 Manually reloaded", mindMapsResult.data.length, "mind maps");
+          setMindMaps(mindMapsResult.data as MindMap[]);
+        }
+        
+        setIsLoading(false);
+        setIsGeneratingMindMap(false);
+      }, 3000);
       
     } catch (error) {
       console.error("❌ Error sending message:", error);
