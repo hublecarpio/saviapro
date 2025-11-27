@@ -4,18 +4,29 @@ import React, { useEffect, useState } from 'react';
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import z from "zod";
 import { useUserStore } from "@/store/useUserStore";
 import { toast } from 'sonner';
 import { useNavigate } from "react-router-dom";
 import { destroyUser } from "@/hooks/useLogout";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
 
   const navigate = useNavigate();
 
@@ -105,6 +116,51 @@ const handleSignIn = async (e: React.FormEvent) => {
     else navigate("/starter");
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!forgotPasswordEmail) {
+      toast.error("Por favor ingresa tu correo electrónico");
+      return;
+    }
+
+    // Validar email
+    try {
+      z.string().email().parse(forgotPasswordEmail);
+    } catch {
+      toast.error("Por favor ingresa un correo válido");
+      return;
+    }
+
+    setIsRecovering(true);
+
+    try {
+      // Llamar al API de recuperación de contraseña
+      const response = await fetch("https://webhook.hubleconsulting.com/webhook/apicorreo88a1a578-5653-457a-b408-ae3cbb06cff6", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: forgotPasswordEmail,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al enviar el correo");
+      }
+
+      toast.success("Se ha enviado un correo con las instrucciones para recuperar tu contraseña");
+      setIsForgotPasswordOpen(false);
+      setForgotPasswordEmail("");
+    } catch (error: any) {
+      console.error("Error en recuperación de contraseña:", error);
+      toast.error(error.message || "Error al enviar el correo de recuperación");
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+
   return (
     <>
       <form onSubmit={handleSignIn} className="space-y-4">
@@ -147,6 +203,54 @@ const handleSignIn = async (e: React.FormEvent) => {
           {loading ? "Iniciando..." : "Iniciar Sesión"}
         </Button>
       </form>
+
+      {/* Botón de olvidaste tu contraseña */}
+      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
+        <DialogTrigger asChild>
+          <Button 
+            variant="link" 
+            className="w-full mt-2 text-sm text-muted-foreground hover:text-primary"
+          >
+            ¿Olvidaste tu contraseña?
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Recuperar contraseña</DialogTitle>
+            <DialogDescription>
+              Ingresa tu correo electrónico y te enviaremos las instrucciones para recuperar tu contraseña.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Correo electrónico</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="tu@email.com"
+                value={forgotPasswordEmail}
+                onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                required
+                className="h-11"
+              />
+            </div>
+            <Button 
+              type="submit" 
+              className="w-full h-11" 
+              disabled={isRecovering}
+            >
+              {isRecovering ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                "Enviar correo de recuperación"
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
