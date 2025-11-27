@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 
 interface MindMap {
@@ -17,6 +17,24 @@ const MindMap = () => {
   const navigate = useNavigate();
   const [mindMaps, setMindMaps] = useState<MindMap[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleDownload = (mindMap: MindMap) => {
+    try {
+      const blob = new Blob([mindMap.html_content], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mapa-mental-${mindMap.tema.replace(/\s+/g, "-").toLowerCase()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Mapa mental descargado");
+    } catch (error) {
+      console.error("Error downloading mind map:", error);
+      toast.error("Error descargando mapa mental");
+    }
+  };
 
   useEffect(() => {
     const loadMindMaps = async () => {
@@ -85,11 +103,21 @@ const MindMap = () => {
               key={mindMap.id}
               className="bg-card rounded-xl border shadow-sm overflow-hidden"
             >
-              <div className="p-4 border-b bg-card/50">
-                <h2 className="font-semibold text-foreground">Tema: {mindMap.tema}</h2>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Creado: {new Date(mindMap.created_at).toLocaleString()}
-                </p>
+              <div className="p-4 border-b bg-card/50 flex items-start justify-between">
+                <div>
+                  <h2 className="font-semibold text-foreground">Tema: {mindMap.tema}</h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Creado: {new Date(mindMap.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <Button
+                  onClick={() => handleDownload(mindMap)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Descargar
+                </Button>
               </div>
               <div className="bg-white">
                 <iframe
