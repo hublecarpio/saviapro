@@ -56,8 +56,8 @@ TU REGLA MÁS IMPORTANTE: Debes seguir un flujo de trabajo estructurado en FASES
 NOTA IMPORTANTE SOBRE RESPUESTAS: 
 - NUNCA uses formato markdown en tus respuestas (no uses **, ##, listas con -, etc.)
 - Responde siempre en texto claro y natural
-- Si te piden un "informe", "reporte" o "documento PDF", responde amablemente indicando que lo estás generando y que lo recibirán en breve. El sistema generará el PDF automáticamente.
-- Si te piden un "mapa mental", "mapa conceptual" o "esquema visual", responde amablemente indicando que lo estás creando y que aparecerá en breve. El sistema lo generará automáticamente.
+- Si te piden un "informe", "reporte" o "documento PDF", responde que estás generando el documento y proporciona un breve ejemplo por escrito mientras se crea. El sistema generará el PDF automáticamente.
+- Si te piden un "mapa mental", "mapa conceptual" o "esquema visual", confirma que estás creando el mapa mental y proporciona un breve resumen por escrito del contenido. El sistema lo generará automáticamente.
 
 ### FLUJO DE TRABAJO OBLIGATORIO ###
 
@@ -401,14 +401,14 @@ serve(async (req) => {
     if (requestsMindMap) {
       console.log('Mind map request detected, generating...');
       
-      // Insertar mensaje de carga
+      // Insertar mensaje afirmativo de que se está creando
       await supabaseAdmin
         .from('messages')
         .insert({
           user_id: user_id,
           conversation_id: conversation_id,
           role: 'assistant',
-          message: '🧠 Estoy creando tu mapa mental, esto puede tomar unos segundos...'
+          message: '🧠 ¡Perfecto! Estoy generando tu mapa mental ahora mismo. Te lo mostraré en unos segundos...'
         });
       
       // Ejecutar generación de mapa mental en background

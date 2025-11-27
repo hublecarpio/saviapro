@@ -16,6 +16,7 @@ import { destroyUser } from "@/hooks/useLogout";
 import { NavBarUser } from "@/components/NavBarUser";
 import { useUserStore } from "@/store/useUserStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { MindMapProgressBar } from "@/components/MindMapProgressBar";
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -55,6 +56,7 @@ const Chat = () => {
   const [selectedMindMap, setSelectedMindMap] = useState<MindMap | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [transcribedText, setTranscribedText] = useState<string | null>(null);
+  const [isGeneratingMindMap, setIsGeneratingMindMap] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -187,6 +189,13 @@ const Chat = () => {
               return prev;
             }
             
+            // Detectar si es un mensaje de generación de mapa mental
+            if (newMessage.role === "assistant" && 
+                (newMessage.message.includes("generando tu mapa mental") || 
+                 newMessage.message.includes("creando tu mapa mental"))) {
+              setIsGeneratingMindMap(true);
+            }
+            
             console.log("✅ Adding message to UI:", {
               id: newMessage.id,
               role: newMessage.role,
@@ -217,6 +226,8 @@ const Chat = () => {
             if (prev.some((m) => m.id === newMindMap.id)) return prev;
             return [...prev, newMindMap];
           });
+          // Detener indicador de generación al recibir el mapa
+          setIsGeneratingMindMap(false);
         },
       )
       .subscribe((status) => {
@@ -838,6 +849,12 @@ const Chat = () => {
                       );
                     }
                   })}
+
+                  {/* Barra de progreso para mapa mental */}
+                  <MindMapProgressBar 
+                    isGenerating={isGeneratingMindMap} 
+                    onComplete={() => setIsGeneratingMindMap(false)}
+                  />
 
                   {isLoading && (
                     <div className="flex justify-start">
