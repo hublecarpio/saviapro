@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Brain, ExternalLink } from "lucide-react";
+import { Loader2, Brain, ExternalLink, Download } from "lucide-react";
+import { toast } from "sonner";
 
 interface MindMapDisplayProps {
   conversationId: string;
@@ -66,6 +67,24 @@ export const MindMapDisplay = ({ conversationId }: MindMapDisplayProps) => {
     navigate(`/mindmap/${conversationId}`);
   };
 
+  const handleDownload = (mindMap: MindMap) => {
+    try {
+      const blob = new Blob([mindMap.html_content], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mapa-mental-${mindMap.tema.replace(/\s+/g, "-").toLowerCase()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Mapa mental descargado");
+    } catch (error) {
+      console.error("Error downloading mind map:", error);
+      toast.error("Error descargando mapa mental");
+    }
+  };
+
   if (isLoading) {
     return null;
   }
@@ -123,15 +142,26 @@ export const MindMapDisplay = ({ conversationId }: MindMapDisplayProps) => {
                     <DialogHeader>
                       <DialogTitle className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                         <span className="text-sm md:text-base truncate">{selectedMindMap?.tema}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleOpenInNewPage}
-                          className="gap-2 w-full md:w-auto"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Abrir en página
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => selectedMindMap && handleDownload(selectedMindMap)}
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Descargar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleOpenInNewPage}
+                            className="gap-2"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Abrir en página
+                          </Button>
+                        </div>
                       </DialogTitle>
                     </DialogHeader>
                     {selectedMindMap && (
