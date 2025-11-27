@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Loader2, Brain, ExternalLink, Download } from "lucide-react";
 import { toast } from "sonner";
+import html2pdf from "html2pdf.js";
 
 interface MindMapDisplayProps {
   conversationId: string;
@@ -69,16 +70,36 @@ export const MindMapDisplay = ({ conversationId }: MindMapDisplayProps) => {
 
   const handleDownload = (mindMap: MindMap) => {
     try {
-      const blob = new Blob([mindMap.html_content], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mapa-mental-${mindMap.tema.replace(/\s+/g, "-").toLowerCase()}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Mapa mental descargado");
+      // Crear un contenedor temporal para el HTML
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = mindMap.html_content;
+      tempDiv.style.width = "800px";
+      tempDiv.style.padding = "20px";
+      document.body.appendChild(tempDiv);
+
+      // Configurar opciones de html2pdf
+      const opt = {
+        margin: 10,
+        filename: `mapa-mental-${mindMap.tema.replace(/\s+/g, "-").toLowerCase()}.pdf`,
+        image: { type: "jpeg" as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm" as const, format: "a4" as const, orientation: "landscape" as const }
+      };
+
+      // Generar PDF
+      html2pdf()
+        .from(tempDiv)
+        .set(opt)
+        .save()
+        .then(() => {
+          document.body.removeChild(tempDiv);
+          toast.success("Mapa mental descargado en PDF");
+        })
+        .catch((error: Error) => {
+          console.error("Error generating PDF:", error);
+          document.body.removeChild(tempDiv);
+          toast.error("Error generando PDF");
+        });
     } catch (error) {
       console.error("Error downloading mind map:", error);
       toast.error("Error descargando mapa mental");
