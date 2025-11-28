@@ -18,6 +18,7 @@ import { DashboardLayout } from "@/layout/DashboardLaout";
 import Prompt from "@/components/user/Prompt";
 import RegisterUser from "@/components/user/RegisterUser";
 import ListUser from "@/components/user/ListUser";
+import InviteRegister from "@/pages/InviteRegister";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Auth />} />
+          <Route path="/register/:token" element={<InviteRegister />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/chat"
