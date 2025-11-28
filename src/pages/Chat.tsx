@@ -470,15 +470,7 @@ const Chat = () => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      // Mostrar mensaje del usuario inmediatamente
-      const userMessage: Message = {
-        id: `temp-user-${Date.now()}`,
-        message: textToSend,
-        role: "user",
-        conversation_id: conversationId,
-        created_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
+      // El mensaje se mostrará cuando llegue por realtime desde la base de datos
 
       console.log("📤 Sending message to edge function...");
       const { error } = await supabase.functions.invoke("chat", {
