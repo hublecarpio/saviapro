@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Video, Podcast, Brain, FileText, BookOpen, Sparkles, X } from "lucide-react";
+import { Video, Podcast, Brain, FileText, BookOpen, Plus, X } from "lucide-react";
 
 interface MobileChatToolsFABProps {
   isLoading: boolean;
@@ -26,36 +26,11 @@ export const MobileChatToolsFAB = ({
   if (!hasMessages) return null;
 
   const tools = [
-    {
-      icon: Video,
-      label: "Video",
-      onClick: onGenerateVideo,
-      color: "from-purple-500 to-pink-500",
-    },
-    {
-      icon: Podcast,
-      label: "Podcast",
-      onClick: onGeneratePodcast,
-      color: "from-blue-500 to-cyan-500",
-    },
-    {
-      icon: Brain,
-      label: "Mapas",
-      onClick: onRequestMindMap,
-      color: "from-green-500 to-emerald-500",
-    },
-    {
-      icon: FileText,
-      label: "Informe",
-      onClick: onRequestInforme,
-      color: "from-orange-500 to-amber-500",
-    },
-    {
-      icon: BookOpen,
-      label: "Fichas",
-      onClick: onGenerateFichas,
-      color: "from-indigo-500 to-purple-500",
-    },
+    { icon: Video, label: "Video", onClick: onGenerateVideo },
+    { icon: Podcast, label: "Podcast", onClick: onGeneratePodcast },
+    { icon: Brain, label: "Mapas", onClick: onRequestMindMap },
+    { icon: FileText, label: "Informe", onClick: onRequestInforme },
+    { icon: BookOpen, label: "Fichas", onClick: onGenerateFichas },
   ];
 
   const handleToolClick = (onClick: () => void) => {
@@ -65,51 +40,51 @@ export const MobileChatToolsFAB = ({
 
   return (
     <>
-      {/* Backdrop oscuro cuando está expandido */}
+      {/* Backdrop cuando está expandido */}
       {isExpanded && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/10 z-40 md:hidden"
           onClick={() => setIsExpanded(false)}
         />
       )}
 
-      {/* Botones expandidos */}
-      <div className="fixed bottom-24 right-4 z-50 md:hidden flex flex-col-reverse gap-3">
+      {/* Container de botones */}
+      <div className="fixed bottom-20 right-3 z-50 md:hidden flex flex-col-reverse gap-2">
+        {/* Botones expandidos */}
         {isExpanded &&
           tools.map((tool, index) => {
             const Icon = tool.icon;
             return (
-              <div
+              <Button
                 key={tool.label}
-                className="animate-in slide-in-from-bottom-2 fade-in duration-200"
-                style={{ animationDelay: `${index * 50}ms` }}
+                onClick={() => handleToolClick(tool.onClick)}
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 rounded-full bg-background/95 backdrop-blur-sm border-border shadow-sm hover:bg-accent hover:scale-105 transition-all duration-200 animate-in slide-in-from-right-2 fade-in"
+                style={{ animationDelay: `${index * 40}ms` }}
               >
-                <Button
-                  onClick={() => handleToolClick(tool.onClick)}
-                  disabled={isLoading}
-                  className={`h-14 px-6 rounded-full bg-gradient-to-r ${tool.color} text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-3 group`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium">{tool.label}</span>
-                </Button>
-              </div>
+                <Icon className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="text-xs font-medium">{tool.label}</span>
+              </Button>
             );
           })}
 
-        {/* Botón principal flotante */}
+        {/* Botón principal */}
         <Button
           onClick={() => setIsExpanded(!isExpanded)}
           disabled={isLoading}
-          className={`h-16 w-16 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 ${
+          size="sm"
+          className={`h-11 w-11 rounded-full shadow-lg transition-all duration-300 ${
             isExpanded
-              ? "bg-destructive hover:bg-destructive/90 rotate-0"
-              : "bg-gradient-to-br from-primary via-secondary to-primary hover:from-primary/90 hover:via-secondary/90 hover:to-primary/90"
+              ? "bg-muted hover:bg-muted/90 rotate-45"
+              : "bg-primary hover:bg-primary/90"
           }`}
         >
           {isExpanded ? (
-            <X className="h-7 w-7 text-white" />
+            <X className="h-5 w-5" />
           ) : (
-            <Sparkles className="h-7 w-7 text-white animate-pulse" />
+            <Plus className="h-5 w-5" />
           )}
         </Button>
       </div>
