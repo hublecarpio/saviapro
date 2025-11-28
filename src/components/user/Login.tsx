@@ -135,14 +135,14 @@ const handleSignIn = async (e: React.FormEvent) => {
     setIsRecovering(true);
 
     try {
-      // Usar el sistema de recuperación de contraseña de Supabase
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-        redirectTo: `${window.location.origin}/auth?reset=true`,
+      // Llamar a la edge function que genera el link y lo envía al webhook
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: forgotPasswordEmail }
       });
 
       if (error) throw error;
 
-      toast.success("Se ha enviado un correo con el link para restablecer tu contraseña. Por favor revisa tu bandeja de entrada.");
+      toast.success(data.message || "Se ha enviado un correo con el link para restablecer tu contraseña");
       setIsForgotPasswordOpen(false);
       setForgotPasswordEmail("");
     } catch (error: any) {
