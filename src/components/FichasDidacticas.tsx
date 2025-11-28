@@ -158,17 +158,17 @@ export const FichasDidacticas = ({ conversationId, fichasSetId, onClose }: Ficha
 
               {/* Reverso - Respuesta */}
               <div
-                className="absolute inset-0 backface-hidden bg-gradient-to-br from-secondary/10 to-secondary/5 border-2 border-secondary/20 rounded-2xl p-8 flex flex-col items-center justify-center"
+                className="absolute inset-0 backface-hidden bg-gradient-to-br from-secondary/10 to-secondary/5 border-2 border-secondary/20 rounded-2xl p-6 flex flex-col items-center justify-center overflow-y-auto"
                 style={{
                   backfaceVisibility: "hidden",
                   transform: "rotateY(180deg)",
                 }}
               >
-                <div className="text-sm text-secondary font-semibold mb-4">Respuesta</div>
-                <p className="text-lg text-center text-foreground leading-relaxed">
+                <div className="text-sm text-secondary font-semibold mb-3">Respuesta</div>
+                <p className="text-sm text-center text-foreground leading-relaxed max-h-64 overflow-y-auto px-2">
                   {currentFicha.respuesta}
                 </p>
-                <div className="mt-6 text-sm text-muted-foreground">
+                <div className="mt-4 text-xs text-muted-foreground">
                   Haz clic para ver la pregunta
                 </div>
               </div>
