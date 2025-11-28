@@ -82,6 +82,7 @@ export type Database = {
           created_by: string | null
           email: string
           id: string
+          token: string | null
           used: boolean | null
           used_at: string | null
         }
@@ -90,6 +91,7 @@ export type Database = {
           created_by?: string | null
           email: string
           id?: string
+          token?: string | null
           used?: boolean | null
           used_at?: string | null
         }
@@ -98,6 +100,7 @@ export type Database = {
           created_by?: string | null
           email?: string
           id?: string
+          token?: string | null
           used?: boolean | null
           used_at?: string | null
         }

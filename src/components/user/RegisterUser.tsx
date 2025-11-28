@@ -81,12 +81,15 @@ const RegisterUser = () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
 
-            const { error } = await supabase
+            // Insertar invitación y obtener el token generado
+            const { data: inviteData, error } = await supabase
                 .from("invited_users")
                 .insert({
                     email: newUserEmail.toLowerCase(),
                     created_by: user?.id
-                });
+                })
+                .select("token")
+                .single();
 
             if (error) {
                 if (error.code === "23505") {
@@ -99,6 +102,26 @@ const RegisterUser = () => {
                     throw error;
                 }
                 return;
+            }
+
+            // Construir URL de registro con el token
+            const registerUrl = `${window.location.origin}/register/${inviteData.token}`;
+
+            // Llamar a la webhook con el email y la URL de registro
+            try {
+                await fetch("https://webhook.hubleconsulting.com/webhook/970fcfa4-6000-4858-bb42-14a592CREA", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email: newUserEmail.toLowerCase(),
+                        register_url: registerUrl,
+                    }),
+                });
+            } catch (webhookError) {
+                console.error("Error calling webhook:", webhookError);
+                // No detenemos el proceso si falla el webhook
             }
 
             toast({
