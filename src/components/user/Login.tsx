@@ -135,22 +135,14 @@ const handleSignIn = async (e: React.FormEvent) => {
     setIsRecovering(true);
 
     try {
-      // Llamar al API de recuperación de contraseña
-      const response = await fetch("https://webhook.hubleconsulting.com/webhook/apicorreo88a1a578-5653-457a-b408-ae3cbb06cff6", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: forgotPasswordEmail,
-        }),
+      // Usar el sistema de recuperación de contraseña de Supabase
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
       });
 
-      if (!response.ok) {
-        throw new Error("Error al enviar el correo");
-      }
+      if (error) throw error;
 
-      toast.success("Se ha enviado un correo con las instrucciones para recuperar tu contraseña");
+      toast.success("Se ha enviado un correo con el link para restablecer tu contraseña. Por favor revisa tu bandeja de entrada.");
       setIsForgotPasswordOpen(false);
       setForgotPasswordEmail("");
     } catch (error: any) {
