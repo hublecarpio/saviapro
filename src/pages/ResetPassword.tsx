@@ -21,14 +21,31 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    // Verificar si hay un token de recuperación en la URL
-    const accessToken = searchParams.get('access_token');
+    // Obtener el token de la URL
+    const token = searchParams.get('token');
     const type = searchParams.get('type');
 
-    if (!accessToken || type !== 'recovery') {
+    if (!token || type !== 'recovery') {
       toast.error("Link de recuperación inválido o expirado");
       navigate("/");
+      return;
     }
+
+    // Verificar el token con Supabase
+    const verifyToken = async () => {
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'recovery'
+      });
+
+      if (error) {
+        console.error('Error verificando token:', error);
+        toast.error("Link de recuperación inválido o expirado");
+        navigate("/");
+      }
+    };
+
+    verifyToken();
   }, [searchParams, navigate]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
