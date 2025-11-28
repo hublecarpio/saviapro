@@ -12,6 +12,7 @@ import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
+import { FichasDidacticas } from "@/components/FichasDidacticas";
 import { destroyUser } from "@/hooks/useLogout";
 import { NavBarUser } from "@/components/NavBarUser";
 import { useUserStore } from "@/store/useUserStore";
@@ -52,6 +53,7 @@ const Chat = () => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showFichas, setShowFichas] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [selectedMindMap, setSelectedMindMap] = useState<MindMap | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -657,6 +659,18 @@ const Chat = () => {
     handleSend("Por favor, genera un informe completo de nuestra conversación");
   };
 
+  const handleGenerateFichas = () => {
+    if (!currentConversationId || messages.length === 0) {
+      toast.error("No hay conversación para generar fichas didácticas");
+      return;
+    }
+    if (isLoading) {
+      toast.error("Por favor espera a que termine la operación actual");
+      return;
+    }
+    setShowFichas(true);
+  };
+
   console.log(user);
   if (!user || !user.id) {
     return (
@@ -1068,11 +1082,17 @@ const Chat = () => {
           onGeneratePodcast={() => handleGenerateResumen("podcast")}
           onRequestMindMap={handleRequestMindMap}
           onRequestInforme={handleRequestInforme}
+          onGenerateFichas={handleGenerateFichas}
         />
       </div>
 
       {/* Modal de edición de perfil */}
       {user && <StarterProfileEditor userId={user.id} open={showProfileEditor} onOpenChange={setShowProfileEditor} />}
+
+      {/* Fichas Didácticas */}
+      {showFichas && currentConversationId && (
+        <FichasDidacticas conversationId={currentConversationId} onClose={() => setShowFichas(false)} />
+      )}
 
       {/* Modal de mapa mental completo */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
