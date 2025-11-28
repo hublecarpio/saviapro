@@ -61,10 +61,7 @@ serve(async (req) => {
     // Generar link de recuperación de contraseña
     const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
-      email: email,
-      options: {
-        redirectTo: `https://app.biexedu.com/reset-password`
-      }
+      email: email
     });
 
     if (resetError) {
@@ -74,10 +71,14 @@ serve(async (req) => {
 
     console.log('Link de recuperación generado:', resetData);
 
+    // Construir el link personalizado con el dominio correcto
+    const token = resetData.properties?.hashed_token;
+    const resetLink = `https://app.biexedu.com/reset-password?token=${token}&type=recovery`;
+
     // Enviar el link al webhook del cliente
     const webhookPayload = {
       email: email,
-      reset_link: resetData.properties?.action_link || '',
+      reset_link: resetLink,
       type: 'password_reset'
     };
 
