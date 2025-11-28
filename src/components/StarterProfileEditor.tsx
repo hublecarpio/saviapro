@@ -43,15 +43,26 @@ const coerceToArray = (value: any): string[] => {
 };
 
 const normalizeProfileData = (raw: ProfileData, ageGroup: AgeGroup): ProfileData => {
-  if (!ageGroup || !starterSchema[ageGroup]) return raw;
+  if (!ageGroup || !starterSchema[ageGroup]) {
+    console.log("⚠️ No hay grupo de edad o schema, retornando datos raw");
+    return raw;
+  }
+  
   const normalized: ProfileData = { ...raw };
 
   for (const q of starterSchema[ageGroup]) {
+    // Para preguntas de tipo multiple o ranking, asegurar que sean arrays
     if (q.type === "multiple" || q.type === "ranking") {
-      normalized[q.id] = coerceToArray(raw[q.id]);
+      const currentValue = raw[q.id];
+      normalized[q.id] = coerceToArray(currentValue);
+    }
+    // Para otros tipos, mantener el valor tal cual o vacío si no existe
+    else if (!(q.id in normalized)) {
+      normalized[q.id] = "";
     }
   }
 
+  console.log("🔄 Datos normalizados:", normalized);
   return normalized;
 };
 
@@ -77,28 +88,46 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
       if (error) throw error;
 
       if (data) {
+        console.log("📊 Datos cargados de starter_profiles:", data);
+        
+        // Extraer profile_data (contiene todas las respuestas del usuario)
         const rawProfile = (data.profile_data || {}) as ProfileData;
+        console.log("📝 Profile data raw:", rawProfile);
 
-        const ageFromRow: number | undefined = data.age ?? rawProfile.age ?? undefined;
+        // Priorizar la edad de la columna age, luego de profile_data
+        const ageFromData = data.age ?? rawProfile.age ?? null;
+        const parsedAge = typeof ageFromData === 'string' ? parseInt(ageFromData, 10) : ageFromData;
+        const cleanAge = (typeof parsedAge === 'number' && !isNaN(parsedAge)) ? parsedAge : null;
+        
+        console.log("👤 Edad detectada:", cleanAge);
 
-        const inferredGroup: AgeGroup = (data.age_group as AgeGroup) || inferAgeGroupFromAge(ageFromRow);
+        // Inferir grupo de edad
+        const inferredGroup: AgeGroup = (data.age_group as AgeGroup) || inferAgeGroupFromAge(cleanAge);
+        console.log("🎯 Grupo de edad:", inferredGroup);
 
+        // Normalizar datos según el grupo de edad
         const normalized = normalizeProfileData(rawProfile, inferredGroup);
 
-        setProfileData({
+        // Combinar todos los datos con la edad
+        const finalData = {
           ...normalized,
-          age: ageFromRow ?? normalized.age ?? "",
-        });
+          age: cleanAge ?? "",
+        };
+
+        console.log("✅ Datos finales a mostrar:", finalData);
+
+        setProfileData(finalData);
         setAgeGroup(inferredGroup);
       } else {
-        // Perfil vacío por defecto
+        // No hay perfil guardado, crear uno nuevo
+        console.log("ℹ️ No se encontró perfil, creando nuevo");
         setProfileData({
           age: "",
         });
         setAgeGroup("");
       }
     } catch (error) {
-      console.error("Error loading profile:", error);
+      console.error("❌ Error loading profile:", error);
       toast({
         title: "Error",
         description: "No se pudo cargar tu perfil",
@@ -115,15 +144,23 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
     try {
       setSaving(true);
 
-      const ageValue = typeof profileData.age === "number" ? profileData.age : parseInt(profileData.age, 10);
+      console.log("💾 Guardando perfil...", profileData);
 
+      // Parsear edad
+      const ageValue = typeof profileData.age === "number" ? profileData.age : parseInt(profileData.age, 10);
       const cleanAge = Number.isNaN(ageValue) ? null : ageValue;
 
-      // Normalizamos por última vez antes de guardar
+      console.log("👤 Edad a guardar:", cleanAge);
+
+      // Determinar grupo de edad
       const finalAgeGroup: AgeGroup = ageGroup || inferAgeGroupFromAge(cleanAge || undefined);
+      console.log("🎯 Grupo de edad a guardar:", finalAgeGroup);
 
+      // Normalizar datos finales (asegurar arrays para multiple/ranking)
       const finalProfileData = normalizeProfileData(profileData, finalAgeGroup);
+      console.log("📝 Datos finales a guardar:", finalProfileData);
 
+      // Upsert en la tabla starter_profiles
       const { error } = await supabase.from("starter_profiles").upsert(
         {
           user_id: userId,
@@ -139,6 +176,8 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
 
       if (error) throw error;
 
+      console.log("✅ Perfil guardado exitosamente");
+
       toast({
         title: "¡Guardado! ✨",
         description: "Tu perfil ha sido actualizado exitosamente",
@@ -146,10 +185,10 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
 
       onOpenChange(false);
     } catch (error) {
-      console.error("Error saving profile:", error);
+      console.error("❌ Error saving profile:", error);
       toast({
         title: "Error",
-        description: "No se pudo guardar tu perfil",
+        description: "No se pudo guardar tu perfil. Por favor intenta de nuevo.",
         variant: "destructive",
       });
     } finally {
@@ -414,10 +453,29 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
                 group: "basic",
               } as StarterQuestion)}
 
-              {!ageGroup && (
-                <p className="text-xs text-muted-foreground">
-                  Completa tu edad para ver las demás preguntas de tu grupo.
-                </p>
+              {!ageGroup && profileData.age && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    ⚠️ La edad ingresada ({profileData.age}) no está en el rango soportado (7-17 años). 
+                    Por favor, ajusta la edad para ver las demás preguntas.
+                  </p>
+                </div>
+              )}
+
+              {!ageGroup && !profileData.age && (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-400">
+                    💡 Ingresa tu edad (entre 7 y 17 años) para ver las preguntas personalizadas de tu perfil.
+                  </p>
+                </div>
+              )}
+
+              {ageGroup && basicQuestions.length === 0 && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    No hay preguntas adicionales en esta sección.
+                  </p>
+                </div>
               )}
 
               {ageGroup && basicQuestions.map((q) => renderQuestion(q))}
@@ -425,16 +483,36 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
 
             <TabsContent value="learning" className="space-y-4 mt-4  px-2 md:px-4">
               {!ageGroup && (
-                <p className="text-sm text-muted-foreground">
-                  Primero indica tu edad en la pestaña Básico para configurar tu perfil.
-                </p>
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-400">
+                    💡 Primero indica tu edad en la pestaña <strong>Básico</strong> para configurar tu perfil de aprendizaje.
+                  </p>
+                </div>
+              )}
+              {ageGroup && learningQuestions.length === 0 && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    No hay preguntas de aprendizaje para tu grupo de edad.
+                  </p>
+                </div>
               )}
               {ageGroup && learningQuestions.map((q) => renderQuestion(q))}
             </TabsContent>
 
             <TabsContent value="interests" className="space-y-4 mt-4  px-2 md:px-4">
               {!ageGroup && (
-                <p className="text-sm text-muted-foreground">Primero indica tu edad en la pestaña Básico.</p>
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-400">
+                    💡 Primero indica tu edad en la pestaña <strong>Básico</strong> para ver tus intereses.
+                  </p>
+                </div>
+              )}
+              {ageGroup && interestsQuestions.length === 0 && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    No hay preguntas de intereses para tu grupo de edad.
+                  </p>
+                </div>
               )}
               {ageGroup && interestsQuestions.map((q) => renderQuestion(q))}
             </TabsContent>
