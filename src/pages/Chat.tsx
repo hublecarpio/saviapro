@@ -843,6 +843,16 @@ const Chat = () => {
 
       if (data?.success) {
         toast.success("¡Fichas generadas exitosamente!");
+        
+        // Abrir las fichas automáticamente después de generarlas
+        // Esperar un poco para que las fichas se carguen por realtime
+        setTimeout(() => {
+          if (fichasSets.length > 0) {
+            const latestFichas = fichasSets[fichasSets.length - 1];
+            setSelectedFichasId(latestFichas.id);
+            setShowFichas(true);
+          }
+        }, 1000);
       }
     } catch (error) {
       console.error("Error generando fichas:", error);
@@ -1083,18 +1093,15 @@ const Chat = () => {
                               </div>
                             </div>
 
-                            {/* Preview de las primeras 2 fichas */}
+                            {/* Preview de las primeras 2 preguntas (sin respuestas) */}
                             <div className="p-4 space-y-3">
                               {fichasSet.fichas.slice(0, 2).map((ficha) => (
                                 <div key={ficha.orden} className="bg-background/50 rounded-lg p-3 border border-border/50">
                                   <p className="text-xs font-semibold text-primary mb-1">
                                     Ficha {ficha.orden}
                                   </p>
-                                  <p className="text-sm font-medium mb-2">
+                                  <p className="text-sm font-medium">
                                     {ficha.pregunta}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {ficha.respuesta.substring(0, 80)}...
                                   </p>
                                 </div>
                               ))}
