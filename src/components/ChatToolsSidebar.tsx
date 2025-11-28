@@ -1,4 +1,4 @@
-import { Video, Podcast, Brain, FileText } from "lucide-react";
+import { Video, Podcast, Brain, FileText, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ChatToolsSidebarProps {
@@ -8,6 +8,7 @@ interface ChatToolsSidebarProps {
   onGeneratePodcast: () => void;
   onRequestMindMap: () => void;
   onRequestInforme: () => void;
+  onGenerateFichas: () => void;
 }
 
 export const ChatToolsSidebar = ({
@@ -17,6 +18,7 @@ export const ChatToolsSidebar = ({
   onGeneratePodcast,
   onRequestMindMap,
   onRequestInforme,
+  onGenerateFichas,
 }: ChatToolsSidebarProps) => {
   return (
     <aside className="hidden md:flex fixed right-0 top-[64px] h-[calc(100vh-64px)] w-20 border-l bg-card/30 backdrop-blur-sm flex-col gap-3 py-6 items-center shrink-0 z-20 overflow-y-auto">
@@ -68,6 +70,18 @@ export const ChatToolsSidebar = ({
           >
             <FileText className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
             <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Informe</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onGenerateFichas}
+            disabled={isLoading}
+            className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
+            title="Generar fichas didácticas"
+          >
+            <BookOpen className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Fichas</span>
           </Button>
         </>
       )}

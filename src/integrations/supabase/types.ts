@@ -46,6 +46,36 @@ export type Database = {
           },
         ]
       }
+      fichas_didacticas: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          orden: number
+          pregunta: string
+          respuesta: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          orden: number
+          pregunta: string
+          respuesta: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          orden?: number
+          pregunta?: string
+          respuesta?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invited_users: {
         Row: {
           created_at: string | null
