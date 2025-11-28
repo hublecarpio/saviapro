@@ -11,6 +11,7 @@ import Tutor from "../pages/Tutor";
 import TutorDashboard from "../pages/TutorDashboard";
 import NotFound from "../pages/NotFound";
 import MindMap from "../pages/MindMap";
+import ResetPassword from "../pages/ResetPassword";
 import { ProtectedRoute } from "./ProtetectedRoute";
 import AdminBeta from "@/pages/AdminBeta";
 import { DashboardLayout } from "@/layout/DashboardLaout";
@@ -28,6 +29,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/chat"
             element={

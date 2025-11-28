@@ -63,7 +63,7 @@ serve(async (req) => {
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`
+        redirectTo: `https://app.biexedu.com/reset-password`
       }
     });
 
