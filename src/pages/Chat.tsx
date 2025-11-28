@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, UserCog, FileUp, ExternalLink } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, BookOpen, UserCog, FileUp, ExternalLink } from "lucide-react";
 
 import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
+import { MobileChatToolsFAB } from "@/components/MobileChatToolsFAB";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -950,9 +951,9 @@ const Chat = () => {
 
                   <span className="flex-1" />
 
-                  {/* Botones derecha: Video, Podcast, Mapa Mental, Informe (solo si hay mensajes) */}
+                  {/* Botones de herramientas - Solo desktop (móvil usa FAB flotante) */}
                   {messages.length > 0 && (
-                    <div className="flex items-center gap-1">
+                    <div className="hidden md:flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -995,6 +996,17 @@ const Chat = () => {
                         title="Solicitar informe"
                       >
                         <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleGenerateFichas}
+                        disabled={isLoading}
+                        className="h-7 w-7 rounded-lg hover:bg-accent/50"
+                        title="Generar fichas"
+                      >
+                        <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     </div>
                   )}
@@ -1076,6 +1088,17 @@ const Chat = () => {
 
         {/* Sidebar derecho con herramientas - Solo Desktop/Tablet */}
         <ChatToolsSidebar
+          isLoading={isLoading}
+          hasMessages={messages.length > 0}
+          onGenerateVideo={() => handleGenerateResumen("video")}
+          onGeneratePodcast={() => handleGenerateResumen("podcast")}
+          onRequestMindMap={handleRequestMindMap}
+          onRequestInforme={handleRequestInforme}
+          onGenerateFichas={handleGenerateFichas}
+        />
+
+        {/* Botón flotante para móvil */}
+        <MobileChatToolsFAB
           isLoading={isLoading}
           hasMessages={messages.length > 0}
           onGenerateVideo={() => handleGenerateResumen("video")}
