@@ -12,101 +12,67 @@ interface Ficha {
 
 interface FichasDidacticasProps {
   conversationId: string;
+  fichasSetId: string;
   onClose: () => void;
 }
 
-export const FichasDidacticas = ({ conversationId, onClose }: FichasDidacticasProps) => {
+export const FichasDidacticas = ({ conversationId, fichasSetId, onClose }: FichasDidacticasProps) => {
   const [fichas, setFichas] = useState<Ficha[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     loadFichas();
-  }, [conversationId]);
+  }, [conversationId, fichasSetId]);
 
   const loadFichas = async () => {
     try {
       setLoading(true);
       
-      // Intentar cargar fichas existentes
+      // Cargar TODAS las fichas de la conversación y buscar el set específico
       const { data, error } = await supabase
         .from("fichas_didacticas")
         .select("*")
         .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true })
         .order("orden", { ascending: true });
 
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setFichas(data as Ficha[]);
+        // Agrupar fichas por timestamp (normalizado a minuto)
+        const grouped = new Map<string, typeof data>();
+        data.forEach(ficha => {
+          const timestamp = new Date(ficha.created_at);
+          timestamp.setSeconds(0, 0);
+          const key = timestamp.toISOString();
+          if (!grouped.has(key)) {
+            grouped.set(key, []);
+          }
+          grouped.get(key)!.push(ficha);
+        });
+
+        // Buscar el set que contiene la ficha con fichasSetId
+        for (const [, fichasGroup] of grouped.entries()) {
+          if (fichasGroup.some(f => f.id === fichasSetId)) {
+            setFichas(fichasGroup as Ficha[]);
+            return;
+          }
+        }
+
+        toast.error("No se encontraron fichas para este set");
+        onClose();
       } else {
-        // No hay fichas, generarlas
-        await generateFichas();
+        toast.error("No se encontraron fichas");
+        onClose();
       }
     } catch (error) {
       console.error("Error cargando fichas:", error);
       toast.error("Error al cargar las fichas");
+      onClose();
     } finally {
       setLoading(false);
-    }
-  };
-
-  const generateFichas = async () => {
-    try {
-      setGenerating(true);
-      
-      // Obtener mensajes de la conversación
-      const { data: messages, error: messagesError } = await supabase
-        .from("messages")
-        .select("message, role")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
-
-      if (messagesError) throw messagesError;
-
-      if (!messages || messages.length === 0) {
-        toast.error("No hay contenido en esta conversación para generar fichas");
-        onClose();
-        return;
-      }
-
-      // Construir el contenido del chat
-      const contenidoChat = messages
-        .map((m) => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.message}`)
-        .join("\n\n");
-
-      // Llamar al edge function
-      const { data, error } = await supabase.functions.invoke("generar-fichas", {
-        body: {
-          conversation_id: conversationId,
-          contenido_chat: contenidoChat,
-        },
-      });
-
-      if (error) {
-        console.error("Error generando fichas:", error);
-        
-        if (error.message.includes("429")) {
-          toast.error("Límite de peticiones excedido. Intenta de nuevo en unos momentos.");
-        } else if (error.message.includes("402")) {
-          toast.error("Se requiere agregar créditos a tu cuenta de Lovable AI.");
-        } else {
-          toast.error("Error al generar las fichas");
-        }
-        return;
-      }
-
-      if (data?.success && data.fichas) {
-        setFichas(data.fichas);
-        toast.success("¡Fichas generadas exitosamente!");
-      }
-    } catch (error) {
-      console.error("Error generando fichas:", error);
-      toast.error("Error al generar las fichas");
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -128,18 +94,13 @@ export const FichasDidacticas = ({ conversationId, onClose }: FichasDidacticasPr
     setIsFlipped(!isFlipped);
   };
 
-  if (loading || generating) {
+  if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div className="bg-background border border-border rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg font-medium">
-              {loading ? "Cargando fichas..." : "Generando fichas didácticas..."}
-            </p>
-            <p className="text-sm text-muted-foreground text-center">
-              {generating && "Esto puede tomar unos segundos"}
-            </p>
+            <p className="text-lg font-medium">Cargando fichas...</p>
           </div>
         </div>
       </div>

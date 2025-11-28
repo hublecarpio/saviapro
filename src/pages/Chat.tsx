@@ -36,9 +36,22 @@ interface MindMap {
   user_id: string;
 }
 
+interface FichasSet {
+  id: string;
+  created_at: string;
+  conversation_id: string;
+  user_id: string;
+  fichas: Array<{
+    pregunta: string;
+    respuesta: string;
+    orden: number;
+  }>;
+}
+
 type ChatItem = 
   | { type: 'message'; data: Message }
-  | { type: 'mindmap'; data: MindMap };
+  | { type: 'mindmap'; data: MindMap }
+  | { type: 'fichas'; data: FichasSet };
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -48,6 +61,7 @@ const Chat = () => {
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [mindMaps, setMindMaps] = useState<MindMap[]>([]);
+  const [fichasSets, setFichasSets] = useState<FichasSet[]>([]);
   const [chatItems, setChatItems] = useState<ChatItem[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +69,7 @@ const Chat = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showFichas, setShowFichas] = useState(false);
+  const [selectedFichasId, setSelectedFichasId] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [selectedMindMap, setSelectedMindMap] = useState<MindMap | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -87,9 +102,9 @@ const Chat = () => {
   };
   useEffect(() => {
     scrollToBottom();
-  }, [messages, mindMaps]);
+  }, [messages, mindMaps, fichasSets]);
 
-  // Combinar mensajes y mapas mentales en un solo array ordenado
+  // Combinar mensajes, mapas mentales y fichas en un solo array ordenado
   useEffect(() => {
     const messageItems: ChatItem[] = messages.map(msg => ({
       type: 'message' as const,
@@ -101,14 +116,19 @@ const Chat = () => {
       data: map
     }));
 
-    const combined = [...messageItems, ...mindMapItems].sort((a, b) => {
+    const fichasItems: ChatItem[] = fichasSets.map(fichasSet => ({
+      type: 'fichas' as const,
+      data: fichasSet
+    }));
+
+    const combined = [...messageItems, ...mindMapItems, ...fichasItems].sort((a, b) => {
       const dateA = new Date(a.data.created_at).getTime();
       const dateB = new Date(b.data.created_at).getTime();
       return dateA - dateB;
     });
 
     setChatItems(combined);
-  }, [messages, mindMaps]);
+  }, [messages, mindMaps, fichasSets]);
 
   // Verificar autenticación una sola vez al montar
   useEffect(() => {
@@ -128,6 +148,7 @@ const Chat = () => {
     if (!currentConversationId) {
       setMessages([]);
       setMindMaps([]);
+      setFichasSets([]);
       return;
     }
 
@@ -164,8 +185,50 @@ const Chat = () => {
       setMindMaps((data || []) as MindMap[]);
     };
 
+    // Cargar fichas existentes agrupadas por created_at
+    const loadInitialFichas = async () => {
+      const { data, error } = await supabase
+        .from("fichas_didacticas")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error loading fichas:", error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        // Agrupar fichas por created_at (asumiendo que las 7 fichas se crean juntas)
+        const grouped = new Map<string, typeof data>();
+        data.forEach(ficha => {
+          const key = new Date(ficha.created_at).toISOString();
+          if (!grouped.has(key)) {
+            grouped.set(key, []);
+          }
+          grouped.get(key)!.push(ficha);
+        });
+
+        // Convertir a FichasSet[]
+        const fichasSetsData: FichasSet[] = Array.from(grouped.entries()).map(([timestamp, fichas]) => ({
+          id: fichas[0].id, // Usar el ID de la primera ficha como ID del set
+          created_at: timestamp,
+          conversation_id: currentConversationId,
+          user_id: fichas[0].user_id,
+          fichas: fichas.map(f => ({
+            pregunta: f.pregunta,
+            respuesta: f.respuesta,
+            orden: f.orden,
+          })).sort((a, b) => a.orden - b.orden),
+        }));
+
+        setFichasSets(fichasSetsData);
+      }
+    };
+
     loadInitialMessages();
     loadInitialMindMaps();
+    loadInitialFichas();
 
     // Suscribirse a nuevos mensajes
     const channelName = `chat-${currentConversationId}`;
@@ -239,6 +302,68 @@ const Chat = () => {
           // Detener indicador de generación al recibir el mapa
           console.log("🎉 Mind map generation complete, hiding progress bar");
           setIsGeneratingMindMap(false);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "fichas_didacticas",
+          filter: `conversation_id=eq.${currentConversationId}`,
+        },
+        (payload) => {
+          console.log("📚 New ficha received via realtime:", payload);
+          const newFicha = payload.new as any;
+          
+          // Verificar si ya existe un set con este timestamp (agrupar por minuto)
+          const fichaTimestamp = new Date(newFicha.created_at);
+          fichaTimestamp.setSeconds(0, 0); // Normalizar a minuto
+          const key = fichaTimestamp.toISOString();
+          
+          setFichasSets((prev) => {
+            // Buscar si ya existe un set con este timestamp
+            const existingSetIndex = prev.findIndex(set => {
+              const setTime = new Date(set.created_at);
+              setTime.setSeconds(0, 0);
+              return setTime.toISOString() === key;
+            });
+
+            if (existingSetIndex >= 0) {
+              // Agregar ficha al set existente
+              const updatedSets = [...prev];
+              const existingSet = updatedSets[existingSetIndex];
+              
+              // Verificar si la ficha ya existe en el set
+              if (existingSet.fichas.some(f => f.orden === newFicha.orden)) {
+                return prev;
+              }
+              
+              updatedSets[existingSetIndex] = {
+                ...existingSet,
+                fichas: [...existingSet.fichas, {
+                  pregunta: newFicha.pregunta,
+                  respuesta: newFicha.respuesta,
+                  orden: newFicha.orden,
+                }].sort((a, b) => a.orden - b.orden),
+              };
+              
+              return updatedSets;
+            } else {
+              // Crear nuevo set
+              return [...prev, {
+                id: newFicha.id,
+                created_at: newFicha.created_at,
+                conversation_id: newFicha.conversation_id,
+                user_id: newFicha.user_id,
+                fichas: [{
+                  pregunta: newFicha.pregunta,
+                  respuesta: newFicha.respuesta,
+                  orden: newFicha.orden,
+                }],
+              }];
+            }
+          });
         },
       )
       .subscribe((status) => {
@@ -660,7 +785,7 @@ const Chat = () => {
     handleSend("Por favor, genera un informe completo de nuestra conversación");
   };
 
-  const handleGenerateFichas = () => {
+  const handleGenerateFichas = async () => {
     if (!currentConversationId || messages.length === 0) {
       toast.error("No hay conversación para generar fichas didácticas");
       return;
@@ -669,7 +794,62 @@ const Chat = () => {
       toast.error("Por favor espera a que termine la operación actual");
       return;
     }
-    setShowFichas(true);
+
+    try {
+      setIsLoading(true);
+      toast.info("Generando fichas didácticas...");
+
+      // Obtener mensajes de la conversación
+      const { data: conversationMessages, error: messagesError } = await supabase
+        .from("messages")
+        .select("message, role")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
+
+      if (messagesError) throw messagesError;
+
+      if (!conversationMessages || conversationMessages.length === 0) {
+        toast.error("No hay contenido en esta conversación para generar fichas");
+        setIsLoading(false);
+        return;
+      }
+
+      // Construir el contenido del chat
+      const contenidoChat = conversationMessages
+        .map((m) => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.message}`)
+        .join("\n\n");
+
+      // Llamar al edge function
+      const { data, error } = await supabase.functions.invoke("generar-fichas", {
+        body: {
+          conversation_id: currentConversationId,
+          contenido_chat: contenidoChat,
+        },
+      });
+
+      if (error) {
+        console.error("Error generando fichas:", error);
+        
+        if (error.message.includes("429")) {
+          toast.error("Límite de peticiones excedido. Intenta de nuevo en unos momentos.");
+        } else if (error.message.includes("402")) {
+          toast.error("Se requiere agregar créditos a tu cuenta de Lovable AI.");
+        } else {
+          toast.error("Error al generar las fichas");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      if (data?.success) {
+        toast.success("¡Fichas generadas exitosamente!");
+      }
+    } catch (error) {
+      console.error("Error generando fichas:", error);
+      toast.error("Error al generar las fichas");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   console.log(user);
@@ -831,9 +1011,9 @@ const Chat = () => {
                           </div>
                         </div>
                       );
-                    } else {
+                    } else if (item.type === 'mindmap') {
                       // Renderizar mapa mental
-                      const mindMap = item.data;
+                      const mindMap = item.data as MindMap;
                       return (
                         <div key={mindMap.id} className="flex justify-start">
                           <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl overflow-hidden shadow-sm">
@@ -884,6 +1064,67 @@ const Chat = () => {
                           </div>
                         </div>
                       );
+                    } else if (item.type === 'fichas') {
+                      // Renderizar fichas didácticas
+                      const fichasSet = item.data as FichasSet;
+                      return (
+                        <div key={fichasSet.id} className="flex justify-start">
+                          <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl overflow-hidden shadow-sm">
+                            {/* Header */}
+                            <div className="bg-primary/10 px-4 py-3 flex items-center gap-3">
+                              <BookOpen className="h-5 w-5 text-primary shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-foreground">
+                                  Fichas Didácticas
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {fichasSet.fichas.length} fichas • {new Date(fichasSet.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Preview de las primeras 2 fichas */}
+                            <div className="p-4 space-y-3">
+                              {fichasSet.fichas.slice(0, 2).map((ficha) => (
+                                <div key={ficha.orden} className="bg-background/50 rounded-lg p-3 border border-border/50">
+                                  <p className="text-xs font-semibold text-primary mb-1">
+                                    Ficha {ficha.orden}
+                                  </p>
+                                  <p className="text-sm font-medium mb-2">
+                                    {ficha.pregunta}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {ficha.respuesta.substring(0, 80)}...
+                                  </p>
+                                </div>
+                              ))}
+                              
+                              {fichasSet.fichas.length > 2 && (
+                                <p className="text-xs text-muted-foreground text-center py-2">
+                                  + {fichasSet.fichas.length - 2} fichas más
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Botón para ver todas */}
+                            <div className="px-4 pb-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedFichasId(fichasSet.id);
+                                  setShowFichas(true);
+                                }}
+                                className="w-full"
+                              >
+                                Ver todas las fichas
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      return null;
                     }
                   })}
 
@@ -1112,9 +1353,16 @@ const Chat = () => {
       {/* Modal de edición de perfil */}
       {user && <StarterProfileEditor userId={user.id} open={showProfileEditor} onOpenChange={setShowProfileEditor} />}
 
-      {/* Fichas Didácticas */}
-      {showFichas && currentConversationId && (
-        <FichasDidacticas conversationId={currentConversationId} onClose={() => setShowFichas(false)} />
+      {/* Fichas Didácticas - Modal para ver set completo */}
+      {showFichas && selectedFichasId && currentConversationId && (
+        <FichasDidacticas 
+          conversationId={currentConversationId} 
+          fichasSetId={selectedFichasId}
+          onClose={() => {
+            setShowFichas(false);
+            setSelectedFichasId(null);
+          }} 
+        />
       )}
 
       {/* Modal de mapa mental completo */}
