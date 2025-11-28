@@ -104,8 +104,8 @@ const RegisterUser = () => {
                 return;
             }
 
-            // Construir URL de registro con el token
-            const registerUrl = `${window.location.origin}/register/${inviteData.token}`;
+            // Construir URL de registro con el token usando el dominio personalizado
+            const registerUrl = `https://app.biexedu.com/register/${inviteData.token}`;
 
             // Llamar a la webhook con el email y la URL de registro
             try {
