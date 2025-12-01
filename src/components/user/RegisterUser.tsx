@@ -181,16 +181,16 @@ const RegisterUser = () => {
             <div className="container mx-auto px-4 py-8 max-w-6xl space-y-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Invitar Nuevo Usuario</CardTitle>
+                        <CardTitle>Invitar Nuevo Tutor</CardTitle>
                         <CardDescription>
-                            Agrega el email del estudiante que podrá registrarse en el sistema
+                            Agrega el email del tutor que podrá registrarse en el sistema y crear estudiantes
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex gap-2">
                             <Input
                                 type="email"
-                                placeholder="estudiante@ejemplo.com"
+                                placeholder="tutor@ejemplo.com"
                                 value={newUserEmail}
                                 onChange={(e) => setNewUserEmail(e.target.value)}
                                 onKeyPress={(e) => e.key === "Enter" && handleInviteUser()}
@@ -205,16 +205,16 @@ const RegisterUser = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Usuarios Invitados</CardTitle>
+                        <CardTitle>Tutores Invitados</CardTitle>
                         <CardDescription>
-                            Lista de estudiantes que pueden registrarse en el sistema
+                            Lista de tutores que pueden registrarse en el sistema
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
                             {invitedUsers.length === 0 ? (
                                 <p className="text-center text-muted-foreground py-8">
-                                    No hay usuarios invitados aún
+                                    No hay tutores invitados aún
                                 </p>
                             ) : (
                                 invitedUsers.map((user) => (
