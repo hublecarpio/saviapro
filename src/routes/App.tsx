@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Auth from "../pages/Auth";
 import Chat from "../pages/Chat";
 import Starter from "../pages/Starter";
-import Admin from "../pages/Admin";
+
 import Tutor from "../pages/Tutor";
 import TutorDashboard from "../pages/TutorDashboard";
 import NotFound from "../pages/NotFound";
