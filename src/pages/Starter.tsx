@@ -385,6 +385,17 @@ const Starter = () => {
       value = multipleChoices;
     } else if (currentQuestion.type === "number") {
       const age = parseInt(currentAnswer);
+      
+      // Validación de edad mínima
+      if (currentQuestion.id === "age" && age < 7) {
+        toast({
+          title: "Edad no válida",
+          description: "La edad mínima es 7 años",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       if (age >= 7 && age <= 12) {
         setAgeGroup("7-12");
       } else if (age >= 12 && age <= 17) {
