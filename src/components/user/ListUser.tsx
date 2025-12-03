@@ -5,11 +5,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
+import { Trash2 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 const ListUser = () => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
+    const [userToDelete, setUserToDelete] = useState<any>(null);
+    const [confirmStep, setConfirmStep] = useState(0); // 0: closed, 1: first confirm, 2: second confirm
+    const [deleting, setDeleting] = useState(false);
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -26,7 +42,6 @@ const ListUser = () => {
                 return;
             }
 
-            // Verificar si tiene rol admin
             const { data: roles } = await supabase
                 .from("user_roles")
                 .select("role")
@@ -53,13 +68,8 @@ const ListUser = () => {
         }
     };
 
-
-
-
-
     const loadRegisteredUsers = async () => {
         try {
-            // Obtener todos los perfiles
             const { data: profiles, error: profilesError } = await supabase
                 .from("profiles")
                 .select("*")
@@ -67,14 +77,12 @@ const ListUser = () => {
 
             if (profilesError) throw profilesError;
 
-            // Obtener todos los roles
             const { data: roles, error: rolesError } = await supabase
                 .from("user_roles")
                 .select("*");
 
             if (rolesError) throw rolesError;
 
-            // Combinar la información
             const usersWithRoles = profiles?.map(profile => {
                 const userRoles = roles?.filter(r => r.user_id === profile.id) || [];
                 return {
@@ -89,17 +97,74 @@ const ListUser = () => {
         }
     };
 
+    const handleDeleteClick = (user: any) => {
+        setUserToDelete(user);
+        setConfirmStep(1);
+    };
 
+    const handleFirstConfirm = () => {
+        setConfirmStep(2);
+    };
+
+    const handleFinalDelete = async () => {
+        if (!userToDelete) return;
+
+        setDeleting(true);
+        try {
+            const userId = userToDelete.id;
+
+            // Eliminar datos relacionados en orden
+            await supabase.from("messages").delete().eq("user_id", userId);
+            await supabase.from("conversations").delete().eq("user_id", userId);
+            await supabase.from("fichas_didacticas").delete().eq("user_id", userId);
+            await supabase.from("mind_maps").delete().eq("user_id", userId);
+            await supabase.from("starter_profiles").delete().eq("user_id", userId);
+            await supabase.from("uploaded_documents").delete().eq("uploaded_by", userId);
+            await supabase.from("tutor_students").delete().eq("tutor_id", userId);
+            await supabase.from("tutor_students").delete().eq("student_id", userId);
+            await supabase.from("user_roles").delete().eq("user_id", userId);
+            
+            // Eliminar perfil
+            const { error: profileError } = await supabase
+                .from("profiles")
+                .delete()
+                .eq("id", userId);
+
+            if (profileError) throw profileError;
+
+            toast({
+                title: "Usuario eliminado",
+                description: `${userToDelete.email} ha sido eliminado del sistema`,
+            });
+
+            await loadRegisteredUsers();
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            toast({
+                title: "Error",
+                description: "No se pudo eliminar el usuario",
+                variant: "destructive",
+            });
+        } finally {
+            setDeleting(false);
+            setUserToDelete(null);
+            setConfirmStep(0);
+        }
+    };
+
+    const handleCancel = () => {
+        setUserToDelete(null);
+        setConfirmStep(0);
+    };
 
     if (loading) {
-        return (
-            <Loading />
-        );
+        return <Loading />;
     }
 
     if (!isAdmin) {
         return null;
     }
+
     return (
         <>
             <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -123,8 +188,9 @@ const ListUser = () => {
                                             <TableHead>Nombre</TableHead>
                                             <TableHead>Email</TableHead>
                                             <TableHead>Roles</TableHead>
-                                            <TableHead>Starter Completado</TableHead>
-                                            <TableHead>Fecha de Registro</TableHead>
+                                            <TableHead>Starter</TableHead>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead className="w-[80px]">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -157,18 +223,30 @@ const ListUser = () => {
                                                 <TableCell>
                                                     {user.starter_completed ? (
                                                         <Badge variant="default" className="bg-green-600">
-                                                            ✓ Completado
+                                                            ✓
                                                         </Badge>
                                                     ) : (
-                                                        <Badge variant="outline">Pendiente</Badge>
+                                                        <Badge variant="outline">-</Badge>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="text-muted-foreground text-sm">
                                                     {new Date(user.created_at).toLocaleDateString('es-ES', {
                                                         day: '2-digit',
                                                         month: '2-digit',
                                                         year: 'numeric'
                                                     })}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {!user.roles.includes("admin") && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDeleteClick(user)}
+                                                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -179,6 +257,56 @@ const ListUser = () => {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Primera confirmación */}
+            <AlertDialog open={confirmStep === 1} onOpenChange={(open) => !open && handleCancel()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Estás a punto de eliminar a <strong>{userToDelete?.email}</strong>.
+                            Esta acción eliminará todos sus datos del sistema.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={handleCancel}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleFirstConfirm}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Continuar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Segunda confirmación */}
+            <AlertDialog open={confirmStep === 2} onOpenChange={(open) => !open && handleCancel()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-destructive">⚠️ Confirmar eliminación permanente</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            <strong>Esta acción es irreversible.</strong><br /><br />
+                            Se eliminarán permanentemente:<br />
+                            • Perfil y datos de <strong>{userToDelete?.email}</strong><br />
+                            • Conversaciones y mensajes<br />
+                            • Fichas didácticas y mapas mentales<br />
+                            • Documentos subidos<br /><br />
+                            ¿Estás completamente seguro?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={handleCancel}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleFinalDelete}
+                            disabled={deleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {deleting ? "Eliminando..." : "Eliminar permanentemente"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 };
