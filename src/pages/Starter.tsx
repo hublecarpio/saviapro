@@ -386,11 +386,11 @@ const Starter = () => {
     } else if (currentQuestion.type === "number") {
       const age = parseInt(currentAnswer);
       
-      // Validación de edad mínima
-      if (currentQuestion.id === "age" && age < 17) {
+      // Validación de rango de edad (4-17 años)
+      if (currentQuestion.id === "age" && (age < 4 || age > 17)) {
         toast({
           title: "Edad no válida",
-          description: "La edad mínima es 17 años",
+          description: age < 4 ? "La edad mínima es 4 años" : "La edad máxima es 17 años",
           variant: "destructive",
         });
         return;
