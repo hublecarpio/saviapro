@@ -5,14 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-
-import { Trash2, UserPlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Trash2, UserPlus, GraduationCap } from "lucide-react";
 import { Loading } from "@/components/ui/loading";
+
 const RegisterUser = () => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [invitedUsers, setInvitedUsers] = useState<any[]>([]);
+    const [tutors, setTutors] = useState<any[]>([]);
     const [newUserEmail, setNewUserEmail] = useState("");
+    const [inviteType, setInviteType] = useState<"tutor" | "student">("tutor");
+    const [selectedTutorId, setSelectedTutorId] = useState<string>("");
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -45,7 +52,7 @@ const RegisterUser = () => {
                 return;
             }
             setIsAdmin(true);
-            await loadInvitedUsers();
+            await Promise.all([loadInvitedUsers(), loadTutors()]);
         } catch (error) {
             console.error("Error checking admin status:", error);
             navigate("/");
@@ -54,7 +61,29 @@ const RegisterUser = () => {
         }
     };
 
+    const loadTutors = async () => {
+        try {
+            const { data: tutorRoles, error: rolesError } = await supabase
+                .from("user_roles")
+                .select("user_id")
+                .eq("role", "tutor");
 
+            if (rolesError) throw rolesError;
+
+            if (tutorRoles && tutorRoles.length > 0) {
+                const tutorIds = tutorRoles.map(r => r.user_id);
+                const { data: tutorProfiles, error: profilesError } = await supabase
+                    .from("profiles")
+                    .select("*")
+                    .in("id", tutorIds);
+
+                if (profilesError) throw profilesError;
+                setTutors(tutorProfiles || []);
+            }
+        } catch (error) {
+            console.error("Error loading tutors:", error);
+        }
+    };
 
     const loadInvitedUsers = async () => {
         const { data } = await supabase
@@ -63,7 +92,33 @@ const RegisterUser = () => {
             .order("created_at", { ascending: false });
 
         if (data) {
-            setInvitedUsers(data);
+            // Enriquecer con info del tipo de invitación
+            const enrichedData = await Promise.all(
+                data.map(async (invite) => {
+                    if (invite.created_by) {
+                        // Verificar si el creador es admin o tutor
+                        const { data: creatorRole } = await supabase
+                            .from("user_roles")
+                            .select("role")
+                            .eq("user_id", invite.created_by)
+                            .maybeSingle();
+
+                        const { data: creatorProfile } = await supabase
+                            .from("profiles")
+                            .select("name, email")
+                            .eq("id", invite.created_by)
+                            .maybeSingle();
+
+                        return {
+                            ...invite,
+                            inviteType: creatorRole?.role === "admin" ? "tutor" : "student",
+                            tutorName: creatorRole?.role === "tutor" ? (creatorProfile?.name || creatorProfile?.email) : null
+                        };
+                    }
+                    return { ...invite, inviteType: "tutor", tutorName: null };
+                })
+            );
+            setInvitedUsers(enrichedData);
         }
     };
 
@@ -78,15 +133,28 @@ const RegisterUser = () => {
             return;
         }
 
+        if (inviteType === "student" && !selectedTutorId) {
+            toast({
+                title: "Tutor requerido",
+                description: "Debes seleccionar un tutor para el estudiante",
+                variant: "destructive",
+            });
+            return;
+        }
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
+            
+            // Si es estudiante, el created_by es el tutor seleccionado
+            // Si es tutor, el created_by es el admin actual
+            const createdBy = inviteType === "student" ? selectedTutorId : user?.id;
 
             // Insertar invitación y obtener el token generado
             const { data: inviteData, error } = await supabase
                 .from("invited_users")
                 .insert({
                     email: newUserEmail.toLowerCase(),
-                    created_by: user?.id
+                    created_by: createdBy
                 })
                 .select("token")
                 .single();
@@ -121,15 +189,15 @@ const RegisterUser = () => {
                 });
             } catch (webhookError) {
                 console.error("Error calling webhook:", webhookError);
-                // No detenemos el proceso si falla el webhook
             }
 
             toast({
-                title: "Usuario invitado",
+                title: inviteType === "tutor" ? "Tutor invitado" : "Estudiante invitado",
                 description: `Se ha enviado una invitación a ${newUserEmail}`,
             });
 
             setNewUserEmail("");
+            setSelectedTutorId("");
             await loadInvitedUsers();
         } catch (error) {
             console.error("Error inviting user:", error);
@@ -167,37 +235,83 @@ const RegisterUser = () => {
     };
 
     if (loading) {
-        return (
-                      <Loading />
-          
-        );
+        return <Loading />;
     }
 
     if (!isAdmin) {
         return null;
     }
+
     return (
         <>
             <div className="container mx-auto px-4 py-8 max-w-6xl space-y-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Invitar Nuevo Tutor</CardTitle>
+                        <CardTitle>Invitar Nuevo Usuario</CardTitle>
                         <CardDescription>
-                            Agrega el email del tutor que podrá registrarse en el sistema y crear estudiantes
+                            Invita tutores o estudiantes al sistema
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div className="space-y-3">
+                            <Label>Tipo de usuario</Label>
+                            <RadioGroup
+                                value={inviteType}
+                                onValueChange={(value) => {
+                                    setInviteType(value as "tutor" | "student");
+                                    setSelectedTutorId("");
+                                }}
+                                className="flex gap-4"
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="tutor" id="tutor" />
+                                    <Label htmlFor="tutor" className="cursor-pointer">Tutor</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="student" id="student" />
+                                    <Label htmlFor="student" className="cursor-pointer">Estudiante</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+
+                        {inviteType === "student" && (
+                            <div className="space-y-2">
+                                <Label>Asignar a tutor</Label>
+                                <Select value={selectedTutorId} onValueChange={setSelectedTutorId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona un tutor" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {tutors.length === 0 ? (
+                                            <SelectItem value="none" disabled>
+                                                No hay tutores disponibles
+                                            </SelectItem>
+                                        ) : (
+                                            tutors.map((tutor) => (
+                                                <SelectItem key={tutor.id} value={tutor.id}>
+                                                    <div className="flex items-center gap-2">
+                                                        <GraduationCap className="w-4 h-4" />
+                                                        {tutor.name || tutor.email}
+                                                    </div>
+                                                </SelectItem>
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
                         <div className="flex gap-2">
                             <Input
                                 type="email"
-                                placeholder="tutor@ejemplo.com"
+                                placeholder={inviteType === "tutor" ? "tutor@ejemplo.com" : "estudiante@ejemplo.com"}
                                 value={newUserEmail}
                                 onChange={(e) => setNewUserEmail(e.target.value)}
                                 onKeyPress={(e) => e.key === "Enter" && handleInviteUser()}
                             />
                             <Button onClick={handleInviteUser}>
                                 <UserPlus className="w-4 h-4 mr-2" />
-                                Invitar
+                                Invitar {inviteType === "tutor" ? "Tutor" : "Estudiante"}
                             </Button>
                         </div>
                     </CardContent>
@@ -205,16 +319,16 @@ const RegisterUser = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Tutores Invitados</CardTitle>
+                        <CardTitle>Usuarios Invitados</CardTitle>
                         <CardDescription>
-                            Lista de tutores que pueden registrarse en el sistema
+                            Lista de tutores y estudiantes que pueden registrarse
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
                             {invitedUsers.length === 0 ? (
                                 <p className="text-center text-muted-foreground py-8">
-                                    No hay tutores invitados aún
+                                    No hay usuarios invitados aún
                                 </p>
                             ) : (
                                 invitedUsers.map((user) => (
@@ -223,14 +337,22 @@ const RegisterUser = () => {
                                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                                     >
                                         <div className="flex-1">
-                                            <p className="font-medium">{user.email}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-medium">{user.email}</p>
+                                                <Badge variant={user.inviteType === "tutor" ? "secondary" : "outline"}>
+                                                    {user.inviteType === "tutor" ? "Tutor" : "Estudiante"}
+                                                </Badge>
+                                            </div>
                                             <p className="text-sm text-muted-foreground">
                                                 {user.used ? (
                                                     <span className="text-green-600">
                                                         ✓ Usado el {new Date(user.used_at).toLocaleDateString()}
                                                     </span>
                                                 ) : (
-                                                    <span>Pendiente de registro</span>
+                                                    <span>
+                                                        Pendiente de registro
+                                                        {user.tutorName && ` • Tutor: ${user.tutorName}`}
+                                                    </span>
                                                 )}
                                             </p>
                                         </div>
@@ -250,7 +372,6 @@ const RegisterUser = () => {
                         </div>
                     </CardContent>
                 </Card>
-
             </div>
         </>
     );
