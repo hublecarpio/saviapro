@@ -84,15 +84,20 @@ serve(async (req) => {
       throw new Error("Ya existe un usuario con ese email");
     }
 
-    // Agregar a invited_users
-    const { error: inviteError } = await supabaseAdmin
+    // Agregar a invited_users y obtener el token
+    const { data: inviteData, error: inviteError } = await supabaseAdmin
       .from("invited_users")
       .insert({
         email: email.toLowerCase(),
         created_by: tutor.id,
-      });
+      })
+      .select("token")
+      .single();
 
     if (inviteError) throw inviteError;
+
+    // Construir URL de registro con el token
+    const registerUrl = `https://app.biexedu.com/register/${inviteData.token}`;
 
     // Enviar email al webhook para que se envíe la invitación
     const webhookUrl = "https://webhook.hubleconsulting.com/webhook/apicorreo88a1a578-5653-457a-b408-ae3cbb06cff6";
@@ -105,11 +110,14 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           email: email.toLowerCase(),
+          register_url: registerUrl,
         }),
       });
 
       if (!webhookResponse.ok) {
         console.error("Error al enviar al webhook:", await webhookResponse.text());
+      } else {
+        console.log("Webhook enviado exitosamente para:", email.toLowerCase());
       }
     } catch (webhookError) {
       console.error("Error al llamar webhook:", webhookError);
