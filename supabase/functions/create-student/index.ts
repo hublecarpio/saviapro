@@ -94,7 +94,13 @@ serve(async (req) => {
       .select("token")
       .single();
 
-    if (inviteError) throw inviteError;
+    if (inviteError) {
+      // Manejar error de email duplicado
+      if (inviteError.code === "23505") {
+        throw new Error("Este email ya ha sido invitado anteriormente");
+      }
+      throw inviteError;
+    }
 
     // Construir URL de registro con el token
     const registerUrl = `https://app.biexedu.com/register/${inviteData.token}`;
@@ -121,7 +127,6 @@ serve(async (req) => {
       }
     } catch (webhookError) {
       console.error("Error al llamar webhook:", webhookError);
-      // No lanzamos error aquí para que la invitación se cree de todas formas
     }
 
     return new Response(
