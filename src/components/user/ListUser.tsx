@@ -111,30 +111,16 @@ const ListUser = () => {
 
         setDeleting(true);
         try {
-            const userId = userToDelete.id;
+            const { data, error } = await supabase.functions.invoke('delete-user', {
+                body: { userId: userToDelete.id }
+            });
 
-            // Eliminar datos relacionados en orden
-            await supabase.from("messages").delete().eq("user_id", userId);
-            await supabase.from("conversations").delete().eq("user_id", userId);
-            await supabase.from("fichas_didacticas").delete().eq("user_id", userId);
-            await supabase.from("mind_maps").delete().eq("user_id", userId);
-            await supabase.from("starter_profiles").delete().eq("user_id", userId);
-            await supabase.from("uploaded_documents").delete().eq("uploaded_by", userId);
-            await supabase.from("tutor_students").delete().eq("tutor_id", userId);
-            await supabase.from("tutor_students").delete().eq("student_id", userId);
-            await supabase.from("user_roles").delete().eq("user_id", userId);
-            
-            // Eliminar perfil
-            const { error: profileError } = await supabase
-                .from("profiles")
-                .delete()
-                .eq("id", userId);
-
-            if (profileError) throw profileError;
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
 
             toast({
                 title: "Usuario eliminado",
-                description: `${userToDelete.email} ha sido eliminado del sistema`,
+                description: `${userToDelete.email} ha sido eliminado completamente del sistema`,
             });
 
             await loadRegisteredUsers();
@@ -142,7 +128,7 @@ const ListUser = () => {
             console.error("Error deleting user:", error);
             toast({
                 title: "Error",
-                description: "No se pudo eliminar el usuario",
+                description: error instanceof Error ? error.message : "No se pudo eliminar el usuario",
                 variant: "destructive",
             });
         } finally {
