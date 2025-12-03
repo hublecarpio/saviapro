@@ -106,7 +106,7 @@ serve(async (req) => {
     const registerUrl = `https://app.biexedu.com/register/${inviteData.token}`;
 
     // Enviar email al webhook para que se envíe la invitación
-    const webhookUrl = "https://webhook.hubleconsulting.com/webhook/apicorreo88a1a578-5653-457a-b408-ae3cbb06cff6";
+    const webhookUrl = "https://webhook.hubleconsulting.com/webhook/970fcfa4-6000-4858-bb42-14a592CREA";
     
     try {
       const webhookResponse = await fetch(webhookUrl, {
