@@ -98,11 +98,13 @@ const ListUser = () => {
     };
 
     const handleDeleteClick = (user: any) => {
+        console.log("Delete clicked for user:", user.email);
         setUserToDelete(user);
         setConfirmStep(1);
     };
 
     const handleFirstConfirm = () => {
+        console.log("First confirm clicked, moving to step 2");
         setConfirmStep(2);
     };
 
@@ -245,7 +247,7 @@ const ListUser = () => {
             </div>
 
             {/* Primera confirmación */}
-            <AlertDialog open={confirmStep === 1} onOpenChange={(open) => !open && handleCancel()}>
+            <AlertDialog open={confirmStep === 1}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
@@ -255,19 +257,19 @@ const ListUser = () => {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={handleCancel}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
+                        <Button variant="outline" onClick={handleCancel}>Cancelar</Button>
+                        <Button
                             onClick={handleFirstConfirm}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             Continuar
-                        </AlertDialogAction>
+                        </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             {/* Segunda confirmación */}
-            <AlertDialog open={confirmStep === 2} onOpenChange={(open) => !open && handleCancel()}>
+            <AlertDialog open={confirmStep === 2}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-destructive">⚠️ Confirmar eliminación permanente</AlertDialogTitle>
@@ -282,14 +284,14 @@ const ListUser = () => {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={handleCancel}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
+                        <Button variant="outline" onClick={handleCancel}>Cancelar</Button>
+                        <Button
                             onClick={handleFinalDelete}
                             disabled={deleting}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             {deleting ? "Eliminando..." : "Eliminar permanentemente"}
-                        </AlertDialogAction>
+                        </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
