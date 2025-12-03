@@ -113,12 +113,31 @@ const InviteRegister = () => {
         console.error("Error al marcar invitación:", updateError);
       }
 
+      // Esperar un momento para que se procesen los triggers (asignación de rol)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Verificar el rol asignado para redirigir correctamente
+      const { data: userRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", authData.user.id)
+        .maybeSingle();
+
+      const isTutor = userRole?.role === "tutor";
+      const isAdmin = userRole?.role === "admin";
+
       toast.success("Cuenta creada exitosamente. Redirigiendo...");
       
-      // Esperar un momento para que se procese todo
+      // Redirigir según el rol
       setTimeout(() => {
-        navigate("/starter");
-      }, 1500);
+        if (isAdmin) {
+          navigate("/admin");
+        } else if (isTutor) {
+          navigate("/tutor/dashboard");
+        } else {
+          navigate("/starter");
+        }
+      }, 500);
 
     } catch (error) {
       console.error("Error en registro:", error);
