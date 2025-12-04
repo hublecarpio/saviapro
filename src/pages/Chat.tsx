@@ -890,7 +890,7 @@ const Chat = () => {
       return;
     }
 
-    // Agregar mensaje de "generando..." inmediatamente
+    // Agregar mensaje de "generando..." inmediatamente en el chat
     const tempMessage: Message = {
       id: `temp-fichas-${Date.now()}`,
       role: "assistant",
@@ -900,7 +900,6 @@ const Chat = () => {
     };
 
     setMessages((prev) => [...prev, tempMessage]);
-    toast.info("Generando fichas en segundo plano...");
 
     // Ejecutar en background sin bloquear
     (async () => {
@@ -916,7 +915,6 @@ const Chat = () => {
 
         if (!conversationMessages || conversationMessages.length === 0) {
           toast.error("No hay contenido en esta conversación para generar fichas");
-          // Remover mensaje temporal
           setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
           return;
         }
@@ -934,7 +932,7 @@ const Chat = () => {
           },
         });
 
-        // Remover mensaje temporal de "generando..."
+        // Remover mensaje temporal de "generando..." - las fichas aparecerán via realtime
         setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
 
         if (error) {
@@ -949,14 +947,10 @@ const Chat = () => {
           }
           return;
         }
-
-        if (data?.success) {
-          toast.success("¡Fichas generadas exitosamente!");
-        }
+        // Las fichas aparecerán automáticamente en el chat via realtime subscription
       } catch (error) {
         console.error("Error generando fichas:", error);
         toast.error("Error al generar las fichas");
-        // Remover mensaje temporal
         setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
       }
     })();
