@@ -76,6 +76,9 @@ const Chat = () => {
   const [transcribedText, setTranscribedText] = useState<string | null>(null);
   const [isGeneratingMindMap, setIsGeneratingMindMap] = useState(false);
   const [isGeneratingInforme, setIsGeneratingInforme] = useState(false);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
+  const [isGeneratingFichas, setIsGeneratingFichas] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -803,6 +806,13 @@ const Chat = () => {
       return;
     }
 
+    // Activar indicador de generación
+    if (type === "video") {
+      setIsGeneratingVideo(true);
+    } else {
+      setIsGeneratingPodcast(true);
+    }
+
     try {
       // Crear resumen de la conversación
       const conversationSummary = messages
@@ -825,11 +835,23 @@ const Chat = () => {
         throw error;
       }
       
-      // El mensaje aparecerá automáticamente via polling cuando el webhook responda
+      // Desactivar después de un delay para dar tiempo a que llegue la respuesta
+      setTimeout(() => {
+        if (type === "video") {
+          setIsGeneratingVideo(false);
+        } else {
+          setIsGeneratingPodcast(false);
+        }
+      }, 30000); // Video/podcast tardan más
       
     } catch (error) {
       console.error("Error starting media generation:", error);
       toast.error("Error al iniciar la generación");
+      if (type === "video") {
+        setIsGeneratingVideo(false);
+      } else {
+        setIsGeneratingPodcast(false);
+      }
     }
   };
 
@@ -908,6 +930,9 @@ const Chat = () => {
       return;
     }
 
+    // Activar indicador de generación
+    setIsGeneratingFichas(true);
+
     // Agregar mensaje de "generando..." inmediatamente en el chat
     const tempMessage: Message = {
       id: `temp-fichas-${Date.now()}`,
@@ -952,6 +977,7 @@ const Chat = () => {
 
         // Remover mensaje temporal de "generando..." - las fichas aparecerán via realtime
         setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
+        setIsGeneratingFichas(false);
 
         if (error) {
           console.error("Error generando fichas:", error);
@@ -970,6 +996,7 @@ const Chat = () => {
         console.error("Error generando fichas:", error);
         toast.error("Error al generar las fichas");
         setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
+        setIsGeneratingFichas(false);
       }
     })();
   };
@@ -1452,6 +1479,9 @@ const Chat = () => {
           hasMessages={messages.length > 0}
           isGeneratingMindMap={isGeneratingMindMap}
           isGeneratingInforme={isGeneratingInforme}
+          isGeneratingVideo={isGeneratingVideo}
+          isGeneratingPodcast={isGeneratingPodcast}
+          isGeneratingFichas={isGeneratingFichas}
           onGenerateVideo={() => handleGenerateResumen("video")}
           onGeneratePodcast={() => handleGenerateResumen("podcast")}
           onRequestMindMap={handleRequestMindMap}
@@ -1465,6 +1495,9 @@ const Chat = () => {
           hasMessages={messages.length > 0}
           isGeneratingMindMap={isGeneratingMindMap}
           isGeneratingInforme={isGeneratingInforme}
+          isGeneratingVideo={isGeneratingVideo}
+          isGeneratingPodcast={isGeneratingPodcast}
+          isGeneratingFichas={isGeneratingFichas}
           onGenerateVideo={() => handleGenerateResumen("video")}
           onGeneratePodcast={() => handleGenerateResumen("podcast")}
           onRequestMindMap={handleRequestMindMap}
