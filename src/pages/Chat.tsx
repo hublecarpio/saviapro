@@ -767,50 +767,30 @@ const Chat = () => {
       return;
     }
     
-    // Solo agregar mensaje de "generando..." del asistente (temporal)
-    const tempAssistantMessage: Message = {
-      id: `temp-mindmap-${Date.now()}`,
-      role: "assistant",
-      message: "🧠 Generando mapa mental... Puedes seguir conversando mientras tanto.",
-      created_at: new Date().toISOString(),
-      conversation_id: currentConversationId,
-    };
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Sesión expirada");
+      return;
+    }
 
-    setMessages((prev) => [...prev, tempAssistantMessage]);
+    // Activar indicador de generación
     setIsGeneratingMindMap(true);
 
-    // Llamar al chat en background sin bloquear
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Sesión expirada");
-        setMessages((prev) => prev.filter((m) => m.id !== tempAssistantMessage.id));
-        return;
-      }
-
-      // Llamar al chat con el mensaje de mapa mental (background - no bloquear)
-      supabase.functions.invoke("chat", {
-        body: {
-          message: "Por favor, genera un mapa mental del tema que hemos estado discutiendo",
-          conversation_id: currentConversationId,
-          user_id: session.user.id,
-          skip_user_message: true,
-        },
-      }).then(() => {
-        setIsGeneratingMindMap(false);
-        // Remover mensaje temporal cuando el real llegue via polling
-        setMessages((prev) => prev.filter((m) => m.id !== tempAssistantMessage.id));
-      }).catch((err) => {
-        console.error("Error en mapa mental background:", err);
-        setIsGeneratingMindMap(false);
-        setMessages((prev) => prev.filter((m) => m.id !== tempAssistantMessage.id));
-      });
-      
-    } catch (error) {
-      console.error("Error iniciando mapa mental:", error);
+    // Llamar al chat en background sin bloquear - no esperamos la respuesta
+    supabase.functions.invoke("chat", {
+      body: {
+        message: "Por favor, genera un mapa mental del tema que hemos estado discutiendo",
+        conversation_id: currentConversationId,
+        user_id: session.user.id,
+        skip_user_message: true,
+      },
+    }).catch((err) => {
+      console.error("Error en mapa mental background:", err);
+      toast.error("Error al generar mapa mental");
       setIsGeneratingMindMap(false);
-      setMessages((prev) => prev.filter((m) => m.id !== tempAssistantMessage.id));
-    }
+    });
+    
+    // La respuesta llegará via realtime subscription - no bloqueamos
   };
 
   const handleRequestInforme = async () => {
@@ -819,46 +799,26 @@ const Chat = () => {
       return;
     }
     
-    // Solo agregar mensaje de "generando..." del asistente (temporal)
-    const tempAssistantMessage: Message = {
-      id: `temp-informe-${Date.now()}`,
-      role: "assistant",
-      message: "📄 Generando informe... Esto puede tomar hasta 2 minutos. Puedes seguir conversando mientras tanto.",
-      created_at: new Date().toISOString(),
-      conversation_id: currentConversationId,
-    };
-
-    setMessages((prev) => [...prev, tempAssistantMessage]);
-
-    // Llamar al chat en background sin bloquear
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Sesión expirada");
-        setMessages((prev) => prev.filter((m) => m.id !== tempAssistantMessage.id));
-        return;
-      }
-
-      // Llamar al chat con el mensaje de informe (background - no bloquear)
-      supabase.functions.invoke("chat", {
-        body: {
-          message: "Por favor, genera un informe completo de nuestra conversación",
-          conversation_id: currentConversationId,
-          user_id: session.user.id,
-          skip_user_message: true,
-        },
-      }).then(() => {
-        // Remover mensaje temporal cuando el real llegue via polling
-        setMessages((prev) => prev.filter((m) => m.id !== tempAssistantMessage.id));
-      }).catch((err) => {
-        console.error("Error en informe background:", err);
-        setMessages((prev) => prev.filter((m) => m.id !== tempAssistantMessage.id));
-      });
-      
-    } catch (error) {
-      console.error("Error iniciando informe:", error);
-      setMessages((prev) => prev.filter((m) => m.id !== tempAssistantMessage.id));
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Sesión expirada");
+      return;
     }
+
+    // Llamar al chat en background sin bloquear - no esperamos la respuesta
+    supabase.functions.invoke("chat", {
+      body: {
+        message: "Por favor, genera un informe completo de nuestra conversación",
+        conversation_id: currentConversationId,
+        user_id: session.user.id,
+        skip_user_message: true,
+      },
+    }).catch((err) => {
+      console.error("Error en informe background:", err);
+      toast.error("Error al generar informe");
+    });
+    
+    // La respuesta llegará via realtime subscription - no bloqueamos
   };
 
   const handleGenerateFichas = async () => {
