@@ -384,8 +384,44 @@ const Chat = () => {
         }
       });
 
+    // Polling periódico para detectar mensajes nuevos (fallback de realtime)
+    const pollingInterval = setInterval(async () => {
+      const { data: newMessages } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
+      
+      if (newMessages) {
+        setMessages((prev) => {
+          // Solo actualizar si hay mensajes nuevos
+          const prevIds = new Set(prev.filter(m => !m.id.startsWith('temp-')).map(m => m.id));
+          const hasNewMessages = newMessages.some(m => !prevIds.has(m.id));
+          
+          if (hasNewMessages) {
+            console.log("🔄 New messages detected via polling");
+            // Mantener mensajes temporales y agregar los nuevos
+            const tempMessages = prev.filter(m => m.id.startsWith('temp-'));
+            const realMessages = newMessages as Message[];
+            
+            // Filtrar mensajes temporales que ya tienen su versión real
+            const filteredTemp = tempMessages.filter(temp => 
+              !realMessages.some(real => 
+                real.role === temp.role && 
+                real.message === temp.message
+              )
+            );
+            
+            return [...realMessages, ...filteredTemp];
+          }
+          return prev;
+        });
+      }
+    }, 2000); // Polling cada 2 segundos
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollingInterval);
     };
   }, [currentConversationId]);
 
@@ -690,100 +726,42 @@ const Chat = () => {
   };
 
   const handleGenerateResumen = async (type: "video" | "podcast") => {
-    if (!currentConversationId || messages.length === 0 || isLoading) {
+    if (!currentConversationId || messages.length === 0) {
       toast.error("No hay conversación para resumir");
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      // Insertar mensaje de carga en el chat
-      const { data: loadingMessage, error: loadingError } = await supabase
-        .from("messages")
-        .insert({
-          conversation_id: currentConversationId,
-          user_id: user!.id,
-          role: "assistant",
-          message: `⏳ Generando ${type === "video" ? "video" : "podcast"} resumen... Por favor espera.`,
-        })
-        .select()
-        .single();
-
-      if (loadingError) throw loadingError;
-
       // Crear resumen de la conversación
       const conversationSummary = messages
+        .filter(m => !m.id.startsWith('temp-'))
         .map((msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.message}`)
         .join("\n\n");
 
-      const response = await fetch("https://webhook.hubleconsulting.com/webhook/1fba6f6e-3c2f-4c50-bfbe-488df7c7eebc", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      toast.info(`Iniciando generación de ${type === "video" ? "video" : "podcast"}...`);
+
+      // Llamar a la edge function que procesa en background
+      const { error } = await supabase.functions.invoke("generate-media", {
+        body: {
           type,
-          data: {
-            conversation_id: currentConversationId,
-            resumen: conversationSummary,
-            total_mensajes: messages.length,
-            timestamp: new Date().toISOString(),
-          },
-        }),
+          conversation_id: currentConversationId,
+          user_id: user!.id,
+          conversation_summary: conversationSummary,
+          message_count: messages.length,
+        },
       });
 
-      if (!response.ok) {
-        throw new Error(`Error en webhook: ${response.status}`);
+      if (error) {
+        throw error;
       }
 
-      const webhookData = await response.json();
-      console.log("Respuesta inicial del webhook:", webhookData);
-
-      // Verificar diferentes estructuras posibles de respuesta
-      let mediaUrl = webhookData?.response || webhookData?.url || webhookData?.data?.url || webhookData?.data?.response;
-      const pollUrl = webhookData?.poll_url || webhookData?.data?.poll_url;
-
-      // Si no hay URL pero hay una URL de polling, consultar periódicamente
-      if (!mediaUrl && pollUrl) {
-        toast.info("Procesando... esto puede tardar un momento");
-        mediaUrl = await pollForMediaUrl(pollUrl);
-      }
-
-      // Eliminar mensaje de carga
-      await supabase.from("messages").delete().eq("id", loadingMessage.id);
-
-      if (!mediaUrl) {
-        // Si después del polling no hay URL, mostrar mensaje de error
-        await supabase.from("messages").insert({
-          conversation_id: currentConversationId,
-          user_id: user!.id,
-          role: "assistant",
-          message: `⚠️ La generación del ${type === "video" ? "video" : "podcast"} está tomando más tiempo del esperado. Por favor intenta de nuevo más tarde.`,
-        });
-
-        toast.error("Tiempo de espera agotado");
-      } else {
-        // Si hay URL, mostrar el resultado
-        const resultMessage =
-          type === "video"
-            ? `✅ Video resumen generado:\n\n${mediaUrl}`
-            : `✅ Podcast resumen generado:\n\n${mediaUrl}`;
-
-        await supabase.from("messages").insert({
-          conversation_id: currentConversationId,
-          user_id: user!.id,
-          role: "assistant",
-          message: resultMessage,
-        });
-
-        toast.success(`${type === "video" ? "Video" : "Podcast"} generado exitosamente`);
-      }
+      toast.success(`${type === "video" ? "Video" : "Podcast"} en proceso. Puedes seguir conversando.`);
+      
+      // El mensaje aparecerá automáticamente via polling cuando el webhook responda
+      
     } catch (error) {
-      console.error("Error generating resumen:", error);
-      toast.error("Error al generar el resumen");
-    } finally {
-      setIsLoading(false);
+      console.error("Error starting media generation:", error);
+      toast.error("Error al iniciar la generación");
     }
   };
 

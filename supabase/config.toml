@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.update-invited-user]
 verify_jwt = false
+
+[functions.generate-media]
+verify_jwt = false
