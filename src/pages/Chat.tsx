@@ -75,6 +75,7 @@ const Chat = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [transcribedText, setTranscribedText] = useState<string | null>(null);
   const [isGeneratingMindMap, setIsGeneratingMindMap] = useState(false);
+  const [isGeneratingInforme, setIsGeneratingInforme] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -877,6 +878,9 @@ const Chat = () => {
       return;
     }
 
+    // Activar animación de carga
+    setIsGeneratingInforme(true);
+
     // Llamar al chat con action_type para solo generar informe (sin respuesta AI adicional)
     supabase.functions.invoke("chat", {
       body: {
@@ -886,9 +890,13 @@ const Chat = () => {
         skip_user_message: true,
         action_type: "informe",
       },
+    }).then(() => {
+      // Desactivar después de un delay para dar tiempo a que llegue la respuesta
+      setTimeout(() => setIsGeneratingInforme(false), 2000);
     }).catch((err) => {
       console.error("Error en informe background:", err);
       toast.error("Error al generar informe");
+      setIsGeneratingInforme(false);
     });
     
     // La respuesta llegará via realtime/polling - no bloqueamos
@@ -1442,6 +1450,8 @@ const Chat = () => {
         <ChatToolsSidebar
           isLoading={isLoading}
           hasMessages={messages.length > 0}
+          isGeneratingMindMap={isGeneratingMindMap}
+          isGeneratingInforme={isGeneratingInforme}
           onGenerateVideo={() => handleGenerateResumen("video")}
           onGeneratePodcast={() => handleGenerateResumen("podcast")}
           onRequestMindMap={handleRequestMindMap}
@@ -1453,6 +1463,8 @@ const Chat = () => {
         <MobileChatToolsFAB
           isLoading={isLoading}
           hasMessages={messages.length > 0}
+          isGeneratingMindMap={isGeneratingMindMap}
+          isGeneratingInforme={isGeneratingInforme}
           onGenerateVideo={() => handleGenerateResumen("video")}
           onGeneratePodcast={() => handleGenerateResumen("podcast")}
           onRequestMindMap={handleRequestMindMap}
