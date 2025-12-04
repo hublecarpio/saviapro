@@ -133,9 +133,10 @@ serve(async (req) => {
       }
     );
 
-    const { message, conversation_id, user_id, image, skip_user_message } = await req.json();
+    const { message, conversation_id, user_id, image, skip_user_message, action_type } = await req.json();
     
-    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+    // Si es una acción directa (mapa mental o informe), no necesitamos validar el mensaje
+    if (!action_type && (!message || typeof message !== 'string' || message.trim().length === 0)) {
       return new Response(
         JSON.stringify({ error: 'Mensaje inválido' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -149,7 +150,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing message for user:', user_id, 'conversation:', conversation_id);
+    console.log('Processing request for user:', user_id, 'conversation:', conversation_id, 'action_type:', action_type);
 
     // Obtener perfil del starter del usuario
     const { data: starterProfile, error: profileError } = await supabaseAdmin
@@ -162,10 +163,148 @@ serve(async (req) => {
       console.error('Error fetching starter profile:', profileError);
     }
 
+    // Get conversation history (needed for mind map and informe)
+    const { data: recentMessages, error: messagesError } = await supabaseAdmin
+      .from('messages')
+      .select('role, message')
+      .eq('conversation_id', conversation_id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (messagesError) {
+      console.error('Error fetching messages:', messagesError);
+    }
+
+    // === HANDLE DIRECT ACTIONS (mind_map, informe) ===
+    if (action_type === 'mind_map') {
+      console.log('Mind map action requested, generating directly...');
+      
+      // Crear resumen del tema basado en la conversación
+      const conversationSummary = recentMessages && recentMessages.length > 0 
+        ? recentMessages.slice(0, 5).map(m => m.message).join(' ').substring(0, 100)
+        : 'Tema de estudio';
+      
+      console.log('📝 Generando mapa mental para tema:', conversationSummary);
+      
+      try {
+        const mindMapResponse = await fetch(
+          'https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tema: conversationSummary })
+          }
+        );
+
+        if (mindMapResponse.ok) {
+          const htmlContent = await mindMapResponse.text();
+          
+          if (htmlContent && htmlContent.length >= 50) {
+            console.log('📄 Mapa mental generado, guardando en BD...');
+            
+            await supabaseAdmin
+              .from('mind_maps')
+              .insert({
+                user_id: user_id,
+                conversation_id: conversation_id,
+                tema: conversationSummary,
+                html_content: htmlContent
+              });
+            
+            console.log('✅ Mapa mental guardado exitosamente');
+          } else {
+            console.error('❌ HTML vacío o muy corto');
+          }
+        } else {
+          console.error('Webhook error:', mindMapResponse.status);
+        }
+      } catch (mindMapError) {
+        console.error('Error generating mind map:', mindMapError);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, action: 'mind_map' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action_type === 'informe') {
+      console.log('Informe action requested, generating directly...');
+      
+      const conversationSummary = recentMessages && recentMessages.length > 0 
+        ? recentMessages.slice(-10).map(m => `${m.role}: ${m.message}`).join('\n')
+        : '';
+      
+      const informeContext = {
+        user_profile: {
+          name: starterProfile?.profile_data?.description?.split(',')[0]?.replace('Soy ', '') || 'Estudiante',
+          age: starterProfile?.age || 'No especificada',
+          age_group: starterProfile?.age_group || '',
+          learning_style: starterProfile?.profile_data?.learningStyle || '',
+          interests: starterProfile?.profile_data?.interests || starterProfile?.profile_data?.passionateTopics || ''
+        },
+        conversation_summary: conversationSummary,
+        topic: 'Informe de conversación',
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        const webhookResponse = await fetch('https://webhook.hubleconsulting.com/webhook/154f3182-4561-4897-b57a-51db1fd2informe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(informeContext)
+        });
+
+        if (webhookResponse.ok) {
+          const webhookData = await webhookResponse.json();
+          const pdfUrl = webhookData.response;
+
+          if (pdfUrl) {
+            console.log('PDF generated:', pdfUrl);
+            
+            await supabaseAdmin
+              .from('messages')
+              .insert({
+                user_id: user_id,
+                conversation_id: conversation_id,
+                role: 'assistant',
+                message: `📄 ¡Tu informe está listo! Descárgalo aquí:\n\n${pdfUrl}`
+              });
+          }
+        } else {
+          console.error('Webhook error:', webhookResponse.status);
+          await supabaseAdmin
+            .from('messages')
+            .insert({
+              user_id: user_id,
+              conversation_id: conversation_id,
+              role: 'assistant',
+              message: '❌ Hubo un problema generando el informe. Por favor intenta de nuevo más tarde.'
+            });
+        }
+      } catch (webhookError) {
+        console.error('Error calling webhook:', webhookError);
+        await supabaseAdmin
+          .from('messages')
+          .insert({
+            user_id: user_id,
+            conversation_id: conversation_id,
+            role: 'assistant',
+            message: '❌ Hubo un error inesperado generando el informe. Por favor intenta de nuevo.'
+          });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, action: 'informe' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // === NORMAL CHAT FLOW ===
     // Construir prompt personalizado
     const systemPrompt = buildPersonalizedPrompt(starterProfile);
 
-    // Save user message (skip if requested - used for background tasks like mind map, informe)
+    // Save user message (skip if requested - used for background tasks)
     if (!skip_user_message) {
       const { error: insertUserError } = await supabaseAdmin
         .from('messages')
@@ -180,18 +319,6 @@ serve(async (req) => {
         console.error('Error saving user message:', insertUserError);
         throw new Error('Error guardando mensaje');
       }
-    }
-
-    // Get conversation history (last 20 messages)
-    const { data: recentMessages, error: messagesError } = await supabaseAdmin
-      .from('messages')
-      .select('role, message')
-      .eq('conversation_id', conversation_id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    if (messagesError) {
-      console.error('Error fetching messages:', messagesError);
     }
 
     // Build conversation history
@@ -323,185 +450,6 @@ serve(async (req) => {
     }
 
     console.log('Message saved successfully');
-
-    // Detectar si el usuario pidió un informe (pero no bloquear la respuesta)
-    const informeKeywords = ['informe', 'reporte', 'pdf', 'documento'];
-    const userMessageLower = message.toLowerCase();
-    const requestsInforme = informeKeywords.some(keyword => userMessageLower.includes(keyword));
-    
-    // Detectar si el usuario pidió un mapa mental
-    const mindMapKeywords = ['mapa mental', 'mapa conceptual', 'esquema', 'diagrama'];
-    const requestsMindMap = mindMapKeywords.some(keyword => userMessageLower.includes(keyword));
-
-    if (requestsInforme) {
-      console.log('Informe request detected, inserting loading message...');
-      
-      // Insertar mensaje de carga inmediatamente
-      await supabaseAdmin
-        .from('messages')
-        .insert({
-          user_id: user_id,
-          conversation_id: conversation_id,
-          role: 'assistant',
-          message: '⏳ Estoy generando tu informe PDF personalizado, esto puede tomar hasta 2 minutos. Por favor espera...'
-        });
-      
-      // Ejecutar webhook en background sin esperar
-      (async () => {
-        try {
-          const conversationSummary = recentMessages && recentMessages.length > 0 
-            ? recentMessages.slice(-10).map(m => `${m.role}: ${m.message}`).join('\n')
-            : '';
-          
-          const informeContext = {
-            user_profile: {
-              name: starterProfile?.profile_data?.description?.split(',')[0]?.replace('Soy ', '') || 'Estudiante',
-              age: starterProfile?.age || 'No especificada',
-              age_group: starterProfile?.age_group || '',
-              learning_style: starterProfile?.profile_data?.learningStyle || '',
-              interests: starterProfile?.profile_data?.interests || starterProfile?.profile_data?.passionateTopics || ''
-            },
-            conversation_summary: conversationSummary,
-            topic: message,
-            assistant_response: assistantResponse,
-            timestamp: new Date().toISOString()
-          };
-
-          const webhookResponse = await fetch('https://webhook.hubleconsulting.com/webhook/154f3182-4561-4897-b57a-51db1fd2informe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(informeContext)
-          });
-
-          if (webhookResponse.ok) {
-            const webhookData = await webhookResponse.json();
-            const pdfUrl = webhookData.response;
-
-            if (pdfUrl) {
-              console.log('PDF generated:', pdfUrl);
-              
-              await supabaseAdmin
-                .from('messages')
-                .insert({
-                  user_id: user_id,
-                  conversation_id: conversation_id,
-                  role: 'assistant',
-                  message: `📄 ¡Tu informe está listo! Descárgalo aquí:\n\n${pdfUrl}`
-                });
-            }
-          } else {
-            console.error('Webhook error:', webhookResponse.status);
-            
-            // Insertar mensaje de error
-            await supabaseAdmin
-              .from('messages')
-              .insert({
-                user_id: user_id,
-                conversation_id: conversation_id,
-                role: 'assistant',
-                message: '❌ Hubo un problema generando el informe. Por favor intenta de nuevo más tarde.'
-              });
-          }
-        } catch (webhookError) {
-          console.error('Error calling webhook:', webhookError);
-          
-          // Insertar mensaje de error
-          await supabaseAdmin
-            .from('messages')
-            .insert({
-              user_id: user_id,
-              conversation_id: conversation_id,
-              role: 'assistant',
-              message: '❌ Hubo un error inesperado generando el informe. Por favor intenta de nuevo.'
-            });
-        }
-      })();
-    }
-
-    // Generar mapa mental si fue solicitado
-    if (requestsMindMap) {
-      console.log('Mind map request detected, generating...');
-      
-      // Insertar mensaje afirmativo de que se está creando
-      await supabaseAdmin
-        .from('messages')
-        .insert({
-          user_id: user_id,
-          conversation_id: conversation_id,
-          role: 'assistant',
-          message: '🧠 ¡Perfecto! Estoy generando tu mapa mental ahora mismo. Te lo mostraré en unos segundos...'
-        });
-      
-      // Ejecutar generación de mapa mental en background
-      (async () => {
-        try {
-          // Crear resumen corto del tema
-          const conversationSummary = recentMessages && recentMessages.length > 0 
-            ? recentMessages.slice(0, 5).map(m => m.message).join(' ').substring(0, 100)
-            : message.substring(0, 100);
-          
-          console.log('📝 Generando mapa mental para tema:', conversationSummary);
-          
-          const mindMapResponse = await fetch(
-            'https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9',
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tema: conversationSummary })
-            }
-          );
-
-          if (mindMapResponse.ok) {
-            const htmlContent = await mindMapResponse.text();
-            
-            if (htmlContent && htmlContent.length >= 50) {
-              console.log('📄 Mapa mental generado, guardando en BD...');
-              
-              await supabaseAdmin
-                .from('mind_maps')
-                .insert({
-                  user_id: user_id,
-                  conversation_id: conversation_id,
-                  tema: conversationSummary,
-                  html_content: htmlContent
-                });
-              
-              console.log('✅ Mapa mental guardado exitosamente');
-            } else {
-              console.error('❌ HTML vacío o muy corto');
-              await supabaseAdmin
-                .from('messages')
-                .insert({
-                  user_id: user_id,
-                  conversation_id: conversation_id,
-                  role: 'assistant',
-                  message: '❌ Hubo un problema generando el mapa mental. Por favor intenta de nuevo.'
-                });
-            }
-          } else {
-            console.error('Webhook error:', mindMapResponse.status);
-            await supabaseAdmin
-              .from('messages')
-              .insert({
-                user_id: user_id,
-                conversation_id: conversation_id,
-                role: 'assistant',
-                message: '❌ Hubo un problema generando el mapa mental. Por favor intenta de nuevo más tarde.'
-              });
-          }
-        } catch (mindMapError) {
-          console.error('Error generating mind map:', mindMapError);
-          await supabaseAdmin
-            .from('messages')
-            .insert({
-              user_id: user_id,
-              conversation_id: conversation_id,
-              role: 'assistant',
-              message: '❌ Hubo un error inesperado generando el mapa mental. Por favor intenta de nuevo.'
-            });
-        }
-      })();
-    }
 
     return new Response(
       JSON.stringify({ success: true }),

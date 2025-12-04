@@ -800,13 +800,14 @@ const Chat = () => {
     // Activar indicador de generación
     setIsGeneratingMindMap(true);
 
-    // Llamar al chat en background sin bloquear - no esperamos la respuesta
+    // Llamar al chat con action_type para solo generar mapa mental (sin respuesta AI)
     supabase.functions.invoke("chat", {
       body: {
-        message: "Por favor, genera un mapa mental del tema que hemos estado discutiendo",
+        message: "Generar mapa mental",
         conversation_id: currentConversationId,
         user_id: session.user.id,
         skip_user_message: true,
+        action_type: "mind_map",
       },
     }).catch((err) => {
       console.error("Error en mapa mental background:", err);
@@ -814,7 +815,7 @@ const Chat = () => {
       setIsGeneratingMindMap(false);
     });
     
-    // La respuesta llegará via realtime subscription - no bloqueamos
+    // La respuesta llegará via realtime/polling - no bloqueamos
   };
 
   const handleRequestInforme = async () => {
@@ -829,20 +830,21 @@ const Chat = () => {
       return;
     }
 
-    // Llamar al chat en background sin bloquear - no esperamos la respuesta
+    // Llamar al chat con action_type para solo generar informe (sin respuesta AI adicional)
     supabase.functions.invoke("chat", {
       body: {
-        message: "Por favor, genera un informe completo de nuestra conversación",
+        message: "Generar informe",
         conversation_id: currentConversationId,
         user_id: session.user.id,
         skip_user_message: true,
+        action_type: "informe",
       },
     }).catch((err) => {
       console.error("Error en informe background:", err);
       toast.error("Error al generar informe");
     });
     
-    // La respuesta llegará via realtime subscription - no bloqueamos
+    // La respuesta llegará via realtime/polling - no bloqueamos
   };
 
   const handleGenerateFichas = async () => {
