@@ -18,7 +18,7 @@ const RegisterUser = () => {
     const [invitedUsers, setInvitedUsers] = useState<any[]>([]);
     const [tutors, setTutors] = useState<any[]>([]);
     const [newUserEmail, setNewUserEmail] = useState("");
-    const [inviteType, setInviteType] = useState<"tutor" | "student">("tutor");
+    const [inviteType, setInviteType] = useState<"admin" | "tutor" | "student">("tutor");
     const [selectedTutorId, setSelectedTutorId] = useState<string>("");
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -95,27 +95,31 @@ const RegisterUser = () => {
             // Enriquecer con info del tipo de invitación
             const enrichedData = await Promise.all(
                 data.map(async (invite) => {
+                    let tutorName = null;
+                    
                     if (invite.created_by) {
-                        // Verificar si el creador es admin o tutor
                         const { data: creatorRole } = await supabase
                             .from("user_roles")
                             .select("role")
                             .eq("user_id", invite.created_by)
                             .maybeSingle();
 
-                        const { data: creatorProfile } = await supabase
-                            .from("profiles")
-                            .select("name, email")
-                            .eq("id", invite.created_by)
-                            .maybeSingle();
-
-                        return {
-                            ...invite,
-                            inviteType: creatorRole?.role === "admin" ? "tutor" : "student",
-                            tutorName: creatorRole?.role === "tutor" ? (creatorProfile?.name || creatorProfile?.email) : null
-                        };
+                        // Si fue invitado por tutor, obtener nombre del tutor
+                        if (creatorRole?.role === "tutor") {
+                            const { data: creatorProfile } = await supabase
+                                .from("profiles")
+                                .select("name, email")
+                                .eq("id", invite.created_by)
+                                .maybeSingle();
+                            tutorName = creatorProfile?.name || creatorProfile?.email;
+                        }
                     }
-                    return { ...invite, inviteType: "tutor", tutorName: null };
+
+                    return {
+                        ...invite,
+                        inviteType: invite.intended_role || "tutor",
+                        tutorName
+                    };
                 })
             );
             setInvitedUsers(enrichedData);
@@ -146,15 +150,16 @@ const RegisterUser = () => {
             const { data: { user } } = await supabase.auth.getUser();
             
             // Si es estudiante, el created_by es el tutor seleccionado
-            // Si es tutor, el created_by es el admin actual
+            // Si es tutor o admin, el created_by es el admin actual
             const createdBy = inviteType === "student" ? selectedTutorId : user?.id;
 
-            // Insertar invitación y obtener el token generado
+            // Insertar invitación con el rol pretendido
             const { data: inviteData, error } = await supabase
                 .from("invited_users")
                 .insert({
                     email: newUserEmail.toLowerCase(),
-                    created_by: createdBy
+                    created_by: createdBy,
+                    intended_role: inviteType
                 })
                 .select("token")
                 .single();
@@ -191,8 +196,9 @@ const RegisterUser = () => {
                 console.error("Error calling webhook:", webhookError);
             }
 
+            const roleLabels = { admin: "Admin", tutor: "Tutor", student: "Estudiante" };
             toast({
-                title: inviteType === "tutor" ? "Tutor invitado" : "Estudiante invitado",
+                title: `${roleLabels[inviteType]} invitado`,
                 description: `Se ha enviado una invitación a ${newUserEmail}`,
             });
 
@@ -258,11 +264,15 @@ const RegisterUser = () => {
                             <RadioGroup
                                 value={inviteType}
                                 onValueChange={(value) => {
-                                    setInviteType(value as "tutor" | "student");
+                                    setInviteType(value as "admin" | "tutor" | "student");
                                     setSelectedTutorId("");
                                 }}
                                 className="flex gap-4"
                             >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="admin" id="admin" />
+                                    <Label htmlFor="admin" className="cursor-pointer">Admin</Label>
+                                </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="tutor" id="tutor" />
                                     <Label htmlFor="tutor" className="cursor-pointer">Tutor</Label>
@@ -304,14 +314,18 @@ const RegisterUser = () => {
                         <div className="flex gap-2">
                             <Input
                                 type="email"
-                                placeholder={inviteType === "tutor" ? "tutor@ejemplo.com" : "estudiante@ejemplo.com"}
+                                placeholder={
+                                    inviteType === "admin" ? "admin@ejemplo.com" :
+                                    inviteType === "tutor" ? "tutor@ejemplo.com" : 
+                                    "estudiante@ejemplo.com"
+                                }
                                 value={newUserEmail}
                                 onChange={(e) => setNewUserEmail(e.target.value)}
                                 onKeyPress={(e) => e.key === "Enter" && handleInviteUser()}
                             />
                             <Button onClick={handleInviteUser}>
                                 <UserPlus className="w-4 h-4 mr-2" />
-                                Invitar {inviteType === "tutor" ? "Tutor" : "Estudiante"}
+                                Invitar {inviteType === "admin" ? "Admin" : inviteType === "tutor" ? "Tutor" : "Estudiante"}
                             </Button>
                         </div>
                     </CardContent>
@@ -321,7 +335,7 @@ const RegisterUser = () => {
                     <CardHeader>
                         <CardTitle>Usuarios Invitados</CardTitle>
                         <CardDescription>
-                            Lista de tutores y estudiantes que pueden registrarse
+                            Lista de usuarios que pueden registrarse
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -339,8 +353,13 @@ const RegisterUser = () => {
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2">
                                                 <p className="font-medium">{user.email}</p>
-                                                <Badge variant={user.inviteType === "tutor" ? "secondary" : "outline"}>
-                                                    {user.inviteType === "tutor" ? "Tutor" : "Estudiante"}
+                                                <Badge variant={
+                                                    user.inviteType === "admin" ? "default" :
+                                                    user.inviteType === "tutor" ? "secondary" : 
+                                                    "outline"
+                                                }>
+                                                    {user.inviteType === "admin" ? "Admin" : 
+                                                     user.inviteType === "tutor" ? "Tutor" : "Estudiante"}
                                                 </Badge>
                                             </div>
                                             <p className="text-sm text-muted-foreground">
