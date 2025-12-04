@@ -179,12 +179,17 @@ serve(async (req) => {
     if (action_type === 'mind_map') {
       console.log('Mind map action requested, generating directly...');
       
-      // Crear resumen del tema basado en la conversación
-      const conversationSummary = recentMessages && recentMessages.length > 0 
-        ? recentMessages.slice(0, 5).map(m => m.message).join(' ').substring(0, 100)
-        : 'Tema de estudio';
+      // Construir la conversación completa para dar contexto al API
+      const fullConversation = recentMessages && recentMessages.length > 0 
+        ? recentMessages.reverse().map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.message}`).join('\n\n')
+        : 'Sin conversación disponible';
       
-      console.log('📝 Generando mapa mental para tema:', conversationSummary);
+      // Tema corto para guardar en BD
+      const shortTema = recentMessages && recentMessages.length > 0 
+        ? recentMessages[0]?.message?.substring(0, 100) || 'Mapa mental'
+        : 'Mapa mental';
+      
+      console.log('📝 Generando mapa mental con conversación completa, longitud:', fullConversation.length);
       
       try {
         const mindMapResponse = await fetch(
@@ -192,7 +197,7 @@ serve(async (req) => {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tema: conversationSummary })
+            body: JSON.stringify({ tema: fullConversation })
           }
         );
 
@@ -207,7 +212,7 @@ serve(async (req) => {
               .insert({
                 user_id: user_id,
                 conversation_id: conversation_id,
-                tema: conversationSummary,
+                tema: shortTema,
                 html_content: htmlContent
               });
             
