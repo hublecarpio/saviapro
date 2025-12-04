@@ -281,6 +281,24 @@ const Chat = () => {
               preview: newMessage.message.substring(0, 50)
             });
             
+            // Detectar si es un mensaje de video/podcast completado
+            if (newMessage.role === "assistant") {
+              if (newMessage.message.includes("Video resumen generado") || 
+                  newMessage.message.includes("video") && newMessage.message.includes("Error")) {
+                console.log("🎬 Video generation complete");
+                setIsGeneratingVideo(false);
+              }
+              if (newMessage.message.includes("Podcast resumen generado") || 
+                  newMessage.message.includes("podcast") && newMessage.message.includes("Error")) {
+                console.log("🎙️ Podcast generation complete");
+                setIsGeneratingPodcast(false);
+              }
+              if (newMessage.message.includes("informe") || newMessage.message.includes("📄")) {
+                console.log("📄 Informe generation complete");
+                setIsGeneratingInforme(false);
+              }
+            }
+            
             return [...prev, newMessage];
           });
 
@@ -835,14 +853,7 @@ const Chat = () => {
         throw error;
       }
       
-      // Desactivar después de un delay para dar tiempo a que llegue la respuesta
-      setTimeout(() => {
-        if (type === "video") {
-          setIsGeneratingVideo(false);
-        } else {
-          setIsGeneratingPodcast(false);
-        }
-      }, 30000); // Video/podcast tardan más
+      // El estado se desactivará automáticamente cuando llegue el mensaje via realtime
       
     } catch (error) {
       console.error("Error starting media generation:", error);
@@ -912,16 +923,13 @@ const Chat = () => {
         skip_user_message: true,
         action_type: "informe",
       },
-    }).then(() => {
-      // Desactivar después de un delay para dar tiempo a que llegue la respuesta
-      setTimeout(() => setIsGeneratingInforme(false), 2000);
     }).catch((err) => {
       console.error("Error en informe background:", err);
       toast.error("Error al generar informe");
       setIsGeneratingInforme(false);
     });
     
-    // La respuesta llegará via realtime/polling - no bloqueamos
+    // El estado se desactivará automáticamente cuando llegue el mensaje via realtime
   };
 
   const handleGenerateFichas = async () => {
