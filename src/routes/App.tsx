@@ -19,6 +19,7 @@ import Prompt from "@/components/user/Prompt";
 import RegisterUser from "@/components/user/RegisterUser";
 import ListUser from "@/components/user/ListUser";
 import InviteRegister from "@/pages/InviteRegister";
+import { AdminConversationHistory } from "@/components/admin/AdminConversationHistory";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,13 @@ const App = () => (
             <ProtectedRoute>
               <DashboardLayout>
                 <ListUser />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/history" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AdminConversationHistory />
               </DashboardLayout>
             </ProtectedRoute>
           } />

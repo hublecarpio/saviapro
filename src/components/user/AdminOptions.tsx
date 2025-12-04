@@ -1,6 +1,6 @@
 import { useLocation, Link } from "react-router-dom";
 import { SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '../ui/sidebar'
-import { Settings, UserPlus, Users } from 'lucide-react'
+import { Settings, UserPlus, Users, History } from 'lucide-react'
 
 const items = [
     {
@@ -17,6 +17,11 @@ const items = [
         title: "Usuarios Registrados",
         url: "/admin/users",
         icon: Users,
+    },
+    {
+        title: "Historial",
+        url: "/admin/history",
+        icon: History,
     }
 ]
 
