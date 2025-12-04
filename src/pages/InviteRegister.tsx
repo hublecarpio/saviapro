@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserStore } from "@/store/useUserStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ const registerSchema = z.object({
 const InviteRegister = () => {
   const { token } = useParams();
   const navigate = useNavigate();
+  const { setUser } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -96,16 +98,28 @@ const InviteRegister = () => {
       }
 
       // Iniciar sesión con las nuevas credenciales
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: inviteEmail,
         password,
       });
 
-      if (signInError) {
+      if (signInError || !signInData.user) {
         toast.error("Cuenta creada pero error al iniciar sesión. Intenta en la página de login.");
         navigate("/");
         return;
       }
+
+      // Actualizar el store del usuario ANTES de navegar
+      setUser({
+        id: signInData.user.id,
+        email: inviteEmail,
+        name: name,
+        roles: data.role ? [data.role] : [],
+        starterCompleted: false,
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+      });
 
       const message = data.isExisting 
         ? "Datos actualizados exitosamente. Redirigiendo..." 
@@ -113,16 +127,14 @@ const InviteRegister = () => {
       
       toast.success(message);
       
-      // Redirigir según el rol
-      setTimeout(() => {
-        if (data.role === "admin") {
-          navigate("/admin");
-        } else if (data.role === "tutor") {
-          navigate("/tutor/dashboard");
-        } else {
-          navigate("/starter");
-        }
-      }, 500);
+      // Redirigir según el rol inmediatamente
+      if (data.role === "admin") {
+        navigate("/admin", { replace: true });
+      } else if (data.role === "tutor") {
+        navigate("/tutor/dashboard", { replace: true });
+      } else {
+        navigate("/starter", { replace: true });
+      }
 
     } catch (error) {
       console.error("Error en registro:", error);
