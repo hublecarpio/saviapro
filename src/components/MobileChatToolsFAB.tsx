@@ -7,6 +7,9 @@ interface MobileChatToolsFABProps {
   hasMessages: boolean;
   isGeneratingMindMap?: boolean;
   isGeneratingInforme?: boolean;
+  isGeneratingVideo?: boolean;
+  isGeneratingPodcast?: boolean;
+  isGeneratingFichas?: boolean;
   onGenerateVideo: () => void;
   onGeneratePodcast: () => void;
   onRequestMindMap: () => void;
@@ -19,6 +22,9 @@ export const MobileChatToolsFAB = ({
   hasMessages,
   isGeneratingMindMap,
   isGeneratingInforme,
+  isGeneratingVideo,
+  isGeneratingPodcast,
+  isGeneratingFichas,
   onGenerateVideo,
   onGeneratePodcast,
   onRequestMindMap,
@@ -30,11 +36,11 @@ export const MobileChatToolsFAB = ({
   if (!hasMessages) return null;
 
   const tools = [
-    { icon: Video, label: "Video", onClick: onGenerateVideo, isGenerating: false },
-    { icon: Podcast, label: "Podcast", onClick: onGeneratePodcast, isGenerating: false },
+    { icon: Video, label: "Video", onClick: onGenerateVideo, isGenerating: isGeneratingVideo },
+    { icon: Podcast, label: "Podcast", onClick: onGeneratePodcast, isGenerating: isGeneratingPodcast },
     { icon: Brain, label: "Mapas", onClick: onRequestMindMap, isGenerating: isGeneratingMindMap },
     { icon: FileText, label: "Informe", onClick: onRequestInforme, isGenerating: isGeneratingInforme },
-    { icon: BookOpen, label: "Fichas", onClick: onGenerateFichas, isGenerating: false },
+    { icon: BookOpen, label: "Fichas", onClick: onGenerateFichas, isGenerating: isGeneratingFichas },
   ];
 
   const handleToolClick = (onClick: () => void) => {

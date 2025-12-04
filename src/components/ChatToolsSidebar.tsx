@@ -6,6 +6,9 @@ interface ChatToolsSidebarProps {
   hasMessages: boolean;
   isGeneratingMindMap?: boolean;
   isGeneratingInforme?: boolean;
+  isGeneratingVideo?: boolean;
+  isGeneratingPodcast?: boolean;
+  isGeneratingFichas?: boolean;
   onGenerateVideo: () => void;
   onGeneratePodcast: () => void;
   onRequestMindMap: () => void;
@@ -18,6 +21,9 @@ export const ChatToolsSidebar = ({
   hasMessages,
   isGeneratingMindMap,
   isGeneratingInforme,
+  isGeneratingVideo,
+  isGeneratingPodcast,
+  isGeneratingFichas,
   onGenerateVideo,
   onGeneratePodcast,
   onRequestMindMap,
@@ -32,24 +38,24 @@ export const ChatToolsSidebar = ({
             variant="ghost"
             size="icon"
             onClick={onGenerateVideo}
-            disabled={isLoading}
+            disabled={isLoading || isGeneratingVideo}
             className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
             title="Generar video resumen"
           >
-            <Video className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Video</span>
+            <Video className={`h-5 w-5 transition-colors ${isGeneratingVideo ? 'text-primary animate-pulse' : 'text-muted-foreground group-hover:text-foreground'}`} />
+            <span className={`text-[9px] font-medium ${isGeneratingVideo ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>Video</span>
           </Button>
 
           <Button
             variant="ghost"
             size="icon"
             onClick={onGeneratePodcast}
-            disabled={isLoading}
+            disabled={isLoading || isGeneratingPodcast}
             className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
             title="Generar podcast resumen"
           >
-            <Podcast className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Podcast</span>
+            <Podcast className={`h-5 w-5 transition-colors ${isGeneratingPodcast ? 'text-primary animate-pulse' : 'text-muted-foreground group-hover:text-foreground'}`} />
+            <span className={`text-[9px] font-medium ${isGeneratingPodcast ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>Podcast</span>
           </Button>
 
           <Button
@@ -80,12 +86,12 @@ export const ChatToolsSidebar = ({
             variant="ghost"
             size="icon"
             onClick={onGenerateFichas}
-            disabled={isLoading}
+            disabled={isLoading || isGeneratingFichas}
             className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
             title="Generar fichas didácticas"
           >
-            <BookOpen className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Fichas</span>
+            <BookOpen className={`h-5 w-5 transition-colors ${isGeneratingFichas ? 'text-primary animate-pulse' : 'text-muted-foreground group-hover:text-foreground'}`} />
+            <span className={`text-[9px] font-medium ${isGeneratingFichas ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>Fichas</span>
           </Button>
         </>
       )}
