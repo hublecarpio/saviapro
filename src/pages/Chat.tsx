@@ -503,8 +503,44 @@ const Chat = () => {
         throw error;
       }
       
-      console.log("✅ Message sent, waiting for realtime response...");
-      // La respuesta llegará por realtime, no hacemos reload
+      console.log("✅ Message sent, polling for response...");
+      
+      // Polling para obtener la respuesta (más confiable que realtime)
+      const pollForResponse = async (attempts = 0) => {
+        if (attempts > 15) {
+          console.log("⏱️ Max polling attempts reached");
+          setIsLoading(false);
+          return;
+        }
+        
+        const { data: newMessages } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: true });
+        
+        if (newMessages) {
+          // Buscar si hay una respuesta del asistente más reciente que nuestro mensaje
+          const hasNewAssistantMessage = newMessages.some(
+            (m) => m.role === "assistant" && 
+            new Date(m.created_at) > new Date(optimisticUserMessage.created_at)
+          );
+          
+          if (hasNewAssistantMessage) {
+            console.log("✅ Response received via polling");
+            // Reemplazar mensajes temporales con los reales
+            setMessages(newMessages.filter(m => !m.id.startsWith('temp-')) as Message[]);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        // Esperar y reintentar
+        setTimeout(() => pollForResponse(attempts + 1), 500);
+      };
+      
+      // Iniciar polling después de un breve delay
+      setTimeout(() => pollForResponse(), 500);
       
     } catch (error) {
       console.error("❌ Error sending message:", error);
