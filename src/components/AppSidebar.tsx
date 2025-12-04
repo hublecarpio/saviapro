@@ -44,7 +44,7 @@ export function AppSidebar({
 
   useEffect(() => {
     if (user) {
-      loadConversations();
+      loadConversations(true); // Carga inicial con loading
       
       // Subscribe to realtime updates
       const channel = supabase
@@ -58,7 +58,7 @@ export function AppSidebar({
             filter: `user_id=eq.${user.id}`,
           },
           () => {
-            loadConversations();
+            loadConversations(false); // Actualización silenciosa sin loading
           }
         )
         .subscribe();
@@ -69,7 +69,7 @@ export function AppSidebar({
     }
   }, [user]);
 
-  const loadConversations = async () => {
+  const loadConversations = async (showLoading: boolean = false) => {
     try {
       if (!user) {
       console.log('No user found, skipping conversations load');
@@ -77,7 +77,7 @@ export function AppSidebar({
     }
     
     console.log('Loading conversations for user:', user.id);
-    setLoading(true);
+    if (showLoading) setLoading(true);
     
     const { data: conversationsData, error } = await supabase
       .from('conversations')
