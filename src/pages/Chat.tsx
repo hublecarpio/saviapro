@@ -765,12 +765,67 @@ const Chat = () => {
     }
   };
 
-  const handleRequestMindMap = () => {
-    if (!currentConversationId || messages.length === 0 || isLoading) {
+  const handleRequestMindMap = async () => {
+    if (!currentConversationId || messages.length === 0) {
       toast.error("No hay conversación para crear un mapa mental");
       return;
     }
-    handleSend("Por favor, genera un mapa mental del tema que hemos estado discutiendo");
+
+    // Agregar mensaje optimista del usuario
+    const tempUserMessage: Message = {
+      id: `temp-user-map-${Date.now()}`,
+      role: "user",
+      message: "Por favor, genera un mapa mental del tema que hemos estado discutiendo",
+      created_at: new Date().toISOString(),
+      conversation_id: currentConversationId,
+    };
+    
+    // Agregar mensaje de "generando..."
+    const tempAssistantMessage: Message = {
+      id: `temp-mindmap-${Date.now()}`,
+      role: "assistant",
+      message: "🧠 Generando mapa mental... Puedes seguir conversando mientras tanto.",
+      created_at: new Date(Date.now() + 1).toISOString(),
+      conversation_id: currentConversationId,
+    };
+
+    setMessages((prev) => [...prev, tempUserMessage, tempAssistantMessage]);
+    setIsGeneratingMindMap(true);
+    toast.info("Generando mapa mental en segundo plano...");
+
+    // Llamar al chat en background sin bloquear
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Sesión expirada");
+        return;
+      }
+
+      // Guardar mensaje del usuario en la base de datos
+      await supabase.from("messages").insert({
+        conversation_id: currentConversationId,
+        role: "user",
+        message: tempUserMessage.message,
+        user_id: session.user.id,
+      });
+
+      // Llamar al chat (background - no bloquear)
+      supabase.functions.invoke("chat", {
+        body: {
+          message: tempUserMessage.message,
+          conversationId: currentConversationId,
+        },
+      }).then(() => {
+        setIsGeneratingMindMap(false);
+      }).catch((err) => {
+        console.error("Error en mapa mental background:", err);
+        setIsGeneratingMindMap(false);
+      });
+      
+    } catch (error) {
+      console.error("Error iniciando mapa mental:", error);
+      setIsGeneratingMindMap(false);
+    }
   };
 
   const handleRequestInforme = async () => {
