@@ -140,35 +140,35 @@ export function AppSidebar({
     setDeletingId(null);
   };
 
+  // Cuando está colapsado, no mostrar nada (solo el trigger externo)
+  if (!sidebarOpen) {
+    return null;
+  }
+
   return (
-    <Sidebar className={sidebarOpen ? "w-64" : "w-14"} collapsible="icon">
+    <Sidebar className="w-64" collapsible="icon">
       <SidebarContent className="bg-card border-r">
         <div className="p-4 border-b">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <MessageSquare className="h-4 w-4 text-primary" />
             </div>
-            {sidebarOpen && (
-              <span className="font-semibold text-foreground">BIEX</span>
-            )}
+            <span className="font-semibold text-foreground">BIEX</span>
           </div>
           
           <Button
             onClick={onNewConversation}
             className="w-full"
-            size={sidebarOpen ? "default" : "icon"}
           >
             <Plus className="h-4 w-4" />
-            {sidebarOpen && <span className="ml-2">Nuevo chat</span>}
+            <span className="ml-2">Nuevo chat</span>
           </Button>
         </div>
 
         <SidebarGroup>
-          {sidebarOpen && (
-            <SidebarGroupLabel className="text-muted-foreground">
-              Conversaciones
-            </SidebarGroupLabel>
-          )}
+          <SidebarGroupLabel className="text-muted-foreground">
+            Conversaciones
+          </SidebarGroupLabel>
           
           <SidebarGroupContent>
             {loading ? (
@@ -185,31 +185,29 @@ export function AppSidebar({
                       className="group relative w-full"
                     >
                       <MessageSquare className="h-4 w-4 shrink-0" />
-                      {sidebarOpen && (
-                        <div className="flex-1 min-w-0 flex items-center gap-2">
-                          <span className="flex-1 truncate text-left text-sm">
-                            {conversation.first_message}
-                          </span>
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-accent rounded-sm shrink-0 cursor-pointer"
-                            onClick={(e) => handleDelete(e, conversation.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                handleDelete(e as any, conversation.id);
-                              }
-                            }}
-                          >
-                            {deletingId === conversation.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3 w-3" />
-                            )}
-                          </div>
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <span className="flex-1 truncate text-left text-sm">
+                          {conversation.first_message}
+                        </span>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-accent rounded-sm shrink-0 cursor-pointer"
+                          onClick={(e) => handleDelete(e, conversation.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleDelete(e as any, conversation.id);
+                            }
+                          }}
+                        >
+                          {deletingId === conversation.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
                         </div>
-                      )}
+                      </div>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -218,13 +216,11 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {sidebarOpen && (
-          <div className="mt-auto p-4 border-t">
-            <p className="text-xs text-muted-foreground text-center">
-              Desarrollado por <span className="font-semibold">Huble .Ing</span>
-            </p>
-          </div>
-        )}
+        <div className="mt-auto p-4 border-t">
+          <p className="text-xs text-muted-foreground text-center">
+            Desarrollado por <span className="font-semibold">Huble .Ing</span>
+          </p>
+        </div>
       </SidebarContent>
     </Sidebar>
   );
