@@ -90,6 +90,7 @@ serve(async (req) => {
       .insert({
         email: email.toLowerCase(),
         created_by: tutor.id,
+        intended_role: 'student', // IMPORTANTE: Los tutores siempre invitan estudiantes
       })
       .select("token")
       .single();
