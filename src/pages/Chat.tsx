@@ -808,7 +808,8 @@ const Chat = () => {
       supabase.functions.invoke("chat", {
         body: {
           message: tempUserMessage.message,
-          conversationId: currentConversationId,
+          conversation_id: currentConversationId,
+          user_id: session.user.id,
         },
       }).then(() => {
         setIsGeneratingMindMap(false);
@@ -869,7 +870,8 @@ const Chat = () => {
       supabase.functions.invoke("chat", {
         body: {
           message: tempUserMessage.message,
-          conversationId: currentConversationId,
+          conversation_id: currentConversationId,
+          user_id: session.user.id,
         },
       }).catch((err) => console.error("Error en informe background:", err));
       
