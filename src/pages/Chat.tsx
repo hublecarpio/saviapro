@@ -773,12 +773,60 @@ const Chat = () => {
     handleSend("Por favor, genera un mapa mental del tema que hemos estado discutiendo");
   };
 
-  const handleRequestInforme = () => {
-    if (!currentConversationId || messages.length === 0 || isLoading) {
+  const handleRequestInforme = async () => {
+    if (!currentConversationId || messages.length === 0) {
       toast.error("No hay conversación para generar un informe");
       return;
     }
-    handleSend("Por favor, genera un informe completo de nuestra conversación");
+
+    // Agregar mensaje optimista del usuario
+    const tempUserMessage: Message = {
+      id: `temp-user-${Date.now()}`,
+      role: "user",
+      message: "Por favor, genera un informe completo de nuestra conversación",
+      created_at: new Date().toISOString(),
+      conversation_id: currentConversationId,
+    };
+    
+    // Agregar mensaje de "generando..."
+    const tempAssistantMessage: Message = {
+      id: `temp-informe-${Date.now()}`,
+      role: "assistant",
+      message: "📄 Generando informe... Esto puede tomar hasta 2 minutos. Puedes seguir conversando mientras tanto.",
+      created_at: new Date(Date.now() + 1).toISOString(),
+      conversation_id: currentConversationId,
+    };
+
+    setMessages((prev) => [...prev, tempUserMessage, tempAssistantMessage]);
+    toast.info("Generando informe en segundo plano...");
+
+    // Llamar al chat en background sin bloquear
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Sesión expirada");
+        return;
+      }
+
+      // Guardar mensaje del usuario en la base de datos
+      await supabase.from("messages").insert({
+        conversation_id: currentConversationId,
+        role: "user",
+        message: tempUserMessage.message,
+        user_id: session.user.id,
+      });
+
+      // Llamar al chat (background - no bloquear)
+      supabase.functions.invoke("chat", {
+        body: {
+          message: tempUserMessage.message,
+          conversationId: currentConversationId,
+        },
+      }).catch((err) => console.error("Error en informe background:", err));
+      
+    } catch (error) {
+      console.error("Error iniciando informe:", error);
+    }
   };
 
   const handleGenerateFichas = async () => {
@@ -786,76 +834,77 @@ const Chat = () => {
       toast.error("No hay conversación para generar fichas didácticas");
       return;
     }
-    if (isLoading) {
-      toast.error("Por favor espera a que termine la operación actual");
-      return;
-    }
 
-    try {
-      setIsLoading(true);
-      toast.info("Generando fichas didácticas...");
+    // Agregar mensaje de "generando..." inmediatamente
+    const tempMessage: Message = {
+      id: `temp-fichas-${Date.now()}`,
+      role: "assistant",
+      message: "📚 Generando fichas didácticas... Puedes seguir conversando mientras tanto.",
+      created_at: new Date().toISOString(),
+      conversation_id: currentConversationId,
+    };
 
-      // Obtener mensajes de la conversación
-      const { data: conversationMessages, error: messagesError } = await supabase
-        .from("messages")
-        .select("message, role")
-        .eq("conversation_id", currentConversationId)
-        .order("created_at", { ascending: true });
+    setMessages((prev) => [...prev, tempMessage]);
+    toast.info("Generando fichas en segundo plano...");
 
-      if (messagesError) throw messagesError;
+    // Ejecutar en background sin bloquear
+    (async () => {
+      try {
+        // Obtener mensajes de la conversación
+        const { data: conversationMessages, error: messagesError } = await supabase
+          .from("messages")
+          .select("message, role")
+          .eq("conversation_id", currentConversationId)
+          .order("created_at", { ascending: true });
 
-      if (!conversationMessages || conversationMessages.length === 0) {
-        toast.error("No hay contenido en esta conversación para generar fichas");
-        setIsLoading(false);
-        return;
-      }
+        if (messagesError) throw messagesError;
 
-      // Construir el contenido del chat
-      const contenidoChat = conversationMessages
-        .map((m) => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.message}`)
-        .join("\n\n");
-
-      // Llamar al edge function
-      const { data, error } = await supabase.functions.invoke("generar-fichas", {
-        body: {
-          conversation_id: currentConversationId,
-          contenido_chat: contenidoChat,
-        },
-      });
-
-      if (error) {
-        console.error("Error generando fichas:", error);
-        
-        if (error.message.includes("429")) {
-          toast.error("Límite de peticiones excedido. Intenta de nuevo en unos momentos.");
-        } else if (error.message.includes("402")) {
-          toast.error("Se requiere agregar créditos a tu cuenta de Lovable AI.");
-        } else {
-          toast.error("Error al generar las fichas");
+        if (!conversationMessages || conversationMessages.length === 0) {
+          toast.error("No hay contenido en esta conversación para generar fichas");
+          // Remover mensaje temporal
+          setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
+          return;
         }
-        setIsLoading(false);
-        return;
-      }
 
-      if (data?.success) {
-        toast.success("¡Fichas generadas exitosamente!");
-        
-        // Abrir las fichas automáticamente después de generarlas
-        // Esperar un poco para que las fichas se carguen por realtime
-        setTimeout(() => {
-          if (fichasSets.length > 0) {
-            const latestFichas = fichasSets[fichasSets.length - 1];
-            setSelectedFichasId(latestFichas.id);
-            setShowFichas(true);
+        // Construir el contenido del chat
+        const contenidoChat = conversationMessages
+          .map((m) => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.message}`)
+          .join("\n\n");
+
+        // Llamar al edge function
+        const { data, error } = await supabase.functions.invoke("generar-fichas", {
+          body: {
+            conversation_id: currentConversationId,
+            contenido_chat: contenidoChat,
+          },
+        });
+
+        // Remover mensaje temporal de "generando..."
+        setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
+
+        if (error) {
+          console.error("Error generando fichas:", error);
+          
+          if (error.message.includes("429")) {
+            toast.error("Límite de peticiones excedido. Intenta de nuevo en unos momentos.");
+          } else if (error.message.includes("402")) {
+            toast.error("Se requiere agregar créditos a tu cuenta de Lovable AI.");
+          } else {
+            toast.error("Error al generar las fichas");
           }
-        }, 1000);
+          return;
+        }
+
+        if (data?.success) {
+          toast.success("¡Fichas generadas exitosamente!");
+        }
+      } catch (error) {
+        console.error("Error generando fichas:", error);
+        toast.error("Error al generar las fichas");
+        // Remover mensaje temporal
+        setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
       }
-    } catch (error) {
-      console.error("Error generando fichas:", error);
-      toast.error("Error al generar las fichas");
-    } finally {
-      setIsLoading(false);
-    }
+    })();
   };
 
   console.log(user);
