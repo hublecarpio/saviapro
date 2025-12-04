@@ -99,6 +99,15 @@ Deno.serve(async (req) => {
       }
 
       userId = newUser.user.id;
+
+      // Crear perfil como respaldo (por si el trigger no se ejecuta)
+      await supabaseAdmin
+        .from("profiles")
+        .upsert({ 
+          id: userId, 
+          email: email.toLowerCase(), 
+          name 
+        }, { onConflict: 'id' });
     }
 
     // Asignar el rol de la invitación (eliminar roles anteriores si existe)
