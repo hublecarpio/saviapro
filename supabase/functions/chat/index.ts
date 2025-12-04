@@ -133,7 +133,7 @@ serve(async (req) => {
       }
     );
 
-    const { message, conversation_id, user_id, image } = await req.json();
+    const { message, conversation_id, user_id, image, skip_user_message } = await req.json();
     
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return new Response(
@@ -165,19 +165,21 @@ serve(async (req) => {
     // Construir prompt personalizado
     const systemPrompt = buildPersonalizedPrompt(starterProfile);
 
-    // Save user message
-    const { error: insertUserError } = await supabaseAdmin
-      .from('messages')
-      .insert({
-        user_id: user_id,
-        conversation_id: conversation_id,
-        role: 'user',
-        message: message.trim()
-      });
+    // Save user message (skip if requested - used for background tasks like mind map, informe)
+    if (!skip_user_message) {
+      const { error: insertUserError } = await supabaseAdmin
+        .from('messages')
+        .insert({
+          user_id: user_id,
+          conversation_id: conversation_id,
+          role: 'user',
+          message: message.trim()
+        });
 
-    if (insertUserError) {
-      console.error('Error saving user message:', insertUserError);
-      throw new Error('Error guardando mensaje');
+      if (insertUserError) {
+        console.error('Error saving user message:', insertUserError);
+        throw new Error('Error guardando mensaje');
+      }
     }
 
     // Get conversation history (last 20 messages)
