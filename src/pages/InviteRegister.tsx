@@ -80,84 +80,44 @@ const InviteRegister = () => {
 
       setLoading(true);
 
-      // Intentar crear usuario en Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: inviteEmail,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/starter`,
-          data: { name }
+      // Llamar a la edge function que maneja todo
+      const { data, error } = await supabase.functions.invoke("update-invited-user", {
+        body: {
+          email: inviteEmail,
+          password,
+          name,
+          token
         }
       });
 
-      let userId: string | null = null;
-
-      if (signUpError) {
-        if (signUpError.message.includes("User already registered")) {
-          // Usuario ya existe - intentar iniciar sesión
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: inviteEmail,
-            password,
-          });
-
-          if (signInError) {
-            toast.error("Este email ya está registrado. Ingresa tu contraseña actual para continuar.");
-            return;
-          }
-
-          userId = signInData.user?.id ?? null;
-          
-          // Asignar rol desde la invitación para usuarios existentes
-          if (userId) {
-            await supabase.rpc("assign_role_from_invitation", {
-              p_user_id: userId,
-              p_email: inviteEmail.toLowerCase()
-            });
-          }
-          
-          toast.info("Usuario existente. Rol asignado correctamente.");
-        } else {
-          toast.error(signUpError.message);
-          return;
-        }
-      } else {
-        userId = authData.user?.id ?? null;
-      }
-
-      if (!userId) {
-        toast.error("Error al crear la cuenta");
+      if (error || !data?.success) {
+        toast.error(data?.error || "Error al procesar el registro");
         return;
       }
 
-      // Marcar invitación como usada
-      const { error: updateError } = await supabase.rpc("mark_invited_user_used", {
-        user_email: inviteEmail.toLowerCase()
+      // Iniciar sesión con las nuevas credenciales
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: inviteEmail,
+        password,
       });
 
-      if (updateError) {
-        console.error("Error al marcar invitación:", updateError);
+      if (signInError) {
+        toast.error("Cuenta creada pero error al iniciar sesión. Intenta en la página de login.");
+        navigate("/");
+        return;
       }
 
-      // Esperar un momento para que se procesen los triggers (asignación de rol)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Verificar el rol asignado para redirigir correctamente
-      const { data: userRole } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      const isTutor = userRole?.role === "tutor";
-      const isAdmin = userRole?.role === "admin";
-
-      toast.success("Cuenta configurada exitosamente. Redirigiendo...");
+      const message = data.isExisting 
+        ? "Datos actualizados exitosamente. Redirigiendo..." 
+        : "Cuenta creada exitosamente. Redirigiendo...";
+      
+      toast.success(message);
       
       // Redirigir según el rol
       setTimeout(() => {
-        if (isAdmin) {
+        if (data.role === "admin") {
           navigate("/admin");
-        } else if (isTutor) {
+        } else if (data.role === "tutor") {
           navigate("/tutor/dashboard");
         } else {
           navigate("/starter");
