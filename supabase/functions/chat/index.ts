@@ -235,49 +235,68 @@ serve(async (req) => {
       }
     }
 
-    // Call Lovable AI
+    // Call Lovable AI with retry logic
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
       console.error('LOVABLE_API_KEY not configured');
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    console.log('Calling Lovable AI...');
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: conversationHistory,
-        temperature: 0.8,
-        max_tokens: 2000,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('Lovable AI error:', aiResponse.status, errorText);
+    const callAI = async (attempt: number = 1): Promise<string> => {
+      console.log(`Calling Lovable AI... (attempt ${attempt})`);
       
-      if (aiResponse.status === 429) {
-        throw new Error('Límite de solicitudes excedido. Por favor intenta más tarde.');
+      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: conversationHistory,
+          temperature: 0.8,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error('Lovable AI error:', aiResponse.status, errorText);
+        
+        if (aiResponse.status === 429) {
+          throw new Error('Límite de solicitudes excedido. Por favor intenta más tarde.');
+        }
+        if (aiResponse.status === 402) {
+          throw new Error('Créditos insuficientes. Por favor recarga tu saldo.');
+        }
+        
+        throw new Error(`AI error: ${aiResponse.status}`);
       }
-      if (aiResponse.status === 402) {
-        throw new Error('Créditos insuficientes. Por favor recarga tu saldo.');
-      }
+
+      const aiData = await aiResponse.json();
+      console.log('AI response structure:', JSON.stringify({
+        hasChoices: !!aiData.choices,
+        choicesLength: aiData.choices?.length,
+        hasMessage: !!aiData.choices?.[0]?.message,
+        contentLength: aiData.choices?.[0]?.message?.content?.length
+      }));
       
-      throw new Error(`AI error: ${aiResponse.status}`);
-    }
+      const content = aiData.choices?.[0]?.message?.content;
 
-    const aiData = await aiResponse.json();
-    const assistantResponse = aiData.choices?.[0]?.message?.content;
+      if (!content || content.trim().length === 0) {
+        if (attempt < 2) {
+          console.log('Empty response, retrying...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return callAI(attempt + 1);
+        }
+        console.error('No response from AI after retries, aiData:', JSON.stringify(aiData));
+        throw new Error('No se pudo obtener respuesta del AI. Por favor intenta de nuevo.');
+      }
 
-    if (!assistantResponse) {
-      console.error('No response from AI');
-      throw new Error('No response from AI');
-    }
+      return content;
+    };
+
+    const assistantResponse = await callAI();
 
     // Limpiar markdown de la respuesta (**, ##, listas, etc.)
     let cleanedResponse = assistantResponse
