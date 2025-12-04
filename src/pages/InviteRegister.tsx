@@ -106,7 +106,16 @@ const InviteRegister = () => {
           }
 
           userId = signInData.user?.id ?? null;
-          toast.info("Usuario existente. Asignando nuevo rol...");
+          
+          // Asignar rol desde la invitación para usuarios existentes
+          if (userId) {
+            await supabase.rpc("assign_role_from_invitation", {
+              p_user_id: userId,
+              p_email: inviteEmail.toLowerCase()
+            });
+          }
+          
+          toast.info("Usuario existente. Rol asignado correctamente.");
         } else {
           toast.error(signUpError.message);
           return;
