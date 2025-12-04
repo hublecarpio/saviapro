@@ -249,10 +249,17 @@ const Chat = () => {
           const newMessage = payload.new as Message;
           
           setMessages((prev) => {
-            // Verificar si ya existe
+            // Verificar si ya existe por ID real
             if (prev.some((m) => m.id === newMessage.id)) {
               console.log("⚠️ Message already exists, ignoring");
               return prev;
+            }
+            
+            // Si es mensaje del usuario, remover el mensaje temporal/optimista
+            if (newMessage.role === "user") {
+              const filteredPrev = prev.filter((m) => !m.id.startsWith("temp-"));
+              console.log("✅ Replacing optimistic message with real one");
+              return [...filteredPrev, newMessage];
             }
             
             // Detectar si es un mensaje de generación de mapa mental
@@ -261,7 +268,7 @@ const Chat = () => {
                  newMessage.message.includes("🧠"))) {
               console.log("🎨 Mind map generation detected, showing progress bar");
               setIsGeneratingMindMap(true);
-              setIsLoading(false); // Desactivar el loading genérico
+              setIsLoading(false);
             }
             
             console.log("✅ Adding message to UI:", {
@@ -467,10 +474,19 @@ const Chat = () => {
           return;
         }
         navigate(`/chat/${conversationId}`, { replace: true });
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      // El mensaje se mostrará cuando llegue por realtime desde la base de datos
+      // Agregar mensaje del usuario INMEDIATAMENTE a la UI (optimistic update)
+      const optimisticUserMessage: Message = {
+        id: `temp-${Date.now()}`,
+        role: "user",
+        message: textToSend,
+        created_at: new Date().toISOString(),
+        conversation_id: conversationId,
+      };
+      
+      setMessages((prev) => [...prev, optimisticUserMessage]);
 
       console.log("📤 Sending message to edge function...");
       const { error } = await supabase.functions.invoke("chat", {
@@ -482,39 +498,13 @@ const Chat = () => {
       });
 
       if (error) {
+        // Si hay error, remover el mensaje optimista
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticUserMessage.id));
         throw error;
       }
       
-      console.log("✅ Message sent, reloading messages and mind maps...");
-      
-      // Recargar mensajes y mapas mentales como fallback si realtime no funciona
-      setTimeout(async () => {
-        const [messagesResult, mindMapsResult] = await Promise.all([
-          supabase
-            .from("messages")
-            .select("*")
-            .eq("conversation_id", conversationId)
-            .order("created_at", { ascending: true }),
-          supabase
-            .from("mind_maps")
-            .select("*")
-            .eq("conversation_id", conversationId)
-            .order("created_at", { ascending: false })
-        ]);
-        
-        if (messagesResult.data) {
-          console.log("📥 Manually reloaded", messagesResult.data.length, "messages");
-          setMessages(messagesResult.data as Message[]);
-        }
-        
-        if (mindMapsResult.data) {
-          console.log("📥 Manually reloaded", mindMapsResult.data.length, "mind maps");
-          setMindMaps(mindMapsResult.data as MindMap[]);
-        }
-        
-        setIsLoading(false);
-        setIsGeneratingMindMap(false);
-      }, 3000);
+      console.log("✅ Message sent, waiting for realtime response...");
+      // La respuesta llegará por realtime, no hacemos reload
       
     } catch (error) {
       console.error("❌ Error sending message:", error);
