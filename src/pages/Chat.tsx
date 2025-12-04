@@ -419,9 +419,33 @@ const Chat = () => {
       }
     }, 2000); // Polling cada 2 segundos
 
+    // Polling para mind maps (fallback de realtime)
+    const mindMapPollingInterval = setInterval(async () => {
+      const { data: newMindMaps } = await supabase
+        .from("mind_maps")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
+      
+      if (newMindMaps) {
+        setMindMaps((prev) => {
+          const prevIds = new Set(prev.map(m => m.id));
+          const hasNewMaps = newMindMaps.some(m => !prevIds.has(m.id));
+          
+          if (hasNewMaps) {
+            console.log("🔄 New mind maps detected via polling");
+            setIsGeneratingMindMap(false);
+            return newMindMaps as MindMap[];
+          }
+          return prev;
+        });
+      }
+    }, 3000); // Polling cada 3 segundos
+
     return () => {
       supabase.removeChannel(channel);
       clearInterval(pollingInterval);
+      clearInterval(mindMapPollingInterval);
     };
   }, [currentConversationId]);
 
