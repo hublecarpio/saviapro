@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.generar-fichas]
 verify_jwt = true
+
+[functions.update-invited-user]
+verify_jwt = false
