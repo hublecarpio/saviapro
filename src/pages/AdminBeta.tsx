@@ -114,12 +114,24 @@ const AdminBeta = () => {
 
       if (rolesError) throw rolesError;
 
+      // Obtener invitaciones para saber quién invitó a quién
+      const { data: invites, error: invitesError } = await supabase
+        .from("invited_users")
+        .select("email, created_by");
+
+      if (invitesError) throw invitesError;
+
       // Combinar la información
       const usersWithRoles = profiles?.map(profile => {
         const userRoles = roles?.filter(r => r.user_id === profile.id) || [];
+        // Buscar quién invitó a este usuario
+        const invite = invites?.find(i => i.email?.toLowerCase() === profile.email?.toLowerCase());
+        const invitedBy = invite?.created_by ? profiles?.find(p => p.id === invite.created_by) : null;
+        
         return {
           ...profile,
-          roles: userRoles.map(r => r.role)
+          roles: userRoles.map(r => r.role),
+          invitedBy: invitedBy ? { name: invitedBy.name, email: invitedBy.email } : null
         };
       }) || [];
 
@@ -409,8 +421,9 @@ const AdminBeta = () => {
                           <TableHead>Nombre</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Roles</TableHead>
-                          <TableHead>Starter Completado</TableHead>
-                          <TableHead>Fecha de Registro</TableHead>
+                          <TableHead>Invitado por</TableHead>
+                          <TableHead>Starter</TableHead>
+                          <TableHead>Fecha</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -441,15 +454,22 @@ const AdminBeta = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {user.starter_completed ? (
-                                <Badge variant="default" className="bg-green-600">
-                                  ✓ Completado
-                                </Badge>
+                              {user.invitedBy ? (
+                                <span className="text-sm">
+                                  {user.invitedBy.name || user.invitedBy.email}
+                                </span>
                               ) : (
-                                <Badge variant="outline">Pendiente</Badge>
+                                <span className="text-muted-foreground text-sm">-</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-muted-foreground">
+                            <TableCell>
+                              {user.starter_completed ? (
+                                <Badge variant="default" className="bg-green-600">✓</Badge>
+                              ) : (
+                                <Badge variant="outline">-</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
                               {new Date(user.created_at).toLocaleDateString('es-ES', {
                                 day: '2-digit',
                                 month: '2-digit',

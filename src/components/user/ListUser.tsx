@@ -83,11 +83,23 @@ const ListUser = () => {
 
             if (rolesError) throw rolesError;
 
+            // Obtener invitaciones para saber quién invitó a quién
+            const { data: invites, error: invitesError } = await supabase
+                .from("invited_users")
+                .select("email, created_by");
+
+            if (invitesError) throw invitesError;
+
             const usersWithRoles = profiles?.map(profile => {
                 const userRoles = roles?.filter(r => r.user_id === profile.id) || [];
+                // Buscar quién invitó a este usuario
+                const invite = invites?.find(i => i.email?.toLowerCase() === profile.email?.toLowerCase());
+                const invitedBy = invite?.created_by ? profiles?.find(p => p.id === invite.created_by) : null;
+                
                 return {
                     ...profile,
-                    roles: userRoles.map(r => r.role)
+                    roles: userRoles.map(r => r.role),
+                    invitedBy: invitedBy ? { name: invitedBy.name, email: invitedBy.email } : null
                 };
             }) || [];
 
@@ -176,6 +188,7 @@ const ListUser = () => {
                                             <TableHead>Nombre</TableHead>
                                             <TableHead>Email</TableHead>
                                             <TableHead>Roles</TableHead>
+                                            <TableHead>Invitado por</TableHead>
                                             <TableHead>Starter</TableHead>
                                             <TableHead>Fecha</TableHead>
                                             <TableHead className="w-[80px]">Acciones</TableHead>
@@ -207,6 +220,15 @@ const ListUser = () => {
                                                             ))
                                                         )}
                                                     </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {user.invitedBy ? (
+                                                        <span className="text-sm">
+                                                            {user.invitedBy.name || user.invitedBy.email}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-sm">-</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     {user.starter_completed ? (
