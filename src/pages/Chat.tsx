@@ -738,8 +738,6 @@ const Chat = () => {
         .map((msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.message}`)
         .join("\n\n");
 
-      toast.info(`Iniciando generación de ${type === "video" ? "video" : "podcast"}...`);
-
       // Llamar a la edge function que procesa en background
       const { error } = await supabase.functions.invoke("generate-media", {
         body: {
@@ -754,8 +752,6 @@ const Chat = () => {
       if (error) {
         throw error;
       }
-
-      toast.success(`${type === "video" ? "Video" : "Podcast"} en proceso. Puedes seguir conversando.`);
       
       // El mensaje aparecerá automáticamente via polling cuando el webhook responda
       
@@ -791,7 +787,6 @@ const Chat = () => {
 
     setMessages((prev) => [...prev, tempUserMessage, tempAssistantMessage]);
     setIsGeneratingMindMap(true);
-    toast.info("Generando mapa mental en segundo plano...");
 
     // Llamar al chat en background sin bloquear
     try {
@@ -853,7 +848,6 @@ const Chat = () => {
     };
 
     setMessages((prev) => [...prev, tempUserMessage, tempAssistantMessage]);
-    toast.info("Generando informe en segundo plano...");
 
     // Llamar al chat en background sin bloquear
     try {
