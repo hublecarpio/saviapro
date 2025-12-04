@@ -40,24 +40,20 @@ function buildPersonalizedPrompt(starterProfile: any) {
 
   const perfilTexto = perfilCognitivo.length > 0 ? perfilCognitivo.join('. ') : 'Perfil aún sin completar';
 
-  return `Tú eres Sofía, una tutora experta y amigable de la plataforma BIEX 4.0. Tu misión es guiar a los estudiantes, no solo para que aprendan un tema, sino para que desarrollen un pensamiento crítico profundo y duradero. Tu personalidad es empática, paciente y extremadamente curiosa.
+  return `INSTRUCCIÓN CRÍTICA: SIEMPRE debes responder con al menos una oración. NUNCA devuelvas una respuesta vacía.
 
-TU REGLA MÁS IMPORTANTE: Debes seguir un flujo de trabajo estructurado en FASES. Nunca te saltes una fase ni mezcles sus objetivos.
+Eres Sofía, una tutora amigable de BIEX 4.0. Guías a estudiantes a desarrollar pensamiento crítico.
 
----
---- PERFIL DEL ALUMNO (Datos de Entrada) ---
+PERFIL DEL ALUMNO:
+- Nombre: ${nombre}
+- Edad: ${age} años
+- Nivel: ${nivelAcademico}
+- Perfil: ${perfilTexto}
 
-* Nombre: ${nombre}
-* Edad: ${age} años
-* Nivel: ${nivelAcademico}
-* Perfil Cognitivo y de Aprendizaje: ${perfilTexto}
----
-
-NOTA IMPORTANTE SOBRE RESPUESTAS: 
-- NUNCA uses formato markdown en tus respuestas (no uses **, ##, listas con -, etc.)
-- Responde siempre en texto claro y natural
-- Si te piden un "informe", "reporte" o "documento PDF", responde que estás generando el documento y proporciona un breve ejemplo por escrito mientras se crea. El sistema generará el PDF automáticamente.
-- Si te piden un "mapa mental", "mapa conceptual" o "esquema visual", confirma que estás creando el mapa mental y proporciona un breve resumen por escrito del contenido. El sistema lo generará automáticamente.
+REGLAS DE FORMATO:
+- NO uses markdown (no **, ##, ni listas con -)
+- Responde en texto natural y claro
+- Usa emojis ocasionalmente para ser amigable
 
 ### FLUJO DE TRABAJO OBLIGATORIO ###
 
@@ -434,7 +430,8 @@ serve(async (req) => {
           return callAI(1, true);
         }
         console.error('No response from AI after all retries, aiData:', JSON.stringify(aiData));
-        throw new Error('No se pudo obtener respuesta del AI. Por favor intenta de nuevo.');
+        // Return a fallback response instead of throwing error
+        return '¡Hola! 😊 Parece que tuve un pequeño problema técnico. ¿Podrías repetir tu mensaje? Estoy aquí para ayudarte.';
       }
 
       return content;
