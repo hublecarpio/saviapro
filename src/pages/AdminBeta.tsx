@@ -15,6 +15,10 @@ import { NavBarUser } from "@/components/NavBarUser";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { User } from "@/lib/types";
 import { DashboardLayout } from "@/layout/DashboardLaout";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Database } from "@/integrations/supabase/types";
+
+type AppRole = Database["public"]["Enums"]["app_role"];
 const AdminBeta = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>();
@@ -24,6 +28,7 @@ const AdminBeta = () => {
   const [invitedUsers, setInvitedUsers] = useState<any[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [newUserEmail, setNewUserEmail] = useState("");
+  const [selectedRole, setSelectedRole] = useState<AppRole>("tutor");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -170,7 +175,8 @@ const AdminBeta = () => {
         .from("invited_users")
         .insert({
           email: newUserEmail.toLowerCase(),
-          created_by: user?.id
+          created_by: user?.id,
+          intended_role: selectedRole
         });
 
       if (error) {
@@ -188,10 +194,11 @@ const AdminBeta = () => {
 
       toast({
         title: "Usuario invitado",
-        description: `Se ha enviado una invitación a ${newUserEmail}`,
+        description: `Se ha enviado una invitación a ${newUserEmail} como ${selectedRole}`,
       });
 
       setNewUserEmail("");
+      setSelectedRole("tutor");
       await loadInvitedUsers();
     } catch (error) {
       console.error("Error inviting user:", error);
@@ -290,18 +297,29 @@ const AdminBeta = () => {
               <CardHeader>
                 <CardTitle>Invitar Nuevo Usuario</CardTitle>
                 <CardDescription>
-                  Agrega el email del estudiante que podrá registrarse en el sistema
+                  Agrega el email del usuario y selecciona el rol que tendrá en el sistema
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
                   <Input
                     type="email"
-                    placeholder="estudiante@ejemplo.com"
+                    placeholder="usuario@ejemplo.com"
                     value={newUserEmail}
                     onChange={(e) => setNewUserEmail(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleInviteUser()}
+                    className="flex-1"
                   />
+                  <Select value={selectedRole} onValueChange={(value: AppRole) => setSelectedRole(value)}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="tutor">Tutor</SelectItem>
+                      <SelectItem value="student">Estudiante</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button onClick={handleInviteUser}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Invitar
@@ -314,7 +332,7 @@ const AdminBeta = () => {
               <CardHeader>
                 <CardTitle>Usuarios Invitados</CardTitle>
                 <CardDescription>
-                  Lista de estudiantes que pueden registrarse en el sistema
+                  Lista de usuarios que pueden registrarse en el sistema
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -330,7 +348,18 @@ const AdminBeta = () => {
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                       >
                         <div className="flex-1">
-                          <p className="font-medium">{user.email}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{user.email}</p>
+                            <Badge 
+                              variant={
+                                user.intended_role === "admin" ? "default" :
+                                user.intended_role === "tutor" ? "secondary" :
+                                "outline"
+                              }
+                            >
+                              {user.intended_role || "tutor"}
+                            </Badge>
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {user.used ? (
                               <span className="text-green-600">
