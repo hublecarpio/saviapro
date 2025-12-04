@@ -10,8 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, UserPlus, Settings, LogOut, Users, History } from "lucide-react";
-import { AdminConversationHistory } from "@/components/admin/AdminConversationHistory";
+import { Trash2, UserPlus, Settings, LogOut, Users } from "lucide-react";
 import { NavBarUser } from "@/components/NavBarUser";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { User } from "@/lib/types";
@@ -263,7 +262,7 @@ const AdminBeta = () => {
     <>
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <Tabs defaultValue="prompt" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="prompt">
               <Settings className="w-4 h-4 mr-2" />
               Prompt Maestro
@@ -275,10 +274,6 @@ const AdminBeta = () => {
             <TabsTrigger value="registered">
               <Users className="w-4 h-4 mr-2" />
               Usuarios Registrados
-            </TabsTrigger>
-            <TabsTrigger value="history">
-              <History className="w-4 h-4 mr-2" />
-              Historial
             </TabsTrigger>
           </TabsList>
 
@@ -489,10 +484,6 @@ const AdminBeta = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="history">
-            <AdminConversationHistory />
           </TabsContent>
         </Tabs>
       </div>
