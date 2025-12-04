@@ -369,8 +369,9 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const callAI = async (attempt: number = 1): Promise<string> => {
-      console.log(`Calling Lovable AI... (attempt ${attempt})`);
+    const callAI = async (attempt: number = 1, useBackupModel: boolean = false): Promise<string> => {
+      const model = useBackupModel ? 'google/gemini-2.5-pro' : 'google/gemini-2.5-flash';
+      console.log(`Calling Lovable AI with ${model}... (attempt ${attempt})`);
       
       const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -379,9 +380,9 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: model,
           messages: conversationHistory,
-          temperature: 0.8,
+          temperature: 0.7,
           max_tokens: 2000,
         }),
       });
@@ -391,6 +392,11 @@ serve(async (req) => {
         console.error('Lovable AI error:', aiResponse.status, errorText);
         
         if (aiResponse.status === 429) {
+          if (attempt < 3) {
+            console.log('Rate limited, waiting and retrying...');
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            return callAI(attempt + 1, useBackupModel);
+          }
           throw new Error('Límite de solicitudes excedido. Por favor intenta más tarde.');
         }
         if (aiResponse.status === 402) {
@@ -411,12 +417,18 @@ serve(async (req) => {
       const content = aiData.choices?.[0]?.message?.content;
 
       if (!content || content.trim().length === 0) {
+        // Retry with same model first
         if (attempt < 2) {
-          console.log('Empty response, retrying...');
+          console.log('Empty response, retrying with same model...');
           await new Promise(resolve => setTimeout(resolve, 500));
-          return callAI(attempt + 1);
+          return callAI(attempt + 1, useBackupModel);
         }
-        console.error('No response from AI after retries, aiData:', JSON.stringify(aiData));
+        // Try backup model
+        if (!useBackupModel) {
+          console.log('Empty response after retries, trying backup model...');
+          return callAI(1, true);
+        }
+        console.error('No response from AI after all retries, aiData:', JSON.stringify(aiData));
         throw new Error('No se pudo obtener respuesta del AI. Por favor intenta de nuevo.');
       }
 
