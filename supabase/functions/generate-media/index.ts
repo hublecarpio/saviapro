@@ -33,25 +33,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Insertar mensaje de "generando" inmediatamente
-    const { data: loadingMessage, error: loadingError } = await supabase
-      .from("messages")
-      .insert({
-        conversation_id,
-        user_id,
-        role: "assistant",
-        message: `⏳ Generando ${type === "video" ? "video" : "podcast"} resumen... Puedes seguir conversando mientras se procesa.`,
-      })
-      .select()
-      .single();
-
-    if (loadingError) {
-      console.error("Error inserting loading message:", loadingError);
-      throw loadingError;
-    }
-
-    console.log(`✅ Loading message inserted: ${loadingMessage.id}`);
-
     // Función para hacer polling
     const pollForMediaUrl = async (pollUrl: string, maxAttempts = 40, interval = 3000): Promise<string | null> => {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -119,9 +100,6 @@ serve(async (req) => {
           mediaUrl = await pollForMediaUrl(pollUrl);
         }
 
-        // Eliminar mensaje de carga
-        await supabase.from("messages").delete().eq("id", loadingMessage.id);
-
         if (mediaUrl) {
           // Insertar mensaje con el resultado
           const resultMessage =
@@ -151,9 +129,6 @@ serve(async (req) => {
       } catch (err) {
         console.error(`❌ Error in background task:`, err);
         
-        // Eliminar mensaje de carga si existe
-        await supabase.from("messages").delete().eq("id", loadingMessage.id);
-        
         // Insertar mensaje de error
         await supabase.from("messages").insert({
           conversation_id,
@@ -171,8 +146,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `${type} generation started`,
-        loading_message_id: loadingMessage.id 
+        message: `${type} generation started`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
