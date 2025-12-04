@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 interface ChatToolsSidebarProps {
   isLoading: boolean;
   hasMessages: boolean;
+  isGeneratingMindMap?: boolean;
+  isGeneratingInforme?: boolean;
   onGenerateVideo: () => void;
   onGeneratePodcast: () => void;
   onRequestMindMap: () => void;
@@ -14,6 +16,8 @@ interface ChatToolsSidebarProps {
 export const ChatToolsSidebar = ({
   isLoading,
   hasMessages,
+  isGeneratingMindMap,
+  isGeneratingInforme,
   onGenerateVideo,
   onGeneratePodcast,
   onRequestMindMap,
@@ -52,24 +56,24 @@ export const ChatToolsSidebar = ({
             variant="ghost"
             size="icon"
             onClick={onRequestMindMap}
-            disabled={isLoading}
+            disabled={isLoading || isGeneratingMindMap}
             className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
             title="Solicitar mapa mental"
           >
-            <Brain className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Mapas</span>
+            <Brain className={`h-5 w-5 transition-colors ${isGeneratingMindMap ? 'text-primary animate-pulse' : 'text-muted-foreground group-hover:text-foreground'}`} />
+            <span className={`text-[9px] font-medium ${isGeneratingMindMap ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>Mapas</span>
           </Button>
 
           <Button
             variant="ghost"
             size="icon"
             onClick={onRequestInforme}
-            disabled={isLoading}
+            disabled={isLoading || isGeneratingInforme}
             className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
             title="Solicitar informe"
           >
-            <FileText className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Informe</span>
+            <FileText className={`h-5 w-5 transition-colors ${isGeneratingInforme ? 'text-primary animate-pulse' : 'text-muted-foreground group-hover:text-foreground'}`} />
+            <span className={`text-[9px] font-medium ${isGeneratingInforme ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>Informe</span>
           </Button>
 
           <Button
