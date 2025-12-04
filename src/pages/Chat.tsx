@@ -442,10 +442,57 @@ const Chat = () => {
       }
     }, 3000); // Polling cada 3 segundos
 
+    // Polling para fichas didácticas (fallback de realtime)
+    const fichasPollingInterval = setInterval(async () => {
+      const { data } = await supabase
+        .from("fichas_didacticas")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
+      
+      if (data && data.length > 0) {
+        // Agrupar fichas por minuto (ya que se crean juntas)
+        const grouped = new Map<string, typeof data>();
+        data.forEach(ficha => {
+          const fichaTime = new Date(ficha.created_at);
+          fichaTime.setSeconds(0, 0);
+          const key = fichaTime.toISOString();
+          if (!grouped.has(key)) {
+            grouped.set(key, []);
+          }
+          grouped.get(key)!.push(ficha);
+        });
+
+        const newFichasSets: FichasSet[] = Array.from(grouped.entries()).map(([timestamp, fichas]) => ({
+          id: fichas[0].id,
+          created_at: timestamp,
+          conversation_id: currentConversationId,
+          user_id: fichas[0].user_id,
+          fichas: fichas.map(f => ({
+            pregunta: f.pregunta,
+            respuesta: f.respuesta,
+            orden: f.orden,
+          })).sort((a, b) => a.orden - b.orden),
+        }));
+
+        setFichasSets((prev) => {
+          const prevIds = new Set(prev.map(s => s.id));
+          const hasNew = newFichasSets.some(s => !prevIds.has(s.id));
+          
+          if (hasNew) {
+            console.log("🔄 New fichas detected via polling");
+            return newFichasSets;
+          }
+          return prev;
+        });
+      }
+    }, 3000); // Polling cada 3 segundos
+
     return () => {
       supabase.removeChannel(channel);
       clearInterval(pollingInterval);
       clearInterval(mindMapPollingInterval);
+      clearInterval(fichasPollingInterval);
     };
   }, [currentConversationId]);
 
