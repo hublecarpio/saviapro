@@ -75,11 +75,14 @@ Deno.serve(async (req) => {
 
       userId = existingUser.id;
 
-      // Actualizar nombre en profiles
+      // Actualizar o crear perfil (upsert por si no existe)
       await supabaseAdmin
         .from("profiles")
-        .update({ name })
-        .eq("id", userId);
+        .upsert({ 
+          id: userId, 
+          email: email.toLowerCase(), 
+          name 
+        }, { onConflict: 'id' });
 
     } else {
       // Usuario no existe - crear nuevo
