@@ -80,7 +80,7 @@ const InviteRegister = () => {
 
       setLoading(true);
 
-      // Crear usuario en Supabase Auth
+      // Intentar crear usuario en Supabase Auth
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: inviteEmail,
         password,
@@ -90,16 +90,32 @@ const InviteRegister = () => {
         }
       });
 
+      let userId: string | null = null;
+
       if (signUpError) {
         if (signUpError.message.includes("User already registered")) {
-          toast.error("Este email ya está registrado");
+          // Usuario ya existe - intentar iniciar sesión
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: inviteEmail,
+            password,
+          });
+
+          if (signInError) {
+            toast.error("Este email ya está registrado. Ingresa tu contraseña actual para continuar.");
+            return;
+          }
+
+          userId = signInData.user?.id ?? null;
+          toast.info("Usuario existente. Asignando nuevo rol...");
         } else {
           toast.error(signUpError.message);
+          return;
         }
-        return;
+      } else {
+        userId = authData.user?.id ?? null;
       }
 
-      if (!authData.user) {
+      if (!userId) {
         toast.error("Error al crear la cuenta");
         return;
       }
@@ -120,13 +136,13 @@ const InviteRegister = () => {
       const { data: userRole } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", authData.user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       const isTutor = userRole?.role === "tutor";
       const isAdmin = userRole?.role === "admin";
 
-      toast.success("Cuenta creada exitosamente. Redirigiendo...");
+      toast.success("Cuenta configurada exitosamente. Redirigiendo...");
       
       // Redirigir según el rol
       setTimeout(() => {
