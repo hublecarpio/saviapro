@@ -930,19 +930,8 @@ const Chat = () => {
       return;
     }
 
-    // Activar indicador de generación
+    // Activar indicador de generación (solo parpadeo en el botón)
     setIsGeneratingFichas(true);
-
-    // Agregar mensaje de "generando..." inmediatamente en el chat
-    const tempMessage: Message = {
-      id: `temp-fichas-${Date.now()}`,
-      role: "assistant",
-      message: "📚 Generando fichas didácticas... Puedes seguir conversando mientras tanto.",
-      created_at: new Date().toISOString(),
-      conversation_id: currentConversationId,
-    };
-
-    setMessages((prev) => [...prev, tempMessage]);
 
     // Ejecutar en background sin bloquear
     (async () => {
@@ -958,7 +947,7 @@ const Chat = () => {
 
         if (!conversationMessages || conversationMessages.length === 0) {
           toast.error("No hay contenido en esta conversación para generar fichas");
-          setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
+          setIsGeneratingFichas(false);
           return;
         }
 
@@ -975,8 +964,6 @@ const Chat = () => {
           },
         });
 
-        // Remover mensaje temporal de "generando..." - las fichas aparecerán via realtime
-        setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
         setIsGeneratingFichas(false);
 
         if (error) {
@@ -995,7 +982,6 @@ const Chat = () => {
       } catch (error) {
         console.error("Error generando fichas:", error);
         toast.error("Error al generar las fichas");
-        setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
         setIsGeneratingFichas(false);
       }
     })();
