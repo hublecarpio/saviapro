@@ -1323,27 +1323,39 @@ const Chat = () => {
 
                       // Si es un mensaje de imágenes, renderizar de forma especial
                       if (hasImages && imageUrls.length > 0) {
+                        // Extraer el texto sin las etiquetas de imágenes
+                        const textContent = msg.message.replace(/\[IMAGES\].*?\[\/IMAGES\]/, '').trim();
+                        
                         return (
                           <div key={msg.id} className="flex justify-start">
-                            <div className="rounded-xl md:rounded-2xl px-3 py-2.5 md:px-4 md:py-3 overflow-hidden bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
-                              <div className="flex flex-wrap justify-center gap-2">
-                                {imageUrls.map((url, idx) => (
-                                  <div 
-                                    key={idx} 
-                                    className="relative group cursor-pointer rounded-lg overflow-hidden w-24 h-24 md:w-28 md:h-28"
-                                    onClick={() => window.open(url, '_blank')}
-                                  >
-                                    <img 
-                                      src={url} 
-                                      alt={`Imagen ${idx + 1}`}
-                                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                                      loading="lazy"
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
-                                      <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                            <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-4 md:py-3 overflow-hidden bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
+                              <div className="space-y-3">
+                                {/* Mostrar el texto del mensaje si existe */}
+                                {textContent && (
+                                  <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                    {textContent}
+                                  </p>
+                                )}
+                                {/* Mostrar las imágenes */}
+                                <div className="flex flex-wrap justify-center gap-2">
+                                  {imageUrls.map((url, idx) => (
+                                    <div 
+                                      key={idx} 
+                                      className="relative group cursor-pointer rounded-lg overflow-hidden w-24 h-24 md:w-28 md:h-28"
+                                      onClick={() => window.open(url, '_blank')}
+                                    >
+                                      <img 
+                                        src={url} 
+                                        alt={`Imagen ${idx + 1}`}
+                                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                        loading="lazy"
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                                        <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
                             </div>
                           </div>
