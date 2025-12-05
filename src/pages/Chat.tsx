@@ -722,33 +722,34 @@ const Chat = () => {
     toast.info(`Procesando archivo: ${file.name}`);
 
     try {
-      const fileName = `${conversationId}/${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("chat-files")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+      // Crear FormData con el archivo binario y metadata JSON
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const metadata = {
+        type: "archivos",
+        user_id: user.id,
+        conversation_id: conversationId,
+        file_data: {
+          name: file.name,
+          type: file.type,
+          size: file.size
+        }
+      };
+      formData.append("metadata", JSON.stringify(metadata));
 
-      if (uploadError) throw uploadError;
+      // Enviar al webhook externo de archivos
+      const res = await fetch(
+        "https://webhook.hubleconsulting.com/webhook/728b3d4d-2ab4-4a72-a15b-a615340archivos",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-      const { data: urlData } = await supabase.storage.from("chat-files").createSignedUrl(fileName, 3600);
+      if (!res.ok) throw new Error("Error en el webhook de archivos");
 
-      if (!urlData?.signedUrl) throw new Error("No se pudo generar URL del archivo");
-
-      const { data, error } = await supabase.functions.invoke("webhook-integration", {
-        body: {
-          type: "file",
-          data: {
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            url: urlData.signedUrl,
-          },
-        },
-      });
-
-      if (error) throw error;
+      const data = await res.json();
 
       const response =
         data?.respuesta ||
@@ -756,11 +757,13 @@ const Chat = () => {
         data?.response?.mensaje ||
         data?.response?.text ||
         data?.response?.message ||
-        data?.response?.content;
+        data?.response?.content ||
+        data?.message;
 
       if (response) {
         toast.success("Archivo procesado, generando respuesta...");
 
+        // Enviar la respuesta del webhook al chat para que procese
         const { error: chatError } = await supabase.functions.invoke("chat", {
           body: {
             message: response,
@@ -771,8 +774,8 @@ const Chat = () => {
 
         if (chatError) throw chatError;
       } else {
-        console.error("Respuesta del webhook sin contenido:", data);
-        toast.error("El webhook respondió pero sin contenido");
+        console.log("Respuesta del webhook:", data);
+        toast.success("Archivo enviado correctamente");
       }
     } catch (error) {
       console.error("Error processing file:", error);
