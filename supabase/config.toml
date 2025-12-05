@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.get-system-prompt]
 verify_jwt = false
+
+[functions.upload-to-s3]
+verify_jwt = false
