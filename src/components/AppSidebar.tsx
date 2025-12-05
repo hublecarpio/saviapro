@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { Plus, MessageSquare, Trash2, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, MessageSquare, Trash2, Loader2, Pencil, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 import {
   Sidebar,
   SidebarContent,
@@ -41,6 +42,9 @@ export function AppSidebar({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -152,6 +156,44 @@ export function AppSidebar({
     setDeletingId(null);
   };
 
+  const handleStartEdit = (e: React.MouseEvent, conversation: Conversation) => {
+    e.stopPropagation();
+    setEditingId(conversation.id);
+    setEditTitle(conversation.first_message || conversation.title);
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  };
+
+  const handleSaveTitle = async (e: React.MouseEvent | React.KeyboardEvent, conversationId: string) => {
+    e.stopPropagation();
+    if (!editTitle.trim()) {
+      setEditingId(null);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('conversations')
+      .update({ title: editTitle.trim() })
+      .eq('id', conversationId);
+
+    if (error) {
+      toast.error("Error actualizando título");
+      console.error('Error updating title:', error);
+    } else {
+      setConversations(prev => prev.map(c => 
+        c.id === conversationId 
+          ? { ...c, title: editTitle.trim(), first_message: editTitle.trim() }
+          : c
+      ));
+    }
+    setEditingId(null);
+  };
+
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(null);
+    setEditTitle("");
+  };
+
   // Cuando está colapsado, no mostrar nada (solo el trigger externo)
   if (!sidebarOpen) {
     return null;
@@ -192,33 +234,75 @@ export function AppSidebar({
                 {conversations.map((conversation) => (
                   <SidebarMenuItem key={conversation.id}>
                     <SidebarMenuButton
-                      onClick={() => onConversationSelect(conversation.id)}
+                      onClick={() => editingId !== conversation.id && onConversationSelect(conversation.id)}
                       isActive={currentConversationId === conversation.id}
                       className="group relative w-full"
                     >
                       <MessageSquare className="h-4 w-4 shrink-0" />
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <span className="flex-1 truncate text-left text-sm">
-                          {conversation.first_message}
-                        </span>
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-accent rounded-sm shrink-0 cursor-pointer"
-                          onClick={(e) => handleDelete(e, conversation.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              handleDelete(e as any, conversation.id);
-                            }
-                          }}
-                        >
-                          {deletingId === conversation.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
-                          )}
-                        </div>
+                      <div className="flex-1 min-w-0 flex items-center gap-1">
+                        {editingId === conversation.id ? (
+                          <>
+                            <Input
+                              ref={editInputRef}
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveTitle(e, conversation.id);
+                                if (e.key === 'Escape') handleCancelEdit(e as any);
+                              }}
+                              className="h-6 text-sm py-0 px-1 flex-1"
+                            />
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="h-5 w-5 flex items-center justify-center hover:bg-accent rounded-sm cursor-pointer text-green-600"
+                              onClick={(e) => handleSaveTitle(e, conversation.id)}
+                            >
+                              <Check className="h-3 w-3" />
+                            </div>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="h-5 w-5 flex items-center justify-center hover:bg-accent rounded-sm cursor-pointer text-destructive"
+                              onClick={handleCancelEdit}
+                            >
+                              <X className="h-3 w-3" />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 truncate text-left text-sm">
+                              {conversation.first_message}
+                            </span>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-accent rounded-sm shrink-0 cursor-pointer"
+                              onClick={(e) => handleStartEdit(e, conversation)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </div>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-accent rounded-sm shrink-0 cursor-pointer"
+                              onClick={(e) => handleDelete(e, conversation.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleDelete(e as any, conversation.id);
+                                }
+                              }}
+                            >
+                              {deletingId === conversation.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3 w-3" />
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
