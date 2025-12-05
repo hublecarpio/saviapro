@@ -3,6 +3,7 @@ import { Loader2, LogOut, Sparkles, UserCog } from 'lucide-react'
 import { Button } from './ui/button'
 import { destroyUser } from '@/hooks/useLogout';
 import { useNavigate } from 'react-router-dom';
+import sofiSinPiensa from "@/assets/sofi_sin_piensa.png";
 
 
 export const NavBarUser = ({ user, setShowProfileEditor, isSigningOut }) => {
@@ -19,7 +20,7 @@ export const NavBarUser = ({ user, setShowProfileEditor, isSigningOut }) => {
                     <SidebarTrigger className="-ml-1" />
                     <div className="flex items-center gap-2 md:gap-3 min-w-0">
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <img src='/icono.png'  className='w-4'/>
+                            <img src={sofiSinPiensa} alt="Sofia" className='w-6 h-6 md:w-8 md:h-8 object-contain'/>
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-base md:text-lg font-semibold text-foreground">
