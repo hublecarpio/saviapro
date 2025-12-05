@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Video, Podcast, Brain, FileText, BookOpen, Plus, X } from "lucide-react";
+import { SofiaThinking } from "@/components/SofiaThinking";
 
 interface MobileChatToolsFABProps {
   isLoading: boolean;
@@ -64,6 +65,23 @@ export const MobileChatToolsFAB = ({
         {isExpanded &&
           tools.map((tool, index) => {
             const Icon = tool.icon;
+            const isInformeGenerating = tool.label === "Informe" && tool.isGenerating;
+            
+            if (isInformeGenerating) {
+              return (
+                <div
+                  key={tool.label}
+                  className="h-9 px-3 rounded-full bg-background/95 backdrop-blur-sm border border-border shadow-sm flex items-center gap-2 animate-in slide-in-from-right-2 fade-in"
+                  style={{ animationDelay: `${index * 40}ms` }}
+                >
+                  <div className="w-6 h-6">
+                    <SofiaThinking />
+                  </div>
+                  <span className="text-xs font-medium text-primary">Generando</span>
+                </div>
+              );
+            }
+            
             return (
               <Button
                 key={tool.label}
