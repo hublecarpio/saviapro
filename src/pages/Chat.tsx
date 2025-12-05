@@ -1049,12 +1049,46 @@ const Chat = () => {
                   {chatItems.map((item) => {
                     if (item.type === 'message') {
                       const msg = item.data;
+                      // Detectar si el mensaje contiene imágenes [IMAGES]url1|url2[/IMAGES]
+                      const imagesMatch = msg.message.match(/\[IMAGES\](.*?)\[\/IMAGES\]/);
+                      const hasImages = imagesMatch && imagesMatch[1];
+                      const imageUrls = hasImages ? imagesMatch[1].split('|').filter(url => url.trim()) : [];
+                      
                       // Detectar si el mensaje contiene una URL de video/audio/pdf
                       const urlMatch = msg.message.match(/(https?:\/\/[^\s]+)/);
                       const hasMedia =
                         urlMatch && (msg.message.includes("Video resumen") || msg.message.includes("Podcast resumen"));
                       const hasPdf = urlMatch && msg.message.includes("📄");
                       const isVideo = msg.message.includes("Video resumen");
+
+                      // Si es un mensaje de imágenes, renderizar de forma especial
+                      if (hasImages && imageUrls.length > 0) {
+                        return (
+                          <div key={msg.id} className="flex justify-start">
+                            <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 overflow-hidden bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                {imageUrls.map((url, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className="relative group cursor-pointer rounded-lg overflow-hidden aspect-square"
+                                    onClick={() => window.open(url, '_blank')}
+                                  >
+                                    <img 
+                                      src={url} 
+                                      alt={`Imagen ${idx + 1}`}
+                                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                      loading="lazy"
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                                      <ExternalLink className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       return (
                         <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
