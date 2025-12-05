@@ -722,6 +722,16 @@ const Chat = () => {
     toast.info(`Procesando archivo: ${file.name}`);
 
     try {
+      // Mostrar el archivo en el chat como mensaje del usuario
+      const fileMessage: Message = {
+        id: `file-${Date.now()}`,
+        role: "user",
+        message: `📎 Archivo: ${file.name}`,
+        created_at: new Date().toISOString(),
+        conversation_id: conversationId,
+      };
+      setMessages((prev) => [...prev, fileMessage]);
+
       // Crear FormData con el archivo binario y metadata JSON
       const formData = new FormData();
       formData.append("file", file);
@@ -758,21 +768,52 @@ const Chat = () => {
         data?.response?.text ||
         data?.response?.message ||
         data?.response?.content ||
-        data?.message;
+        data?.message ||
+        JSON.stringify(data);
 
       if (response) {
-        toast.success("Archivo procesado, generando respuesta...");
+        toast.success("Archivo procesado, enviando al asistente...");
 
-        // Enviar la respuesta del webhook al chat para que procese
-        const { error: chatError } = await supabase.functions.invoke("chat", {
-          body: {
-            message: response,
+        // Enviar la respuesta del webhook de archivos al webhook de mensajes
+        const webhookRes = await fetch(
+          "https://webhook.hubleconsulting.com/webhook/7e846525-ea3a-4213-8f66-5d0dad8547bc",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              type: "mensaje",
+              user_id: user.id,
+              conversation_id: conversationId,
+              message: response,
+            }),
+          }
+        );
+
+        if (!webhookRes.ok) throw new Error("Error en el webhook de mensajes");
+
+        const webhookData = await webhookRes.json();
+        
+        const assistantResponse =
+          webhookData?.respuesta ||
+          webhookData?.response?.respuesta ||
+          webhookData?.response?.mensaje ||
+          webhookData?.response?.text ||
+          webhookData?.response?.message ||
+          webhookData?.response?.content ||
+          webhookData?.message;
+
+        if (assistantResponse) {
+          const assistantMessage: Message = {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            message: assistantResponse,
+            created_at: new Date().toISOString(),
             conversation_id: conversationId,
-            user_id: user.id,
-          },
-        });
-
-        if (chatError) throw chatError;
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        }
       } else {
         console.log("Respuesta del webhook:", data);
         toast.success("Archivo enviado correctamente");
