@@ -23,7 +23,7 @@ export const NavBarUser = ({ user, setShowProfileEditor, isSigningOut }) => {
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-base md:text-lg font-semibold text-foreground">
-                                BIEX
+                                Sofia
                             </h1>
                             <p className="text-[10px] md:text-xs text-muted-foreground truncate max-w-[120px] md:max-w-none">
                                 {user?.email}

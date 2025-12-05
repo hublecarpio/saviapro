@@ -92,9 +92,21 @@ export function AppSidebar({
       return;
     }
 
-    // Obtener el primer mensaje de cada conversación
-    const conversationsWithFirstMessage = await Promise.all(
+    // Obtener el título actualizado o el primer mensaje de cada conversación
+    const conversationsWithTitle = await Promise.all(
       (conversationsData || []).map(async (conv) => {
+        // Si el título ya es descriptivo, usarlo
+        if (conv.title && 
+            conv.title !== 'Nueva conversación' && 
+            !conv.title.startsWith('Hola') &&
+            conv.title.length >= 15) {
+          return {
+            ...conv,
+            first_message: conv.title
+          };
+        }
+        
+        // Si no, obtener el primer mensaje del usuario
         const { data: messages } = await supabase
           .from('messages')
           .select('message')
@@ -106,13 +118,13 @@ export function AppSidebar({
 
         return {
           ...conv,
-          first_message: messages?.message || conv.title
+          first_message: messages?.message || conv.title || 'Nueva conversación'
         };
       })
     );
 
-    console.log('Conversations loaded:', conversationsWithFirstMessage.length);
-    setConversations(conversationsWithFirstMessage);
+    console.log('Conversations loaded:', conversationsWithTitle.length);
+    setConversations(conversationsWithTitle);
     setLoading(false);
     } catch (error) {
       console.log("error: ", error)
@@ -153,7 +165,7 @@ export function AppSidebar({
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <MessageSquare className="h-4 w-4 text-primary" />
             </div>
-            <span className="font-semibold text-foreground">BIEX</span>
+            <span className="font-semibold text-foreground">Sofia</span>
           </div>
           
           <Button
