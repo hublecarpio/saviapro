@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.generate-media]
 verify_jwt = false
+
+[functions.get-starter-profile]
+verify_jwt = false
+
+[functions.get-system-prompt]
+verify_jwt = false
