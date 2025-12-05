@@ -719,35 +719,55 @@ const Chat = () => {
     }
 
     setIsLoading(true);
-    toast.info(`Procesando archivo: ${file.name}`);
+    toast.info(`Subiendo archivo: ${file.name}`);
 
     try {
-      // Crear URL del archivo para poder descargarlo
-      const fileUrl = URL.createObjectURL(file);
+      // Primero subir el archivo a S3 para obtener URL permanente
+      const s3FormData = new FormData();
+      s3FormData.append('file', file);
+      s3FormData.append('userId', user.id);
+      s3FormData.append('conversationId', conversationId);
+
+      console.log("📤 Subiendo archivo a S3...");
+      const s3Response = await supabase.functions.invoke('upload-to-s3', {
+        body: s3FormData,
+      });
+
+      let permanentFileUrl: string;
+      if (s3Response.error || !s3Response.data?.url) {
+        console.warn("⚠️ No se pudo subir a S3, usando URL temporal:", s3Response.error);
+        permanentFileUrl = URL.createObjectURL(file);
+      } else {
+        permanentFileUrl = s3Response.data.url;
+        console.log("✅ Archivo subido a S3:", permanentFileUrl);
+      }
       
       // Mostrar el archivo en el chat como mensaje del usuario con link de descarga
       const fileMessageContent = `📎 Archivo: ${file.name}`;
+      const fileMessageWithUrl = `${fileMessageContent} [FILE_URL]${permanentFileUrl}|${file.name}|${file.type}[/FILE_URL]`;
       const fileMessage: Message = {
         id: `file-${Date.now()}`,
         role: "user",
-        message: `${fileMessageContent} [FILE_URL]${fileUrl}|${file.name}|${file.type}[/FILE_URL]`,
+        message: fileMessageWithUrl,
         created_at: new Date().toISOString(),
         conversation_id: conversationId,
       };
       setMessages((prev) => [...prev, fileMessage]);
       
-      // Guardar el mensaje del usuario (archivo) en la base de datos
+      toast.info(`Procesando archivo: ${file.name}`);
+      
+      // Guardar el mensaje del usuario (archivo) en la base de datos CON la URL permanente
       const { error: userMsgError } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         user_id: user.id,
         role: "user",
-        message: fileMessageContent,
+        message: fileMessageWithUrl,
       });
       
       if (userMsgError) {
         console.error("❌ Error guardando mensaje de archivo del usuario:", userMsgError);
       } else {
-        console.log("✅ Mensaje de archivo del usuario guardado en BD");
+        console.log("✅ Mensaje de archivo del usuario guardado en BD con URL permanente");
       }
 
       // Crear FormData con el archivo binario y metadata JSON
