@@ -19,6 +19,7 @@ import { NavBarUser } from "@/components/NavBarUser";
 import { useUserStore } from "@/store/useUserStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { MindMapProgressBar } from "@/components/MindMapProgressBar";
+import { SofiaThinking } from "@/components/SofiaThinking";
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -1310,8 +1311,8 @@ const Chat = () => {
 
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 flex items-center gap-2 md:gap-3 shadow-sm">
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
+                        <SofiaThinking />
                         <span className="text-xs md:text-sm text-muted-foreground">Sofia está analizando...</span>
                       </div>
                     </div>
