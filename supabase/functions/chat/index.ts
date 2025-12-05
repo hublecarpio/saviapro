@@ -251,6 +251,24 @@ serve(async (req) => {
     // Call n8n webhook for AI response
     console.log('Calling n8n webhook for AI response...');
     
+    // Detectar tipo de respuesta esperada basándose en el mensaje
+    const messageLower = message.toLowerCase().trim();
+    let tipo_respuesta = 'informativa'; // default
+    
+    // Palabras clave para tipo visual
+    const visualKeywords = ['imagen', 'imágenes', 'foto', 'fotos', 'muestra', 'muéstrame', 'ver', 'visual', 'dibujo', 'ilustra', 'gráfico', 'diagrama', 'ejemplo visual', 'cómo se ve', 'como se ve', 'picture', 'image'];
+    
+    // Palabras clave para tipo auditivo
+    const audioKeywords = ['audio', 'escucha', 'escuchar', 'sonido', 'pronuncia', 'pronunciación', 'lee en voz alta', 'podcast', 'reproduce', 'oír', 'voz'];
+    
+    if (visualKeywords.some(keyword => messageLower.includes(keyword))) {
+      tipo_respuesta = 'visual';
+    } else if (audioKeywords.some(keyword => messageLower.includes(keyword))) {
+      tipo_respuesta = 'auditiva';
+    }
+    
+    console.log('Detected response type:', tipo_respuesta);
+    
     const webhookResponse = await fetch(
       'https://webhook.hubleconsulting.com/webhook/7e846525-ea3a-4213-8f66-5d0dad8547bc',
       {
@@ -259,7 +277,8 @@ serve(async (req) => {
         body: JSON.stringify({
           mensaje: message.trim(),
           id_conversation: conversation_id,
-          id_user: user_id
+          id_user: user_id,
+          tipo_respuesta: tipo_respuesta
         })
       }
     );
@@ -273,13 +292,17 @@ serve(async (req) => {
     console.log('Webhook response received:', JSON.stringify(webhookData));
 
     // Process the array of messages from n8n
-    // The response format is: [{"mensajes": ["msg1", "msg2", ...]}]
+    // The response format is: [{"mensajes": ["msg1", "msg2", ...], "imagenes": ["url1", "url2", ...]}]
     let mensajes: string[] = [];
+    let imagenes: string[] = [];
     
-    if (Array.isArray(webhookData) && webhookData.length > 0 && webhookData[0].mensajes) {
-      mensajes = webhookData[0].mensajes;
+    if (Array.isArray(webhookData) && webhookData.length > 0) {
+      const responseObj = webhookData[0];
+      mensajes = responseObj.mensajes || [];
+      imagenes = responseObj.imagenes || [];
     } else if (webhookData.mensajes) {
       mensajes = webhookData.mensajes;
+      imagenes = webhookData.imagenes || [];
     } else if (Array.isArray(webhookData)) {
       mensajes = webhookData;
     }
@@ -289,7 +312,7 @@ serve(async (req) => {
       throw new Error('Formato de respuesta inválido del agente');
     }
 
-    console.log('AI response received, saving', mensajes.length, 'messages to database...');
+    console.log('AI response received, saving', mensajes.length, 'messages and', imagenes.length, 'images to database...');
 
     // Save each message as a separate assistant message with delay
     for (let i = 0; i < mensajes.length; i++) {
@@ -322,6 +345,30 @@ serve(async (req) => {
       }
       
       console.log(`Message ${i + 1}/${mensajes.length} saved`);
+    }
+
+    // Save images as a separate message if there are any
+    if (imagenes.length > 0) {
+      // Wait before sending images
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Format: [IMAGES]url1|url2|url3[/IMAGES]
+      const imagesMessage = `[IMAGES]${imagenes.join('|')}[/IMAGES]`;
+      
+      const { error: insertImagesError } = await supabaseAdmin
+        .from('messages')
+        .insert({
+          user_id: user_id,
+          conversation_id: conversation_id,
+          role: 'assistant',
+          message: imagesMessage
+        });
+
+      if (insertImagesError) {
+        console.error('Error saving images message:', insertImagesError);
+      } else {
+        console.log(`${imagenes.length} images saved as message`);
+      }
     }
 
     console.log('All messages saved successfully');
