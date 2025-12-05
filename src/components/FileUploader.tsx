@@ -39,19 +39,6 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
         setFile(selected);
     };
 
-    const fileToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                const result = reader.result as string;
-                const base64 = result.split(',')[1];
-                resolve(base64);
-            };
-            reader.onerror = (error) => reject(error);
-        });
-    };
-
     const handleUpload = async () => {
         if (mode === "file" && !file) {
             toast({
@@ -79,43 +66,44 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 throw new Error("Usuario no autenticado");
             }
 
+            const formData = new FormData();
             let fileType = "";
             let fileName = "";
-            let fileBase64 = "";
 
             if (mode === "file" && file) {
                 fileType = file.type;
                 fileName = file.name;
-                fileBase64 = await fileToBase64(file);
+                // Archivo binario
+                formData.append("file", file);
             } else {
+                // Convertir texto a archivo binario
                 const blob = new Blob([textContent], { type: "text/plain" });
                 const textFile = new File([blob], `texto_${Date.now()}.txt`, { type: "text/plain" });
                 fileType = "text/plain";
                 fileName = textFile.name;
-                fileBase64 = btoa(textContent);
+                formData.append("file", textFile);
             }
 
-            // Estructura JSON para el webhook de archivos
-            const payload = {
+            // JSON con la estructura de datos
+            const metadata = {
                 type: "archivos",
                 user_id: user.id,
                 conversation_id: conversationId || null,
                 file_data: {
                     name: fileName,
-                    type: fileType,
-                    content: fileBase64
+                    type: fileType
                 }
             };
+
+            // Agregar metadata como JSON string
+            formData.append("metadata", JSON.stringify(metadata));
 
             // Enviar al webhook de archivos
             const res = await fetch(
                 "https://webhook.hubleconsulting.com/webhook/728b3d4d-2ab4-4a72-a15b-a615340archivos",
                 {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(payload),
+                    body: formData,
                 }
             );
 
