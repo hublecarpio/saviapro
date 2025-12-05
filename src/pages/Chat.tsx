@@ -1441,7 +1441,6 @@ const Chat = () => {
                     }}
                     onKeyDown={handleKeyPress}
                     placeholder="Escribe tu consulta..."
-                    disabled={isLoading}
                     className="flex-1 bg-transparent shadow-none outline-none border-none text-[14px] md:text-[15px] leading-relaxed placeholder:text-muted-foreground/60 resize-none overflow-y-auto px-1 py-2 md:py-2.5 transition-all"
                     style={{
                       maxHeight: "120px",
