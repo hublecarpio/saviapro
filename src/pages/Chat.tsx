@@ -419,10 +419,32 @@ const Chat = () => {
         setMessages((prev) => {
           // Solo actualizar si hay mensajes nuevos
           const prevIds = new Set(prev.filter(m => !m.id.startsWith('temp-')).map(m => m.id));
-          const hasNewMessages = newMessages.some(m => !prevIds.has(m.id));
+          const newOnes = (newMessages as Message[]).filter(m => !prevIds.has(m.id));
           
-          if (hasNewMessages) {
+          if (newOnes.length > 0) {
             console.log("🔄 New messages detected via polling");
+            
+            // Detectar si hay mensaje de informe completado
+            const hasInformeMessage = newOnes.some(m => 
+              m.role === "assistant" && 
+              (m.message.toLowerCase().includes("informe") || m.message.includes("📄"))
+            );
+            if (hasInformeMessage) {
+              console.log("📄 Informe generation complete (via polling)");
+              setIsGeneratingInforme(false);
+            }
+            
+            // Detectar video/podcast completado
+            const hasVideoMessage = newOnes.some(m => 
+              m.role === "assistant" && m.message.includes("Video resumen generado")
+            );
+            if (hasVideoMessage) setIsGeneratingVideo(false);
+            
+            const hasPodcastMessage = newOnes.some(m => 
+              m.role === "assistant" && m.message.includes("Podcast resumen generado")
+            );
+            if (hasPodcastMessage) setIsGeneratingPodcast(false);
+            
             // Mantener mensajes temporales y agregar los nuevos
             const tempMessages = prev.filter(m => m.id.startsWith('temp-'));
             const realMessages = newMessages as Message[];
