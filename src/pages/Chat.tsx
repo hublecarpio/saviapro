@@ -785,10 +785,10 @@ const Chat = () => {
         toast.success("Archivo procesado, enviando al asistente...");
 
         console.log("📤 Enviando al webhook de mensajes...", {
-          type: "mensaje",
-          user_id: user.id,
-          conversation_id: conversationId,
-          message: response.substring(0, 100) + "..."
+          mensaje: response.substring(0, 100) + "...",
+          id_conversation: conversationId,
+          id_user: user.id,
+          tipo_respuesta: "visual"
         });
 
         // Enviar la respuesta del webhook de archivos al webhook de mensajes
@@ -800,10 +800,10 @@ const Chat = () => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              type: "mensaje",
-              user_id: user.id,
-              conversation_id: conversationId,
-              message: response,
+              mensaje: response,
+              id_conversation: conversationId,
+              id_user: user.id,
+              tipo_respuesta: "visual",
             }),
           }
         );
