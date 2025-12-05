@@ -273,41 +273,49 @@ serve(async (req) => {
     console.log('Webhook response received:', JSON.stringify(webhookData));
 
     // Process the array of messages from n8n
-    const mensajes = webhookData.mensajes || webhookData || [];
+    // The response format is: [{"mensajes": ["msg1", "msg2", ...]}]
+    let mensajes: string[] = [];
+    
+    if (Array.isArray(webhookData) && webhookData.length > 0 && webhookData[0].mensajes) {
+      mensajes = webhookData[0].mensajes;
+    } else if (webhookData.mensajes) {
+      mensajes = webhookData.mensajes;
+    } else if (Array.isArray(webhookData)) {
+      mensajes = webhookData;
+    }
     
     if (!Array.isArray(mensajes) || mensajes.length === 0) {
       console.error('Invalid response format from webhook:', webhookData);
       throw new Error('Formato de respuesta inválido del agente');
     }
 
-    // Join all messages into a single response
-    const assistantResponse = mensajes.join('\n\n');
+    console.log('AI response received, saving', mensajes.length, 'messages to database...');
 
-    // Limpiar markdown de la respuesta (**, ##, listas, etc.)
-    let cleanedResponse = assistantResponse
-      .replaceAll('**', '')
-      .replaceAll('##', '')
-      .replace(/^\s*[-*]\s+/gm, '')
-      .replace(/^\s*\d+\.\s+/gm, '');
+    // Save each message as a separate assistant message
+    for (const msg of mensajes) {
+      // Limpiar markdown de la respuesta (**, ##, listas, etc.)
+      const cleanedMessage = msg
+        .replaceAll('**', '')
+        .replaceAll('##', '')
+        .replace(/^\s*[-*]\s+/gm, '')
+        .replace(/^\s*\d+\.\s+/gm, '');
 
-    console.log('AI response received, saving to database...');
+      const { error: insertAssistantError } = await supabaseAdmin
+        .from('messages')
+        .insert({
+          user_id: user_id,
+          conversation_id: conversation_id,
+          role: 'assistant',
+          message: cleanedMessage
+        });
 
-    // Save assistant response
-    const { error: insertAssistantError } = await supabaseAdmin
-      .from('messages')
-      .insert({
-        user_id: user_id,
-        conversation_id: conversation_id,
-        role: 'assistant',
-        message: cleanedResponse
-      });
-
-    if (insertAssistantError) {
-      console.error('Error saving assistant message:', insertAssistantError);
-      throw new Error('Error guardando respuesta');
+      if (insertAssistantError) {
+        console.error('Error saving assistant message:', insertAssistantError);
+        throw new Error('Error guardando respuesta');
+      }
     }
 
-    console.log('Message saved successfully');
+    console.log('All messages saved successfully');
 
     return new Response(
       JSON.stringify({ success: true }),
