@@ -1041,7 +1041,7 @@ const Chat = () => {
                     <div className="w-12 h-12 md:w-16 md:h-16 mx-auto rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-3 md:mb-4">
                       <Sparkles className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                     </div>
-                    <h2 className="text-xl md:text-3xl font-semibold text-foreground px-4">Bienvenido a BIEX</h2>
+                    <h2 className="text-xl md:text-3xl font-semibold text-foreground px-4">Bienvenido a Sofia</h2>
                   </div>
                 </div>
               ) : (
@@ -1312,7 +1312,7 @@ const Chat = () => {
                     <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 flex items-center gap-2 md:gap-3 shadow-sm">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        <span className="text-xs md:text-sm text-muted-foreground">BIEX está analizando...</span>
+                        <span className="text-xs md:text-sm text-muted-foreground">Sofia está analizando...</span>
                       </div>
                     </div>
                   )}

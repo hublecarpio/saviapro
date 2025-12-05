@@ -373,6 +373,49 @@ serve(async (req) => {
 
     console.log('All messages saved successfully');
 
+    // Update conversation title after 3+ messages if still has default title
+    const { data: convData } = await supabaseAdmin
+      .from('conversations')
+      .select('title')
+      .eq('id', conversation_id)
+      .single();
+    
+    const { count: messageCount } = await supabaseAdmin
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', conversation_id);
+    
+    // If conversation has 4+ messages and title looks like default, generate better title
+    const totalMessages = messageCount || recentMessages?.length || 0;
+    const needsTitleUpdate = convData?.title === 'Nueva conversación' || 
+                             convData?.title?.startsWith('Hola') ||
+                             convData?.title?.length < 15;
+    
+    console.log('Title update check:', { totalMessages, currentTitle: convData?.title, needsTitleUpdate });
+    
+    if (totalMessages >= 4 && needsTitleUpdate && recentMessages && recentMessages.length > 0) {
+      console.log('Generating conversation title from messages...');
+      
+      // Extract main topic from user messages
+      const userMessages = recentMessages
+        .filter(m => m.role === 'user')
+        .map(m => m.message)
+        .reverse()
+        .slice(0, 3)
+        .join(' ');
+      
+      // Create a short descriptive title (first 50 chars of combined topics)
+      const words = userMessages.split(/\s+/).filter(w => w.length > 3);
+      const title = words.slice(0, 5).join(' ').substring(0, 50) || 'Conversación';
+      
+      await supabaseAdmin
+        .from('conversations')
+        .update({ title })
+        .eq('id', conversation_id);
+      
+      console.log('Conversation title updated to:', title);
+    }
+
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
