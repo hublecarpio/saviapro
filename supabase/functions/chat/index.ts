@@ -385,23 +385,23 @@ serve(async (req) => {
       .select('*', { count: 'exact', head: true })
       .eq('conversation_id', conversation_id);
     
-    // If conversation has 4+ messages and title looks like default, generate better title
+    // If conversation has 3+ messages and title looks like default, generate better title
     const totalMessages = messageCount || recentMessages?.length || 0;
     const needsTitleUpdate = convData?.title === 'Nueva conversación' || 
                              convData?.title?.startsWith('Hola') ||
                              convData?.title?.startsWith('hola') ||
-                             convData?.title?.length < 15;
+                             convData?.title?.length < 10;
     
     console.log('Title update check:', { totalMessages, currentTitle: convData?.title, needsTitleUpdate });
     
-    if (totalMessages >= 4 && needsTitleUpdate && recentMessages && recentMessages.length > 0) {
+    if (totalMessages >= 3 && needsTitleUpdate && recentMessages && recentMessages.length > 0) {
       console.log('Generating conversation title with AI...');
       
-      // Build conversation context for title generation
+      // Build conversation context for title generation (first 3 messages)
       const conversationContext = recentMessages
         .reverse()
-        .slice(0, 6)
-        .map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.message.substring(0, 200)}`)
+        .slice(0, 3)
+        .map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.message.substring(0, 150)}`)
         .join('\n');
       
       try {
@@ -419,15 +419,15 @@ serve(async (req) => {
               messages: [
                 {
                   role: 'system',
-                  content: 'Eres un asistente que genera títulos cortos y descriptivos para conversaciones educativas. Responde SOLO con el título, sin explicaciones ni puntuación extra. El título debe ser de 3-6 palabras máximo, describiendo el tema principal de la conversación.'
+                  content: 'Genera un título MUY CORTO de 2-3 palabras máximo para esta conversación. Solo el tema principal. Sin puntuación. Sin explicaciones. Ejemplos: "Fracciones matemáticas", "Historia azteca", "Fotosíntesis plantas".'
                 },
                 {
                   role: 'user',
-                  content: `Genera un título corto y descriptivo para esta conversación:\n\n${conversationContext}`
+                  content: conversationContext
                 }
               ],
-              max_tokens: 50,
-              temperature: 0.3
+              max_tokens: 20,
+              temperature: 0.2
             }),
           });
 
@@ -439,9 +439,10 @@ serve(async (req) => {
             generatedTitle = generatedTitle
               .replace(/^["']|["']$/g, '') // Remove quotes
               .replace(/^título:\s*/i, '') // Remove "Título:" prefix
-              .substring(0, 50); // Limit length
+              .replace(/[.!?:,;]$/g, '') // Remove trailing punctuation
+              .substring(0, 30); // Limit length
             
-            if (generatedTitle && generatedTitle.length > 3) {
+            if (generatedTitle && generatedTitle.length > 2) {
               await supabaseAdmin
                 .from('conversations')
                 .update({ title: generatedTitle })
@@ -461,10 +462,10 @@ serve(async (req) => {
         const userMessages = recentMessages
           .filter(m => m.role === 'user')
           .map(m => m.message)
-          .slice(0, 3)
+          .slice(0, 2)
           .join(' ');
         const words = userMessages.split(/\s+/).filter(w => w.length > 3);
-        const fallbackTitle = words.slice(0, 5).join(' ').substring(0, 50) || 'Conversación';
+        const fallbackTitle = words.slice(0, 3).join(' ').substring(0, 30) || 'Conversación';
         
         await supabaseAdmin
           .from('conversations')
