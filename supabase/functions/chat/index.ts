@@ -389,31 +389,90 @@ serve(async (req) => {
     const totalMessages = messageCount || recentMessages?.length || 0;
     const needsTitleUpdate = convData?.title === 'Nueva conversación' || 
                              convData?.title?.startsWith('Hola') ||
+                             convData?.title?.startsWith('hola') ||
                              convData?.title?.length < 15;
     
     console.log('Title update check:', { totalMessages, currentTitle: convData?.title, needsTitleUpdate });
     
     if (totalMessages >= 4 && needsTitleUpdate && recentMessages && recentMessages.length > 0) {
-      console.log('Generating conversation title from messages...');
+      console.log('Generating conversation title with AI...');
       
-      // Extract main topic from user messages
-      const userMessages = recentMessages
-        .filter(m => m.role === 'user')
-        .map(m => m.message)
+      // Build conversation context for title generation
+      const conversationContext = recentMessages
         .reverse()
-        .slice(0, 3)
-        .join(' ');
+        .slice(0, 6)
+        .map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.message.substring(0, 200)}`)
+        .join('\n');
       
-      // Create a short descriptive title (first 50 chars of combined topics)
-      const words = userMessages.split(/\s+/).filter(w => w.length > 3);
-      const title = words.slice(0, 5).join(' ').substring(0, 50) || 'Conversación';
-      
-      await supabaseAdmin
-        .from('conversations')
-        .update({ title })
-        .eq('id', conversation_id);
-      
-      console.log('Conversation title updated to:', title);
+      try {
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        
+        if (LOVABLE_API_KEY) {
+          const titleResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash-lite',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'Eres un asistente que genera títulos cortos y descriptivos para conversaciones educativas. Responde SOLO con el título, sin explicaciones ni puntuación extra. El título debe ser de 3-6 palabras máximo, describiendo el tema principal de la conversación.'
+                },
+                {
+                  role: 'user',
+                  content: `Genera un título corto y descriptivo para esta conversación:\n\n${conversationContext}`
+                }
+              ],
+              max_tokens: 50,
+              temperature: 0.3
+            }),
+          });
+
+          if (titleResponse.ok) {
+            const titleData = await titleResponse.json();
+            let generatedTitle = titleData.choices?.[0]?.message?.content?.trim() || '';
+            
+            // Clean up the title
+            generatedTitle = generatedTitle
+              .replace(/^["']|["']$/g, '') // Remove quotes
+              .replace(/^título:\s*/i, '') // Remove "Título:" prefix
+              .substring(0, 50); // Limit length
+            
+            if (generatedTitle && generatedTitle.length > 3) {
+              await supabaseAdmin
+                .from('conversations')
+                .update({ title: generatedTitle })
+                .eq('id', conversation_id);
+              
+              console.log('Conversation title updated with AI to:', generatedTitle);
+            }
+          } else {
+            console.error('AI title generation failed:', titleResponse.status);
+          }
+        } else {
+          console.log('LOVABLE_API_KEY not available, skipping AI title generation');
+        }
+      } catch (titleError) {
+        console.error('Error generating AI title:', titleError);
+        // Fallback: use simple extraction
+        const userMessages = recentMessages
+          .filter(m => m.role === 'user')
+          .map(m => m.message)
+          .slice(0, 3)
+          .join(' ');
+        const words = userMessages.split(/\s+/).filter(w => w.length > 3);
+        const fallbackTitle = words.slice(0, 5).join(' ').substring(0, 50) || 'Conversación';
+        
+        await supabaseAdmin
+          .from('conversations')
+          .update({ title: fallbackTitle })
+          .eq('id', conversation_id);
+        
+        console.log('Fallback title used:', fallbackTitle);
+      }
     }
 
     return new Response(
