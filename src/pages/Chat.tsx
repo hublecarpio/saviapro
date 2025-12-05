@@ -726,14 +726,29 @@ const Chat = () => {
       const fileUrl = URL.createObjectURL(file);
       
       // Mostrar el archivo en el chat como mensaje del usuario con link de descarga
+      const fileMessageContent = `📎 Archivo: ${file.name}`;
       const fileMessage: Message = {
         id: `file-${Date.now()}`,
         role: "user",
-        message: `📎 Archivo: ${file.name} [FILE_URL]${fileUrl}|${file.name}|${file.type}[/FILE_URL]`,
+        message: `${fileMessageContent} [FILE_URL]${fileUrl}|${file.name}|${file.type}[/FILE_URL]`,
         created_at: new Date().toISOString(),
         conversation_id: conversationId,
       };
       setMessages((prev) => [...prev, fileMessage]);
+      
+      // Guardar el mensaje del usuario (archivo) en la base de datos
+      const { error: userMsgError } = await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        user_id: user.id,
+        role: "user",
+        message: fileMessageContent,
+      });
+      
+      if (userMsgError) {
+        console.error("❌ Error guardando mensaje de archivo del usuario:", userMsgError);
+      } else {
+        console.log("✅ Mensaje de archivo del usuario guardado en BD");
+      }
 
       // Crear FormData con el archivo binario y metadata JSON
       const formData = new FormData();
