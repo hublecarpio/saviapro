@@ -65,9 +65,9 @@ export const MobileChatToolsFAB = ({
         {isExpanded &&
           tools.map((tool, index) => {
             const Icon = tool.icon;
-            const isInformeGenerating = tool.label === "Informe" && tool.isGenerating;
             
-            if (isInformeGenerating) {
+            // Show Sofia thinking for any generating tool
+            if (tool.isGenerating) {
               return (
                 <div
                   key={tool.label}
@@ -86,14 +86,14 @@ export const MobileChatToolsFAB = ({
               <Button
                 key={tool.label}
                 onClick={() => handleToolClick(tool.onClick)}
-                disabled={isLoading || tool.isGenerating}
+                disabled={isLoading}
                 variant="outline"
                 size="sm"
                 className="h-9 px-3 rounded-full bg-background/95 backdrop-blur-sm border-border shadow-sm hover:bg-accent hover:scale-105 transition-all duration-200 animate-in slide-in-from-right-2 fade-in"
                 style={{ animationDelay: `${index * 40}ms` }}
               >
-                <Icon className={`h-4 w-4 mr-2 ${tool.isGenerating ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
-                <span className={`text-xs font-medium ${tool.isGenerating ? 'text-primary' : ''}`}>{tool.label}</span>
+                <Icon className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="text-xs font-medium">{tool.label}</span>
               </Button>
             );
           })}
