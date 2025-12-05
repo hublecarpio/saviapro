@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, BookOpen, UserCog, FileUp, ExternalLink } from "lucide-react";
+import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, BookOpen, UserCog, FileUp, ExternalLink, Download } from "lucide-react";
 
 import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
 import { MobileChatToolsFAB } from "@/components/MobileChatToolsFAB";
@@ -722,11 +722,14 @@ const Chat = () => {
     toast.info(`Procesando archivo: ${file.name}`);
 
     try {
-      // Mostrar el archivo en el chat como mensaje del usuario
+      // Crear URL del archivo para poder descargarlo
+      const fileUrl = URL.createObjectURL(file);
+      
+      // Mostrar el archivo en el chat como mensaje del usuario con link de descarga
       const fileMessage: Message = {
         id: `file-${Date.now()}`,
         role: "user",
-        message: `📎 Archivo: ${file.name}`,
+        message: `📎 Archivo: ${file.name} [FILE_URL]${fileUrl}|${file.name}|${file.type}[/FILE_URL]`,
         created_at: new Date().toISOString(),
         conversation_id: conversationId,
       };
@@ -748,6 +751,8 @@ const Chat = () => {
       };
       formData.append("metadata", JSON.stringify(metadata));
 
+      console.log("📤 Enviando archivo al webhook de archivos...", { fileName: file.name, metadata });
+
       // Enviar al webhook externo de archivos
       const res = await fetch(
         "https://webhook.hubleconsulting.com/webhook/728b3d4d-2ab4-4a72-a15b-a615340archivos",
@@ -760,6 +765,7 @@ const Chat = () => {
       if (!res.ok) throw new Error("Error en el webhook de archivos");
 
       const data = await res.json();
+      console.log("📥 Respuesta del webhook de archivos:", data);
 
       const response =
         data?.respuesta ||
@@ -769,10 +775,19 @@ const Chat = () => {
         data?.response?.message ||
         data?.response?.content ||
         data?.message ||
-        JSON.stringify(data);
+        (typeof data === 'string' ? data : JSON.stringify(data));
+
+      console.log("📝 Mensaje procesado del webhook de archivos:", response);
 
       if (response) {
         toast.success("Archivo procesado, enviando al asistente...");
+
+        console.log("📤 Enviando al webhook de mensajes...", {
+          type: "mensaje",
+          user_id: user.id,
+          conversation_id: conversationId,
+          message: response.substring(0, 100) + "..."
+        });
 
         // Enviar la respuesta del webhook de archivos al webhook de mensajes
         const webhookRes = await fetch(
@@ -791,9 +806,16 @@ const Chat = () => {
           }
         );
 
-        if (!webhookRes.ok) throw new Error("Error en el webhook de mensajes");
+        console.log("📥 Status del webhook de mensajes:", webhookRes.status);
+
+        if (!webhookRes.ok) {
+          const errorText = await webhookRes.text();
+          console.error("❌ Error del webhook de mensajes:", errorText);
+          throw new Error("Error en el webhook de mensajes");
+        }
 
         const webhookData = await webhookRes.json();
+        console.log("📥 Respuesta del webhook de mensajes:", webhookData);
         
         const assistantResponse =
           webhookData?.respuesta ||
@@ -804,6 +826,8 @@ const Chat = () => {
           webhookData?.response?.content ||
           webhookData?.message;
 
+        console.log("💬 Respuesta del asistente:", assistantResponse);
+
         if (assistantResponse) {
           const assistantMessage: Message = {
             id: `assistant-${Date.now()}`,
@@ -813,13 +837,16 @@ const Chat = () => {
             conversation_id: conversationId,
           };
           setMessages((prev) => [...prev, assistantMessage]);
+        } else {
+          console.warn("⚠️ No se encontró respuesta del asistente en:", webhookData);
+          toast.info("Archivo procesado, esperando respuesta del asistente...");
         }
       } else {
-        console.log("Respuesta del webhook:", data);
+        console.log("⚠️ Respuesta del webhook sin contenido procesable:", data);
         toast.success("Archivo enviado correctamente");
       }
     } catch (error) {
-      console.error("Error processing file:", error);
+      console.error("❌ Error processing file:", error);
       toast.error("Error procesando el archivo");
     } finally {
       setIsLoading(false);
@@ -1121,12 +1148,80 @@ const Chat = () => {
                       const hasImages = imagesMatch && imagesMatch[1];
                       const imageUrls = hasImages ? imagesMatch[1].split('|').filter(url => url.trim()) : [];
                       
+                      // Detectar si el mensaje contiene un archivo [FILE_URL]url|name|type[/FILE_URL]
+                      const fileMatch = msg.message.match(/\[FILE_URL\](.*?)\[\/FILE_URL\]/);
+                      const hasFile = fileMatch && fileMatch[1];
+                      const fileData = hasFile ? fileMatch[1].split('|') : [];
+                      const fileUrl = fileData[0] || '';
+                      const fileName = fileData[1] || 'archivo';
+                      const fileType = fileData[2] || '';
+                      
                       // Detectar si el mensaje contiene una URL de video/audio/pdf
                       const urlMatch = msg.message.match(/(https?:\/\/[^\s]+)/);
                       const hasMedia =
                         urlMatch && (msg.message.includes("Video resumen") || msg.message.includes("Podcast resumen"));
                       const hasPdf = urlMatch && msg.message.includes("📄");
                       const isVideo = msg.message.includes("Video resumen");
+
+                      // Si es un mensaje de archivo subido, renderizar con botón de descarga
+                      if (hasFile && fileUrl) {
+                        const cleanMessage = msg.message.replace(/\[FILE_URL\].*?\[\/FILE_URL\]/, '').trim();
+                        return (
+                          <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                            <div className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 overflow-hidden ${
+                              msg.role === "user"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm"
+                            }`}>
+                              <div className="space-y-3">
+                                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                  {cleanMessage}
+                                </p>
+                                <div className="flex items-center gap-2 p-2 bg-background/50 rounded-lg border border-border/50">
+                                  <div className="flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+                                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                      <polyline points="14 2 14 8 20 8"/>
+                                    </svg>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{fileName}</p>
+                                    <p className="text-xs text-muted-foreground">{fileType || 'Archivo'}</p>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => window.open(fileUrl, '_blank')}
+                                      className="h-8 w-8 p-0"
+                                      title="Abrir archivo"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = fileUrl;
+                                        link.download = fileName;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                        toast.success('Descargando archivo...');
+                                      }}
+                                      className="h-8 w-8 p-0"
+                                      title="Descargar archivo"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       // Si es un mensaje de imágenes, renderizar de forma especial
                       if (hasImages && imageUrls.length > 0) {
