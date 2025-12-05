@@ -1,5 +1,6 @@
 import { Video, Podcast, Brain, FileText, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SofiaThinking } from "@/components/SofiaThinking";
 
 interface ChatToolsSidebarProps {
   isLoading: boolean;
@@ -70,17 +71,24 @@ export const ChatToolsSidebar = ({
             <span className={`text-[9px] font-medium ${isGeneratingMindMap ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>Mapas</span>
           </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onRequestInforme}
-            disabled={isLoading || isGeneratingInforme}
-            className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
-            title="Solicitar informe"
-          >
-            <FileText className={`h-5 w-5 transition-colors ${isGeneratingInforme ? 'text-primary animate-pulse' : 'text-muted-foreground group-hover:text-foreground'}`} />
-            <span className={`text-[9px] font-medium ${isGeneratingInforme ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>Informe</span>
-          </Button>
+          {isGeneratingInforme ? (
+            <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
+              <SofiaThinking />
+              <span className="text-[8px] font-medium text-primary">Generando</span>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRequestInforme}
+              disabled={isLoading}
+              className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
+              title="Solicitar informe"
+            >
+              <FileText className="h-5 w-5 transition-colors text-muted-foreground group-hover:text-foreground" />
+              <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Informe</span>
+            </Button>
+          )}
 
           <Button
             variant="ghost"
