@@ -292,17 +292,17 @@ serve(async (req) => {
     console.log('Webhook response received:', JSON.stringify(webhookData));
 
     // Process the array of messages from n8n
-    // The response format is: [{"mensajes": ["msg1", "msg2", ...], "imagenes": ["url1", "url2", ...]}]
+    // The response format is: [{"mensajes": ["msg1", "msg2", ...], "images": ["url1", "url2", ...], "images_count": 2}]
     let mensajes: string[] = [];
-    let imagenes: string[] = [];
+    let images: string[] = [];
     
     if (Array.isArray(webhookData) && webhookData.length > 0) {
       const responseObj = webhookData[0];
       mensajes = responseObj.mensajes || [];
-      imagenes = responseObj.imagenes || [];
+      images = responseObj.images || [];
     } else if (webhookData.mensajes) {
       mensajes = webhookData.mensajes;
-      imagenes = webhookData.imagenes || [];
+      images = webhookData.images || [];
     } else if (Array.isArray(webhookData)) {
       mensajes = webhookData;
     }
@@ -312,7 +312,7 @@ serve(async (req) => {
       throw new Error('Formato de respuesta inválido del agente');
     }
 
-    console.log('AI response received, saving', mensajes.length, 'messages and', imagenes.length, 'images to database...');
+    console.log('AI response received, saving', mensajes.length, 'messages and', images.length, 'images to database...');
 
     // Save each message as a separate assistant message with delay
     for (let i = 0; i < mensajes.length; i++) {
@@ -348,12 +348,12 @@ serve(async (req) => {
     }
 
     // Save images as a separate message if there are any
-    if (imagenes.length > 0) {
+    if (images.length > 0) {
       // Wait before sending images
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Format: [IMAGES]url1|url2|url3[/IMAGES]
-      const imagesMessage = `[IMAGES]${imagenes.join('|')}[/IMAGES]`;
+      const imagesMessage = `[IMAGES]${images.join('|')}[/IMAGES]`;
       
       const { error: insertImagesError } = await supabaseAdmin
         .from('messages')
@@ -367,7 +367,7 @@ serve(async (req) => {
       if (insertImagesError) {
         console.error('Error saving images message:', insertImagesError);
       } else {
-        console.log(`${imagenes.length} images saved as message`);
+        console.log(`${images.length} images saved as message`);
       }
     }
 
