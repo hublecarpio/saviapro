@@ -230,9 +230,7 @@ serve(async (req) => {
     }
 
     // === NORMAL CHAT FLOW ===
-    // Construir prompt personalizado
-    const systemPrompt = buildPersonalizedPrompt(starterProfile);
-
+    
     // Save user message (skip if requested - used for background tasks)
     if (!skip_user_message) {
       const { error: insertUserError } = await supabaseAdmin
@@ -250,144 +248,40 @@ serve(async (req) => {
       }
     }
 
-    // Build conversation history
-    const conversationHistory: Array<{
-      role: 'system' | 'user' | 'assistant';
-      content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
-    }> = [
-      { role: 'system', content: systemPrompt }
-    ];
-
-    if (recentMessages && recentMessages.length > 0) {
-      const orderedMessages = recentMessages.reverse();
-      orderedMessages.forEach(msg => {
-        conversationHistory.push({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.message
-        });
-      });
-    }
-
-    // Si hay una imagen, agregar al último mensaje del usuario
-    if (image && image.data && image.mimeType) {
-      const lastUserMessageIndex = conversationHistory.length - 1;
-      if (conversationHistory[lastUserMessageIndex]?.role === 'user') {
-        const textContent = conversationHistory[lastUserMessageIndex].content as string;
-        conversationHistory[lastUserMessageIndex] = {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: textContent
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${image.mimeType};base64,${image.data}`
-              }
-            }
-          ]
-        };
-      }
-    }
-
-    // Call Lovable AI with retry logic
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      console.error('LOVABLE_API_KEY not configured');
-      throw new Error('LOVABLE_API_KEY not configured');
-    }
-
-    const callAI = async (attempt: number = 1, useBackupModel: boolean = false): Promise<string> => {
-      const model = useBackupModel ? 'google/gemini-2.5-pro' : 'google/gemini-2.5-flash';
-      console.log(`Calling Lovable AI with ${model}... (attempt ${attempt})`);
-      console.log('Conversation history length:', conversationHistory.length);
-      console.log('System prompt length:', (conversationHistory[0]?.content as string)?.length || 0);
-      
-      // Agregar mensaje adicional para forzar respuesta si es necesario
-      const messagesWithPrompt = [...conversationHistory];
-      if (attempt > 1) {
-        // En reintentos, agregar instrucción explícita
-        messagesWithPrompt.push({
-          role: 'user' as const,
-          content: '[Sistema: Por favor responde al mensaje anterior del usuario de forma útil y amigable.]'
-        });
-      }
-      
-      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Call n8n webhook for AI response
+    console.log('Calling n8n webhook for AI response...');
+    
+    const webhookResponse = await fetch(
+      'https://webhook.hubleconsulting.com/webhook/7e846525-ea3a-4213-8f66-5d0dad8547bc',
+      {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: model,
-          messages: messagesWithPrompt,
-          temperature: 0.8,
-          max_tokens: 1500,
-        }),
-      });
-
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        console.error('Lovable AI error:', aiResponse.status, errorText);
-        
-        if (aiResponse.status === 429) {
-          if (attempt < 3) {
-            console.log('Rate limited, waiting and retrying...');
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            return callAI(attempt + 1, useBackupModel);
-          }
-          throw new Error('Límite de solicitudes excedido. Por favor intenta más tarde.');
-        }
-        if (aiResponse.status === 402) {
-          throw new Error('Créditos insuficientes. Por favor recarga tu saldo.');
-        }
-        
-        throw new Error(`AI error: ${aiResponse.status}`);
+          mensaje: message.trim(),
+          id_conversation: conversation_id,
+          id_user: user_id
+        })
       }
+    );
 
-      const aiData = await aiResponse.json();
-      console.log('AI response structure:', JSON.stringify({
-        hasChoices: !!aiData.choices,
-        choicesLength: aiData.choices?.length,
-        hasMessage: !!aiData.choices?.[0]?.message,
-        contentLength: aiData.choices?.[0]?.message?.content?.length,
-        finishReason: aiData.choices?.[0]?.finish_reason
-      }));
-      
-      const content = aiData.choices?.[0]?.message?.content;
+    if (!webhookResponse.ok) {
+      console.error('Webhook error:', webhookResponse.status);
+      throw new Error('Error al obtener respuesta del agente');
+    }
 
-      if (!content || content.trim().length === 0) {
-        console.log('Empty response received, attempt:', attempt, 'useBackupModel:', useBackupModel);
-        
-        // Retry with same model first
-        if (attempt < 2) {
-          console.log('Empty response, retrying with same model...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          return callAI(attempt + 1, useBackupModel);
-        }
-        // Try backup model
-        if (!useBackupModel) {
-          console.log('Empty response after retries, trying backup model...');
-          return callAI(1, true);
-        }
-        console.error('No response from AI after all retries');
-        
-        // Generar una respuesta contextual basada en el último mensaje
-        const lastUserMsg = conversationHistory.filter(m => m.role === 'user').pop();
-        const userText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
-        
-        if (userText.length < 5) {
-          return `¡Hola! 😊 Cuéntame, ¿qué te gustaría aprender hoy? Estoy aquí para ayudarte con cualquier tema.`;
-        }
-        return `¡Hola! 😊 Parece que tuve un pequeño problema técnico. ¿Podrías repetir tu mensaje? Estoy aquí para ayudarte.`;
-      }
+    const webhookData = await webhookResponse.json();
+    console.log('Webhook response received:', JSON.stringify(webhookData));
 
-      return content;
-    };
+    // Process the array of messages from n8n
+    const mensajes = webhookData.mensajes || webhookData || [];
+    
+    if (!Array.isArray(mensajes) || mensajes.length === 0) {
+      console.error('Invalid response format from webhook:', webhookData);
+      throw new Error('Formato de respuesta inválido del agente');
+    }
 
-    const assistantResponse = await callAI();
+    // Join all messages into a single response
+    const assistantResponse = mensajes.join('\n\n');
 
     // Limpiar markdown de la respuesta (**, ##, listas, etc.)
     let cleanedResponse = assistantResponse
