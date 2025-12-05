@@ -853,6 +853,8 @@ const Chat = () => {
             finalMessage += `\n\n[IMAGES]${imageUrls.join('|')}[/IMAGES]`;
           }
           
+          console.log("📝 Mensaje final a mostrar:", finalMessage);
+          
           const assistantMessage: Message = {
             id: `assistant-${Date.now()}`,
             role: "assistant",
@@ -860,7 +862,23 @@ const Chat = () => {
             created_at: new Date().toISOString(),
             conversation_id: conversationId,
           };
+          
+          // Guardar el mensaje del asistente en la base de datos
+          const { error: saveError } = await supabase.from("messages").insert({
+            conversation_id: conversationId,
+            user_id: user.id,
+            role: "assistant",
+            message: finalMessage,
+          });
+          
+          if (saveError) {
+            console.error("❌ Error guardando mensaje del asistente:", saveError);
+          } else {
+            console.log("✅ Mensaje del asistente guardado en BD");
+          }
+          
           setMessages((prev) => [...prev, assistantMessage]);
+          console.log("✅ Mensaje añadido al estado del chat");
           setIsLoading(false);
         } else {
           // Si no hay respuesta directa, iniciar polling para buscar la respuesta
