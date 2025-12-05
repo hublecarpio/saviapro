@@ -1,28 +1,33 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Loader2, UploadCloud } from "lucide-react";
+import { Loader2, UploadCloud, FileText, FileImage } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 
-export const FileUploader = () => {
-    const [file, setFile] = useState(null);
+interface FileUploaderProps {
+    conversationId?: string;
+    onFileProcessed?: (response: any) => void;
+}
+
+export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderProps) => {
+    const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [textContent, setTextContent] = useState("");
     const [mode, setMode] = useState<"file" | "text">("file");
     const { toast } = useToast();
 
-    const handleFileSelect = (e) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0];
 
         if (!selected) return;
 
-       if (![
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "text/plain"
-].includes(selected.type)) {
+        if (![
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "text/plain"
+        ].includes(selected.type)) {
             toast({
                 title: "Formato no permitido",
                 description: "Solo se aceptan archivos .pdf, .docx y .txt",
@@ -32,6 +37,19 @@ export const FileUploader = () => {
         }
 
         setFile(selected);
+    };
+
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                const result = reader.result as string;
+                const base64 = result.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = (error) => reject(error);
+        });
     };
 
     const handleUpload = async () => {
@@ -56,58 +74,83 @@ export const FileUploader = () => {
         setUploading(true);
 
         try {
-            const formData = new FormData();
-            let fileType = "";
-            let fileName = "";
-
-            if (mode === "file") {
-                formData.append("data0", file);
-                fileType = file.type;
-                fileName = file.name;
-            } else {
-                // Convertir texto a archivo .txt
-                const blob = new Blob([textContent], { type: "text/plain" });
-                const textFile = new File([blob], `texto_${Date.now()}.txt`, { type: "text/plain" });
-                formData.append("data0", textFile);
-                fileType = "text/plain";
-                fileName = textFile.name;
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                throw new Error("Usuario no autenticado");
             }
 
-            // Agregar metadata del tipo de archivo
-            formData.append("fileType", fileType);
-            formData.append("fileName", fileName);
+            let fileType = "";
+            let fileName = "";
+            let fileBase64 = "";
 
+            if (mode === "file" && file) {
+                fileType = file.type;
+                fileName = file.name;
+                fileBase64 = await fileToBase64(file);
+            } else {
+                const blob = new Blob([textContent], { type: "text/plain" });
+                const textFile = new File([blob], `texto_${Date.now()}.txt`, { type: "text/plain" });
+                fileType = "text/plain";
+                fileName = textFile.name;
+                fileBase64 = btoa(textContent);
+            }
+
+            // Estructura JSON para el webhook de archivos
+            const payload = {
+                type: "archivos",
+                user_id: user.id,
+                conversation_id: conversationId || null,
+                file_data: {
+                    name: fileName,
+                    type: fileType,
+                    content: fileBase64
+                }
+            };
+
+            // Enviar al webhook de archivos
             const res = await fetch(
-                "https://webhook.hubleconsulting.com/webhook/cedfe458-666f-400d-a0b7-e3c3bb625378",
+                "https://webhook.hubleconsulting.com/webhook/728b3d4d-2ab4-4a72-a15b-a615340archivos",
                 {
                     method: "POST",
-                    body: formData,
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
                 }
             );
 
             if (!res.ok) throw new Error("Error en el envío");
             
+            const responseData = await res.json();
+            
             // Guardar registro en la base de datos
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                await supabase.from("uploaded_documents").insert({
-                    uploaded_by: user.id,
-                    file_name: fileName,
-                    file_type: fileType,
-                    upload_mode: mode,
+            await supabase.from("uploaded_documents").insert({
+                uploaded_by: user.id,
+                file_name: fileName,
+                file_type: fileType,
+                upload_mode: mode,
+            });
+
+            // Callback con la respuesta del webhook para procesar en el chat
+            if (onFileProcessed && responseData) {
+                onFileProcessed({
+                    fileName,
+                    fileType,
+                    webhookResponse: responseData
                 });
             }
 
             toast({
                 title: "Contenido enviado",
                 description: mode === "file" 
-                    ? `${file.name} fue subido correctamente`
+                    ? `${fileName} fue subido correctamente`
                     : "El texto fue enviado correctamente",
             });
 
             setFile(null);
             setTextContent("");
         } catch (error) {
+            console.error("Error uploading file:", error);
             toast({
                 title: "Error al subir",
                 description: "No se pudo enviar el contenido",
@@ -118,9 +161,14 @@ export const FileUploader = () => {
         }
     };
 
+    const getFileIcon = () => {
+        if (!file) return <UploadCloud className="w-10 h-10 opacity-70 mb-2" />;
+        if (file.type === "application/pdf") return <FileText className="w-10 h-10 text-red-500 mb-2" />;
+        return <FileImage className="w-10 h-10 text-blue-500 mb-2" />;
+    };
+
     return (
         <div className="space-y-4">
-            {/* Selector de modo */}
             <div className="flex gap-2 p-1 bg-muted rounded-lg">
                 <Button
                     variant={mode === "file" ? "default" : "ghost"}
@@ -142,7 +190,6 @@ export const FileUploader = () => {
 
             {mode === "file" ? (
                 <>
-                    {/* Caja Drag & Drop */}
                     {!file && (
                         <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:border-primary hover:bg-primary/5">
                             <input
@@ -151,7 +198,7 @@ export const FileUploader = () => {
                                 className="hidden"
                                 onChange={handleFileSelect}
                             />
-                            <UploadCloud className="w-10 h-10 opacity-70 mb-2" />
+                            {getFileIcon()}
                             <p className="text-sm text-muted-foreground">
                                 Arrastra tu archivo aquí o haz clic
                             </p>
@@ -160,8 +207,11 @@ export const FileUploader = () => {
                     )}
 
                     {file && (
-                        <div className="text-sm font-medium p-2 bg-muted rounded-lg flex justify-between items-center">
-                            <span>{file.name}</span>
+                        <div className="text-sm font-medium p-3 bg-muted rounded-lg flex justify-between items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <FileText className="w-5 h-5 text-primary shrink-0" />
+                                <span className="truncate">{file.name}</span>
+                            </div>
                             <Button
                                 variant="destructive"
                                 size="sm"
@@ -197,7 +247,7 @@ export const FileUploader = () => {
                 {uploading ? (
                     <>
                         <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        Subiendo...
+                        Procesando...
                     </>
                 ) : (
                     mode === "file" ? "Subir archivo" : "Enviar texto"
