@@ -819,23 +819,44 @@ const Chat = () => {
         const webhookData = await webhookRes.json();
         console.log("📥 Respuesta del webhook de mensajes:", webhookData);
         
-        // Verificar si hay respuesta directa del webhook
-        const directResponse =
-          webhookData?.respuesta ||
-          webhookData?.response?.respuesta ||
-          webhookData?.response?.mensaje ||
-          webhookData?.response?.text ||
-          webhookData?.response?.message ||
-          webhookData?.response?.content ||
-          webhookData?.message ||
-          webhookData?.mensaje;
+        // El webhook responde con un array: [{ mensajes: [...], images: [...] }]
+        let directResponse = null;
+        let imageUrls: string[] = [];
+        
+        if (Array.isArray(webhookData) && webhookData.length > 0) {
+          const responseItem = webhookData[0];
+          // Combinar todos los mensajes en uno
+          if (responseItem.mensajes && Array.isArray(responseItem.mensajes)) {
+            directResponse = responseItem.mensajes.join('\n\n');
+          }
+          // Obtener imágenes si las hay
+          if (responseItem.images && Array.isArray(responseItem.images)) {
+            imageUrls = responseItem.images;
+          }
+        } else {
+          // Fallback a la estructura anterior
+          directResponse =
+            webhookData?.respuesta ||
+            webhookData?.response?.respuesta ||
+            webhookData?.response?.mensaje ||
+            webhookData?.message ||
+            webhookData?.mensaje;
+        }
 
-        if (directResponse) {
+        if (directResponse || imageUrls.length > 0) {
           console.log("💬 Respuesta directa del webhook:", directResponse);
+          console.log("🖼️ Imágenes:", imageUrls);
+          
+          // Formatear el mensaje con imágenes si las hay
+          let finalMessage = directResponse || '';
+          if (imageUrls.length > 0) {
+            finalMessage += `\n\n[IMAGES]${imageUrls.join('|')}[/IMAGES]`;
+          }
+          
           const assistantMessage: Message = {
             id: `assistant-${Date.now()}`,
             role: "assistant",
-            message: directResponse,
+            message: finalMessage,
             created_at: new Date().toISOString(),
             conversation_id: conversationId,
           };
