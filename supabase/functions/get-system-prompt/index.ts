@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const { data: systemPrompt, error } = await supabase
       .from('system_config')
       .select('*')
-      .eq('key', 'system_prompt')
+      .eq('key', 'master_prompt')
       .single();
 
     if (error) {
