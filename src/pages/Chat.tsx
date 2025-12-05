@@ -819,29 +819,71 @@ const Chat = () => {
         const webhookData = await webhookRes.json();
         console.log("📥 Respuesta del webhook de mensajes:", webhookData);
         
-        const assistantResponse =
+        // Verificar si hay respuesta directa del webhook
+        const directResponse =
           webhookData?.respuesta ||
           webhookData?.response?.respuesta ||
           webhookData?.response?.mensaje ||
           webhookData?.response?.text ||
           webhookData?.response?.message ||
           webhookData?.response?.content ||
-          webhookData?.message;
+          webhookData?.message ||
+          webhookData?.mensaje;
 
-        console.log("💬 Respuesta del asistente:", assistantResponse);
-
-        if (assistantResponse) {
+        if (directResponse) {
+          console.log("💬 Respuesta directa del webhook:", directResponse);
           const assistantMessage: Message = {
             id: `assistant-${Date.now()}`,
             role: "assistant",
-            message: assistantResponse,
+            message: directResponse,
             created_at: new Date().toISOString(),
             conversation_id: conversationId,
           };
           setMessages((prev) => [...prev, assistantMessage]);
+          setIsLoading(false);
         } else {
-          console.warn("⚠️ No se encontró respuesta del asistente en:", webhookData);
-          toast.info("Archivo procesado, esperando respuesta del asistente...");
+          // Si no hay respuesta directa, iniciar polling para buscar la respuesta
+          console.log("🔄 Iniciando polling para obtener respuesta del asistente...");
+          toast.info("Procesando archivo, esperando respuesta...");
+          
+          const fileMessageTime = new Date().toISOString();
+          
+          const pollForAssistantResponse = async (attempts = 0) => {
+            if (attempts > 30) { // 30 intentos x 1 segundo = 30 segundos máximo
+              console.log("⏱️ Tiempo de espera agotado para respuesta del archivo");
+              toast.error("Tiempo de espera agotado. Revisa la conversación más tarde.");
+              setIsLoading(false);
+              return;
+            }
+            
+            const { data: newMessages } = await supabase
+              .from("messages")
+              .select("*")
+              .eq("conversation_id", conversationId)
+              .order("created_at", { ascending: true });
+            
+            if (newMessages) {
+              // Buscar si hay una respuesta del asistente más reciente
+              const hasNewAssistantMessage = newMessages.some(
+                (m) => m.role === "assistant" && 
+                new Date(m.created_at) > new Date(fileMessageTime)
+              );
+              
+              if (hasNewAssistantMessage) {
+                console.log("✅ Respuesta del asistente recibida via polling");
+                setMessages(newMessages.filter(m => !m.id.startsWith('temp-') && !m.id.startsWith('file-')) as Message[]);
+                setIsLoading(false);
+                return;
+              }
+            }
+            
+            // Esperar 1 segundo y reintentar
+            setTimeout(() => pollForAssistantResponse(attempts + 1), 1000);
+          };
+          
+          // Iniciar polling después de un breve delay
+          setTimeout(() => pollForAssistantResponse(), 1000);
+          return; // Salir del try, el polling manejará setIsLoading
         }
       } else {
         console.log("⚠️ Respuesta del webhook sin contenido procesable:", data);
@@ -850,8 +892,8 @@ const Chat = () => {
     } catch (error) {
       console.error("❌ Error processing file:", error);
       toast.error("Error procesando el archivo");
-    } finally {
       setIsLoading(false);
+    } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
