@@ -767,15 +767,17 @@ const Chat = () => {
       const data = await res.json();
       console.log("📥 Respuesta del webhook de archivos:", data);
 
+      // Extraer el mensaje de la respuesta - buscar en diferentes formatos posibles
       const response =
+        data?.mensaje ||
         data?.respuesta ||
-        data?.response?.respuesta ||
+        data?.message ||
         data?.response?.mensaje ||
+        data?.response?.respuesta ||
         data?.response?.text ||
         data?.response?.message ||
         data?.response?.content ||
-        data?.message ||
-        (typeof data === 'string' ? data : JSON.stringify(data));
+        (typeof data === 'string' ? data : null);
 
       console.log("📝 Mensaje procesado del webhook de archivos:", response);
 
