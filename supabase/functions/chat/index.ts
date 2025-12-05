@@ -291,8 +291,15 @@ serve(async (req) => {
 
     console.log('AI response received, saving', mensajes.length, 'messages to database...');
 
-    // Save each message as a separate assistant message
-    for (const msg of mensajes) {
+    // Save each message as a separate assistant message with delay
+    for (let i = 0; i < mensajes.length; i++) {
+      const msg = mensajes[i];
+      
+      // Wait 500ms between messages (except for the first one)
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
       // Limpiar markdown de la respuesta (**, ##, listas, etc.)
       const cleanedMessage = msg
         .replaceAll('**', '')
@@ -313,6 +320,8 @@ serve(async (req) => {
         console.error('Error saving assistant message:', insertAssistantError);
         throw new Error('Error guardando respuesta');
       }
+      
+      console.log(`Message ${i + 1}/${mensajes.length} saved`);
     }
 
     console.log('All messages saved successfully');
