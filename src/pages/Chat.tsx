@@ -18,7 +18,6 @@ import { destroyUser } from "@/hooks/useLogout";
 import { NavBarUser } from "@/components/NavBarUser";
 import { useUserStore } from "@/store/useUserStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
-import { MindMapProgressBar } from "@/components/MindMapProgressBar";
 import { SofiaThinking } from "@/components/SofiaThinking";
 interface Message {
   id: string;
@@ -1594,17 +1593,14 @@ const Chat = () => {
                     }
                   })}
 
-                  {/* Barra de progreso para mapa mental */}
-                  <MindMapProgressBar 
-                    isGenerating={isGeneratingMindMap} 
-                    onComplete={() => setIsGeneratingMindMap(false)}
-                  />
-
-                  {isLoading && (
+                  {/* Indicador de Sofia pensando - para loading normal o generando mapa mental */}
+                  {(isLoading || isGeneratingMindMap) && (
                     <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
                         <SofiaThinking />
-                        <span className="text-xs md:text-sm text-muted-foreground">Sofia está analizando...</span>
+                        <span className="text-xs md:text-sm text-muted-foreground">
+                          {isGeneratingMindMap ? "Sofia está generando el mapa mental..." : "Sofia está analizando..."}
+                        </span>
                       </div>
                     </div>
                   )}
