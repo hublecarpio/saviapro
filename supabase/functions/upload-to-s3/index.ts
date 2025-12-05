@@ -99,7 +99,7 @@ serve(async (req) => {
     const endpoint = Deno.env.get('GLOBAL_S3_ENDPOINT') || '';
     const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID') || '';
     const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY') || '';
-    const bucket = 'cyrano-bucket';
+    const bucket = 'n8nback';
     const region = 'us-east-1';
 
     const arrayBuffer = await file.arrayBuffer();
