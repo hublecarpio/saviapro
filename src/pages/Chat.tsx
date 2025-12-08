@@ -291,19 +291,26 @@ const Chat = () => {
           preview: newMessage.message.substring(0, 50)
         });
 
-        // Detectar si es un mensaje de video/podcast completado
+        // Detectar si es un mensaje de video/podcast completado o con error
         if (newMessage.role === "assistant") {
-          if (newMessage.message.includes("Video resumen generado") || newMessage.message.includes("video") && newMessage.message.includes("Error")) {
-            console.log("🎬 Video generation complete");
+          const isVideoSuccess = newMessage.message.includes("Video resumen generado");
+          const isVideoError = newMessage.message.includes("Error generando el video") || 
+                               newMessage.message.includes("generación del video está tomando más tiempo");
+          if (isVideoSuccess || isVideoError) {
+            console.log("🎬 Video generation complete (success:", isVideoSuccess, ")");
             setIsGeneratingVideo(false);
-            if (newMessage.message.includes("Video resumen generado")) {
+            if (isVideoSuccess) {
               setHasVideoGenerated(true);
             }
           }
-          if (newMessage.message.includes("Podcast resumen generado") || newMessage.message.includes("podcast") && newMessage.message.includes("Error")) {
-            console.log("🎙️ Podcast generation complete");
+          
+          const isPodcastSuccess = newMessage.message.includes("Podcast resumen generado");
+          const isPodcastError = newMessage.message.includes("Error generando el podcast") || 
+                                  newMessage.message.includes("generación del podcast está tomando más tiempo");
+          if (isPodcastSuccess || isPodcastError) {
+            console.log("🎙️ Podcast generation complete (success:", isPodcastSuccess, ")");
             setIsGeneratingPodcast(false);
-            if (newMessage.message.includes("Podcast resumen generado")) {
+            if (isPodcastSuccess) {
               setHasPodcastGenerated(true);
             }
           }
@@ -425,10 +432,19 @@ const Chat = () => {
               setIsGeneratingInforme(false);
             }
 
-            // Detectar video/podcast completado
-            const hasVideoMessage = newOnes.some(m => m.role === "assistant" && m.message.includes("Video resumen generado"));
+            // Detectar video/podcast completado o con error
+            const hasVideoMessage = newOnes.some(m => m.role === "assistant" && (
+              m.message.includes("Video resumen generado") || 
+              m.message.includes("Error generando el video") ||
+              m.message.includes("generación del video está tomando más tiempo")
+            ));
             if (hasVideoMessage) setIsGeneratingVideo(false);
-            const hasPodcastMessage = newOnes.some(m => m.role === "assistant" && m.message.includes("Podcast resumen generado"));
+            
+            const hasPodcastMessage = newOnes.some(m => m.role === "assistant" && (
+              m.message.includes("Podcast resumen generado") ||
+              m.message.includes("Error generando el podcast") ||
+              m.message.includes("generación del podcast está tomando más tiempo")
+            ));
             if (hasPodcastMessage) setIsGeneratingPodcast(false);
 
             // Mantener mensajes temporales y agregar los nuevos
@@ -970,6 +986,7 @@ const Chat = () => {
 
       // Llamar a la edge function que procesa en background
       const {
+        data,
         error
       } = await supabase.functions.invoke("generate-media", {
         body: {
@@ -984,10 +1001,16 @@ const Chat = () => {
         throw error;
       }
 
+      // Verificar si la respuesta indica error
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
+
       // El estado se desactivará automáticamente cuando llegue el mensaje via realtime
     } catch (error) {
       console.error("Error starting media generation:", error);
       toast.error("Error al iniciar la generación");
+      // Siempre desactivar el indicador de carga cuando hay error
       if (type === "video") {
         setIsGeneratingVideo(false);
       } else {
@@ -1019,6 +1042,7 @@ const Chat = () => {
         message: "Generar mapa mental",
         conversation_id: currentConversationId,
         user_id: session.user.id,
+        mind_map_user_id: user!.id,
         skip_user_message: true,
         action_type: "mind_map"
       }

@@ -57,7 +57,7 @@ serve(async (req) => {
       }
     );
 
-    const { message, conversation_id, user_id, image, skip_user_message, action_type } = await req.json();
+    const { message, conversation_id, user_id, image, skip_user_message, action_type, mind_map_user_id } = await req.json();
     
     // Si es una acción directa (mapa mental o informe), no necesitamos validar el mensaje
     if (!action_type && (!message || typeof message !== 'string' || message.trim().length === 0)) {
@@ -116,12 +116,19 @@ serve(async (req) => {
       console.log('📝 Generando mapa mental con conversación completa, longitud:', fullConversation.length);
       
       try {
+        const mindMapPayload = { 
+          tema: fullConversation,
+          user_id: mind_map_user_id || user_id,
+          conversation_id: conversation_id
+        };
+        console.log('📤 Enviando payload al webhook de mapa mental:', JSON.stringify({ ...mindMapPayload, tema: mindMapPayload.tema.substring(0, 100) + '...' }));
+        
         const mindMapResponse = await fetch(
           'https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tema: fullConversation })
+            body: JSON.stringify(mindMapPayload)
           }
         );
 
