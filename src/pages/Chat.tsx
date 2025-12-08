@@ -1508,10 +1508,10 @@ const Chat = () => {
         </div>
 
         {/* Sidebar derecho con herramientas - Solo Desktop/Tablet */}
-        <ChatToolsSidebar isLoading={isLoading} hasMessages={messages.length > 0} isGeneratingMindMap={isGeneratingMindMap} isGeneratingInforme={isGeneratingInforme} isGeneratingVideo={isGeneratingVideo} isGeneratingPodcast={isGeneratingPodcast} isGeneratingFichas={isGeneratingFichas} hasVideoGenerated={hasVideoGenerated} hasPodcastGenerated={hasPodcastGenerated} onGenerateVideo={() => handleGenerateResumen("video")} onGeneratePodcast={() => handleGenerateResumen("podcast")} onRequestMindMap={handleRequestMindMap} onRequestInforme={handleRequestInforme} onGenerateFichas={handleGenerateFichas} />
+        <ChatToolsSidebar isLoading={isLoading} hasMessages={messages.length > 0} isGeneratingMindMap={isGeneratingMindMap} isGeneratingVideo={isGeneratingVideo} isGeneratingPodcast={isGeneratingPodcast} isGeneratingFichas={isGeneratingFichas} hasVideoGenerated={hasVideoGenerated} hasPodcastGenerated={hasPodcastGenerated} onGenerateVideo={() => handleGenerateResumen("video")} onGeneratePodcast={() => handleGenerateResumen("podcast")} onRequestMindMap={handleRequestMindMap} onGenerateFichas={handleGenerateFichas} />
 
         {/* Botón flotante para móvil */}
-        <MobileChatToolsFAB isLoading={isLoading} hasMessages={messages.length > 0} isGeneratingMindMap={isGeneratingMindMap} isGeneratingInforme={isGeneratingInforme} isGeneratingVideo={isGeneratingVideo} isGeneratingPodcast={isGeneratingPodcast} isGeneratingFichas={isGeneratingFichas} hasVideoGenerated={hasVideoGenerated} hasPodcastGenerated={hasPodcastGenerated} onGenerateVideo={() => handleGenerateResumen("video")} onGeneratePodcast={() => handleGenerateResumen("podcast")} onRequestMindMap={handleRequestMindMap} onRequestInforme={handleRequestInforme} onGenerateFichas={handleGenerateFichas} />
+        <MobileChatToolsFAB isLoading={isLoading} hasMessages={messages.length > 0} isGeneratingMindMap={isGeneratingMindMap} isGeneratingVideo={isGeneratingVideo} isGeneratingPodcast={isGeneratingPodcast} isGeneratingFichas={isGeneratingFichas} hasVideoGenerated={hasVideoGenerated} hasPodcastGenerated={hasPodcastGenerated} onGenerateVideo={() => handleGenerateResumen("video")} onGeneratePodcast={() => handleGenerateResumen("podcast")} onRequestMindMap={handleRequestMindMap} onGenerateFichas={handleGenerateFichas} />
       </div>
 
       {/* Modal de edición de perfil */}

@@ -1,4 +1,4 @@
-import { Video, Podcast, Brain, FileText, BookOpen } from "lucide-react";
+import { Video, Podcast, Brain, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SofiaThinking } from "@/components/SofiaThinking";
 
@@ -6,7 +6,6 @@ interface ChatToolsSidebarProps {
   isLoading: boolean;
   hasMessages: boolean;
   isGeneratingMindMap?: boolean;
-  isGeneratingInforme?: boolean;
   isGeneratingVideo?: boolean;
   isGeneratingPodcast?: boolean;
   isGeneratingFichas?: boolean;
@@ -15,7 +14,6 @@ interface ChatToolsSidebarProps {
   onGenerateVideo: () => void;
   onGeneratePodcast: () => void;
   onRequestMindMap: () => void;
-  onRequestInforme: () => void;
   onGenerateFichas: () => void;
 }
 
@@ -23,7 +21,6 @@ export const ChatToolsSidebar = ({
   isLoading,
   hasMessages,
   isGeneratingMindMap,
-  isGeneratingInforme,
   isGeneratingVideo,
   isGeneratingPodcast,
   isGeneratingFichas,
@@ -32,7 +29,6 @@ export const ChatToolsSidebar = ({
   onGenerateVideo,
   onGeneratePodcast,
   onRequestMindMap,
-  onRequestInforme,
   onGenerateFichas,
 }: ChatToolsSidebarProps) => {
   return (
@@ -106,24 +102,6 @@ export const ChatToolsSidebar = ({
             </Button>
           )}
 
-          {isGeneratingInforme ? (
-            <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
-              <SofiaThinking />
-              <span className="text-[8px] font-medium text-primary">Generando</span>
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onRequestInforme}
-              disabled={isLoading}
-              className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-accent/50 group transition-all"
-              title="Solicitar informe"
-            >
-              <FileText className="h-5 w-5 transition-colors text-muted-foreground group-hover:text-foreground" />
-              <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">Informe</span>
-            </Button>
-          )}
 
           {isGeneratingFichas ? (
             <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">

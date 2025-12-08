@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Video, Podcast, Brain, FileText, BookOpen, Plus, X } from "lucide-react";
+import { Video, Podcast, Brain, BookOpen, Plus, X } from "lucide-react";
 import { SofiaThinking } from "@/components/SofiaThinking";
 
 interface MobileChatToolsFABProps {
   isLoading: boolean;
   hasMessages: boolean;
   isGeneratingMindMap?: boolean;
-  isGeneratingInforme?: boolean;
   isGeneratingVideo?: boolean;
   isGeneratingPodcast?: boolean;
   isGeneratingFichas?: boolean;
@@ -16,7 +15,6 @@ interface MobileChatToolsFABProps {
   onGenerateVideo: () => void;
   onGeneratePodcast: () => void;
   onRequestMindMap: () => void;
-  onRequestInforme: () => void;
   onGenerateFichas: () => void;
 }
 
@@ -24,7 +22,6 @@ export const MobileChatToolsFAB = ({
   isLoading,
   hasMessages,
   isGeneratingMindMap,
-  isGeneratingInforme,
   isGeneratingVideo,
   isGeneratingPodcast,
   isGeneratingFichas,
@@ -33,7 +30,6 @@ export const MobileChatToolsFAB = ({
   onGenerateVideo,
   onGeneratePodcast,
   onRequestMindMap,
-  onRequestInforme,
   onGenerateFichas,
 }: MobileChatToolsFABProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -44,7 +40,6 @@ export const MobileChatToolsFAB = ({
     { icon: Video, label: "Video", onClick: onGenerateVideo, isGenerating: isGeneratingVideo, isGenerated: hasVideoGenerated },
     { icon: Podcast, label: "Podcast", onClick: onGeneratePodcast, isGenerating: isGeneratingPodcast, isGenerated: hasPodcastGenerated },
     { icon: Brain, label: "Mapas", onClick: onRequestMindMap, isGenerating: isGeneratingMindMap, isGenerated: false },
-    { icon: FileText, label: "Informe", onClick: onRequestInforme, isGenerating: isGeneratingInforme, isGenerated: false },
     { icon: BookOpen, label: "Fichas", onClick: onGenerateFichas, isGenerating: isGeneratingFichas, isGenerated: false },
   ];
 
