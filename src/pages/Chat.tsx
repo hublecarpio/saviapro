@@ -18,6 +18,7 @@ import { NavBarUser } from "@/components/NavBarUser";
 import { useUserStore } from "@/store/useUserStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { SofiaThinking } from "@/components/SofiaThinking";
+import sofiPiensa from "@/assets/sofi_piensa.png";
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -908,11 +909,31 @@ const Chat = () => {
       return;
     }
 
-    // Activar indicador de generación
+    // Activar indicador de generación y mostrar toast con Sofia
     if (type === "video") {
       setIsGeneratingVideo(true);
+      toast(
+        <div className="flex items-center gap-3">
+          <img src={sofiPiensa} alt="Sofia" className="w-10 h-10 object-contain" />
+          <div>
+            <p className="font-medium">¡Sofia está creando tu video!</p>
+            <p className="text-sm text-muted-foreground">Podría tardar hasta 5 minutos. Mientras podemos seguir conversando.</p>
+          </div>
+        </div>,
+        { duration: 3000 }
+      );
     } else {
       setIsGeneratingPodcast(true);
+      toast(
+        <div className="flex items-center gap-3">
+          <img src={sofiPiensa} alt="Sofia" className="w-10 h-10 object-contain" />
+          <div>
+            <p className="font-medium">¡Sofia está creando tu podcast!</p>
+            <p className="text-sm text-muted-foreground">Podría tardar hasta 5 minutos. Mientras podemos seguir conversando.</p>
+          </div>
+        </div>,
+        { duration: 3000 }
+      );
     }
     try {
       // Crear resumen de la conversación
