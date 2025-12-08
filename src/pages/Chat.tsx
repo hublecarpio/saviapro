@@ -446,6 +446,9 @@ const Chat = () => {
 
     // Polling para mind maps (fallback de realtime)
     const mindMapPollingInterval = setInterval(async () => {
+      // Solo hacer polling si estamos esperando un mapa mental
+      if (!isGeneratingMindMap) return;
+      
       const {
         data: newMindMaps
       } = await supabase.from("mind_maps").select("*").eq("conversation_id", currentConversationId).order("created_at", {
@@ -456,10 +459,11 @@ const Chat = () => {
           const prevIds = new Set(prev.map(m => m.id));
           const hasNewMaps = newMindMaps.some(m => !prevIds.has(m.id));
           if (hasNewMaps) {
-            console.log("🔄 New mind maps detected via polling");
+            console.log("🔄 New mind maps detected via polling, stopping generation indicator");
             setIsGeneratingMindMap(false);
             return newMindMaps as MindMap[];
           }
+          // No hay mapas nuevos aún, mantener el estado de generación
           return prev;
         });
       }
@@ -1405,12 +1409,60 @@ const Chat = () => {
                 }
               })}
 
-                  {/* Indicador de Sofia pensando - para loading normal o generando mapa mental */}
-                  {(isLoading || isGeneratingMindMap) && <div className="flex justify-start">
+                  {/* Indicador de Sofia pensando - para loading normal */}
+                  {isLoading && !isGeneratingMindMap && !isGeneratingVideo && !isGeneratingPodcast && !isGeneratingFichas && <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
                         <SofiaThinking />
                         <span className="text-xs md:text-sm text-muted-foreground">
-                          {isGeneratingMindMap ? "Sofia está generando el mapa mental..." : "Sofia está analizando..."}
+                          Sofia está analizando...
+                        </span>
+                      </div>
+                    </div>}
+
+                  {/* Indicador específico para generación de mapa mental */}
+                  {isGeneratingMindMap && <div className="flex justify-start w-full mb-4">
+                      <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl p-4 shadow-sm">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Brain className="h-5 w-5 text-primary animate-pulse" />
+                          <span className="text-sm font-medium text-foreground">
+                            Generando mapa mental...
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                          <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '70%' }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Sofia está organizando los conceptos...
+                        </p>
+                      </div>
+                    </div>}
+
+                  {/* Indicador para generación de video */}
+                  {isGeneratingVideo && <div className="flex justify-start">
+                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
+                        <SofiaThinking />
+                        <span className="text-xs md:text-sm text-muted-foreground">
+                          Sofia está generando el video...
+                        </span>
+                      </div>
+                    </div>}
+
+                  {/* Indicador para generación de podcast */}
+                  {isGeneratingPodcast && <div className="flex justify-start">
+                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
+                        <SofiaThinking />
+                        <span className="text-xs md:text-sm text-muted-foreground">
+                          Sofia está generando el podcast...
+                        </span>
+                      </div>
+                    </div>}
+
+                  {/* Indicador para generación de fichas */}
+                  {isGeneratingFichas && <div className="flex justify-start">
+                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
+                        <SofiaThinking />
+                        <span className="text-xs md:text-sm text-muted-foreground">
+                          Sofia está generando las fichas...
                         </span>
                       </div>
                     </div>}
