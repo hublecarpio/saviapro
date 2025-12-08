@@ -11,6 +11,8 @@ interface MobileChatToolsFABProps {
   isGeneratingVideo?: boolean;
   isGeneratingPodcast?: boolean;
   isGeneratingFichas?: boolean;
+  hasVideoGenerated?: boolean;
+  hasPodcastGenerated?: boolean;
   onGenerateVideo: () => void;
   onGeneratePodcast: () => void;
   onRequestMindMap: () => void;
@@ -26,6 +28,8 @@ export const MobileChatToolsFAB = ({
   isGeneratingVideo,
   isGeneratingPodcast,
   isGeneratingFichas,
+  hasVideoGenerated,
+  hasPodcastGenerated,
   onGenerateVideo,
   onGeneratePodcast,
   onRequestMindMap,
@@ -37,11 +41,11 @@ export const MobileChatToolsFAB = ({
   if (!hasMessages) return null;
 
   const tools = [
-    { icon: Video, label: "Video", onClick: onGenerateVideo, isGenerating: isGeneratingVideo },
-    { icon: Podcast, label: "Podcast", onClick: onGeneratePodcast, isGenerating: isGeneratingPodcast },
-    { icon: Brain, label: "Mapas", onClick: onRequestMindMap, isGenerating: isGeneratingMindMap },
-    { icon: FileText, label: "Informe", onClick: onRequestInforme, isGenerating: isGeneratingInforme },
-    { icon: BookOpen, label: "Fichas", onClick: onGenerateFichas, isGenerating: isGeneratingFichas },
+    { icon: Video, label: "Video", onClick: onGenerateVideo, isGenerating: isGeneratingVideo, isGenerated: hasVideoGenerated },
+    { icon: Podcast, label: "Podcast", onClick: onGeneratePodcast, isGenerating: isGeneratingPodcast, isGenerated: hasPodcastGenerated },
+    { icon: Brain, label: "Mapas", onClick: onRequestMindMap, isGenerating: isGeneratingMindMap, isGenerated: false },
+    { icon: FileText, label: "Informe", onClick: onRequestInforme, isGenerating: isGeneratingInforme, isGenerated: false },
+    { icon: BookOpen, label: "Fichas", onClick: onGenerateFichas, isGenerating: isGeneratingFichas, isGenerated: false },
   ];
 
   const handleToolClick = (onClick: () => void) => {
@@ -78,6 +82,20 @@ export const MobileChatToolsFAB = ({
                     <SofiaThinking />
                   </div>
                   <span className="text-xs font-medium text-primary">Generando</span>
+                </div>
+              );
+            }
+
+            // Show disabled state for already generated tools
+            if (tool.isGenerated) {
+              return (
+                <div
+                  key={tool.label}
+                  className="h-9 px-3 rounded-full bg-muted/50 border border-border shadow-sm flex items-center gap-2 opacity-50 cursor-not-allowed animate-in slide-in-from-right-2 fade-in"
+                  style={{ animationDelay: `${index * 40}ms` }}
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Generado</span>
                 </div>
               );
             }

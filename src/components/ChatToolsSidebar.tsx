@@ -10,6 +10,8 @@ interface ChatToolsSidebarProps {
   isGeneratingVideo?: boolean;
   isGeneratingPodcast?: boolean;
   isGeneratingFichas?: boolean;
+  hasVideoGenerated?: boolean;
+  hasPodcastGenerated?: boolean;
   onGenerateVideo: () => void;
   onGeneratePodcast: () => void;
   onRequestMindMap: () => void;
@@ -25,6 +27,8 @@ export const ChatToolsSidebar = ({
   isGeneratingVideo,
   isGeneratingPodcast,
   isGeneratingFichas,
+  hasVideoGenerated,
+  hasPodcastGenerated,
   onGenerateVideo,
   onGeneratePodcast,
   onRequestMindMap,
@@ -39,6 +43,11 @@ export const ChatToolsSidebar = ({
             <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
               <SofiaThinking />
               <span className="text-[8px] font-medium text-primary">Generando</span>
+            </div>
+          ) : hasVideoGenerated ? (
+            <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 bg-muted/50 opacity-50 cursor-not-allowed" title="Ya se generó un video en esta conversación">
+              <Video className="h-5 w-5 text-muted-foreground" />
+              <span className="text-[9px] font-medium text-muted-foreground">Generado</span>
             </div>
           ) : (
             <Button
@@ -58,6 +67,11 @@ export const ChatToolsSidebar = ({
             <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
               <SofiaThinking />
               <span className="text-[8px] font-medium text-primary">Generando</span>
+            </div>
+          ) : hasPodcastGenerated ? (
+            <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-1 bg-muted/50 opacity-50 cursor-not-allowed" title="Ya se generó un podcast en esta conversación">
+              <Podcast className="h-5 w-5 text-muted-foreground" />
+              <span className="text-[9px] font-medium text-muted-foreground">Generado</span>
             </div>
           ) : (
             <Button
