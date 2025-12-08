@@ -6,9 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface Ficha {
+interface FichaQuiz {
   pregunta: string;
-  respuesta: string;
+  opciones: string[];
+  respuesta_correcta: number;
   orden: number;
 }
 
@@ -50,7 +51,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Generando fichas para conversation:", conversation_id);
+    console.log("Generando quiz para conversation:", conversation_id);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -153,10 +154,10 @@ ${contenido_chat}`,
       conceptos: resumenParsed.conceptos_clave?.length
     });
 
-    // PASO 2: Generar fichas basadas en el resumen
-    console.log("Paso 2: Generando fichas basadas en el resumen...");
+    // PASO 2: Generar preguntas de quiz con 4 opciones cada una
+    console.log("Paso 2: Generando preguntas de quiz...");
 
-    const fichasPrompt = `Basándote en el siguiente resumen de una conversación educativa, genera exactamente 7 fichas didácticas.
+    const quizPrompt = `Basándote en el siguiente resumen de una conversación educativa, genera exactamente 7 preguntas de quiz tipo test.
 
 TEMA PRINCIPAL: ${resumenParsed.tema_principal}
 
@@ -166,14 +167,15 @@ ${resumenParsed.conceptos_clave?.map((c: string, i: number) => `${i + 1}. ${c}`)
 RESUMEN:
 ${resumenParsed.resumen}
 
-Cada ficha debe:
-- Tener una PREGUNTA breve, clara y concreta sobre uno de los conceptos clave
-- Tener una RESPUESTA en no más de 2-3 líneas que explique el concepto
-- Estar enfocada en ayudar al estudiante a recordar y comprender el tema
+INSTRUCCIONES IMPORTANTES:
+1. Cada pregunta debe tener exactamente 4 opciones de respuesta
+2. Solo UNA opción debe ser correcta
+3. Las opciones incorrectas deben ser plausibles pero claramente distinguibles
+4. Las preguntas deben cubrir los conceptos más importantes del tema
+5. Las preguntas deben ser claras y no ambiguas
+6. Varía el índice de la respuesta correcta (no siempre la misma posición)`;
 
-Las fichas deben cubrir los conceptos más importantes del tema "${resumenParsed.tema_principal}".`;
-
-    const fichasResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const quizResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -184,84 +186,100 @@ Las fichas deben cubrir los conceptos más importantes del tema "${resumenParsed
         messages: [
           {
             role: "system",
-            content: "Eres un asistente educativo experto en crear fichas didácticas de estudio. Creas preguntas claras y respuestas concisas que ayudan a los estudiantes a recordar conceptos importantes.",
+            content: "Eres un experto en crear evaluaciones educativas tipo quiz. Creas preguntas claras con opciones múltiples donde solo una es correcta. Las opciones incorrectas deben ser plausibles pero distinguibles.",
           },
           {
             role: "user",
-            content: fichasPrompt,
+            content: quizPrompt,
           },
         ],
         tools: [
           {
             type: "function",
             function: {
-              name: "generar_fichas",
-              description: "Genera 7 fichas didácticas con preguntas y respuestas",
+              name: "generar_quiz",
+              description: "Genera 7 preguntas de quiz con 4 opciones cada una",
               parameters: {
                 type: "object",
                 properties: {
-                  fichas: {
+                  preguntas: {
                     type: "array",
                     items: {
                       type: "object",
                       properties: {
-                        pregunta: { type: "string" },
-                        respuesta: { type: "string" },
-                        orden: { type: "number" },
+                        pregunta: { 
+                          type: "string",
+                          description: "La pregunta del quiz"
+                        },
+                        opciones: { 
+                          type: "array",
+                          items: { type: "string" },
+                          minItems: 4,
+                          maxItems: 4,
+                          description: "Exactamente 4 opciones de respuesta"
+                        },
+                        respuesta_correcta: { 
+                          type: "number",
+                          description: "Índice de la respuesta correcta (0, 1, 2 o 3)"
+                        },
+                        orden: { 
+                          type: "number",
+                          description: "Número de orden de la pregunta (1-7)"
+                        },
                       },
-                      required: ["pregunta", "respuesta", "orden"],
+                      required: ["pregunta", "opciones", "respuesta_correcta", "orden"],
                       additionalProperties: false,
                     },
                     minItems: 7,
                     maxItems: 7,
                   },
                 },
-                required: ["fichas"],
+                required: ["preguntas"],
                 additionalProperties: false,
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "generar_fichas" } },
+        tool_choice: { type: "function", function: { name: "generar_quiz" } },
       }),
     });
 
-    if (!fichasResponse.ok) {
-      const errorText = await fichasResponse.text();
-      console.error("Error generando fichas:", fichasResponse.status, errorText);
+    if (!quizResponse.ok) {
+      const errorText = await quizResponse.text();
+      console.error("Error generando quiz:", quizResponse.status, errorText);
       
-      if (fichasResponse.status === 429) {
+      if (quizResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Límite de peticiones excedido. Intenta de nuevo en unos momentos." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
-      if (fichasResponse.status === 402) {
+      if (quizResponse.status === 402) {
         return new Response(
           JSON.stringify({ error: "Se requiere pago. Por favor agrega créditos." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      throw new Error(`Error generando fichas: ${fichasResponse.status}`);
+      throw new Error(`Error generando quiz: ${quizResponse.status}`);
     }
 
-    const fichasData = await fichasResponse.json();
-    const fichasToolCall = fichasData.choices?.[0]?.message?.tool_calls?.[0];
+    const quizData = await quizResponse.json();
+    const quizToolCall = quizData.choices?.[0]?.message?.tool_calls?.[0];
     
-    if (!fichasToolCall || !fichasToolCall.function?.arguments) {
-      throw new Error("No se pudo extraer las fichas de la respuesta");
+    if (!quizToolCall || !quizToolCall.function?.arguments) {
+      throw new Error("No se pudo extraer el quiz de la respuesta");
     }
 
-    const fichasParsed = JSON.parse(fichasToolCall.function.arguments);
-    const fichasGeneradas: Ficha[] = fichasParsed.fichas;
+    const quizParsed = JSON.parse(quizToolCall.function.arguments);
+    const preguntasGeneradas: FichaQuiz[] = quizParsed.preguntas;
 
-    if (!fichasGeneradas || fichasGeneradas.length !== 7) {
-      throw new Error("El modelo no generó exactamente 7 fichas");
+    if (!preguntasGeneradas || preguntasGeneradas.length !== 7) {
+      throw new Error("El modelo no generó exactamente 7 preguntas");
     }
 
-    console.log("Fichas generadas:", fichasGeneradas.length);
+    console.log("Quiz generado:", preguntasGeneradas.length, "preguntas");
 
     // Eliminar fichas antiguas de esta conversación
     const { error: deleteError } = await supabase
@@ -274,32 +292,34 @@ Las fichas deben cubrir los conceptos más importantes del tema "${resumenParsed
       console.error("Error eliminando fichas antiguas:", deleteError);
     }
 
-    // Insertar las nuevas fichas en la base de datos
-    const fichasParaInsertar = fichasGeneradas.map((ficha) => ({
+    // Insertar las nuevas preguntas en la base de datos
+    const preguntasParaInsertar = preguntasGeneradas.map((pregunta) => ({
       user_id: user.id,
       conversation_id: conversation_id,
-      pregunta: ficha.pregunta,
-      respuesta: ficha.respuesta,
-      orden: ficha.orden,
+      pregunta: pregunta.pregunta,
+      respuesta: pregunta.opciones[pregunta.respuesta_correcta], // Guardar la respuesta correcta como texto también
+      opciones: pregunta.opciones,
+      respuesta_correcta: pregunta.respuesta_correcta,
+      orden: pregunta.orden,
     }));
 
-    const { data: insertedFichas, error: insertError } = await supabase
+    const { data: insertedPreguntas, error: insertError } = await supabase
       .from("fichas_didacticas")
-      .insert(fichasParaInsertar)
+      .insert(preguntasParaInsertar)
       .select();
 
     if (insertError) {
-      console.error("Error insertando fichas:", insertError);
+      console.error("Error insertando preguntas:", insertError);
       throw insertError;
     }
 
-    console.log("Fichas insertadas exitosamente:", insertedFichas?.length);
+    console.log("Preguntas insertadas exitosamente:", insertedPreguntas?.length);
 
     return new Response(
       JSON.stringify({
         success: true,
         tema: resumenParsed.tema_principal,
-        fichas: fichasGeneradas,
+        preguntas: preguntasGeneradas,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -309,7 +329,7 @@ Las fichas deben cubrir los conceptos más importantes del tema "${resumenParsed
     console.error("Error en generar-fichas:", error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Error desconocido al generar fichas" 
+        error: error instanceof Error ? error.message : "Error desconocido al generar quiz" 
       }),
       {
         status: 500,
