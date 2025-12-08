@@ -156,7 +156,7 @@ Genera un reporte breve (máximo 150 palabras) que incluya:
               body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: [{ role: 'user', content: aiPrompt }],
-                max_tokens: 500,
+                max_tokens: 800,
                 temperature: 0.7,
               }),
             });
@@ -167,6 +167,30 @@ Genera un reporte breve (máximo 150 palabras) que incluya:
             }
           } catch (aiError) {
             console.error('Error generating AI summary:', aiError);
+          }
+        }
+
+        // Parse AI summary to extract structured data
+        let progressSummary = aiSummary || `${messages?.length || 0} mensajes, ${totalQuizzes} quizzes (${accuracy}% correctas)`;
+        let difficulties = null;
+        let recommendations = null;
+        let emotionalState = null;
+
+        if (aiSummary) {
+          // Try to extract sections from AI response
+          const progressMatch = aiSummary.match(/(?:progreso|avance)[:\s]*([^.]+\.)/i);
+          const difficultiesMatch = aiSummary.match(/(?:dificultad|dificultades)[:\s]*([^.]+\.)/i);
+          const recommendationsMatch = aiSummary.match(/(?:recomendaci[oó]n|recomendaciones)[:\s]*([^.]+\.)/i);
+          const emotionalMatch = aiSummary.match(/(?:estado emocional|emocional)[:\s]*([^.]+\.)/i);
+
+          if (progressMatch) progressSummary = progressMatch[1].trim();
+          if (difficultiesMatch) difficulties = difficultiesMatch[1].trim();
+          if (recommendationsMatch) recommendations = recommendationsMatch[1].trim();
+          if (emotionalMatch) emotionalState = emotionalMatch[1].trim();
+          
+          // If no structured extraction worked, use the full summary
+          if (!progressMatch && !difficultiesMatch && !recommendationsMatch) {
+            progressSummary = aiSummary;
           }
         }
 
@@ -183,11 +207,17 @@ Genera un reporte breve (máximo 150 palabras) que incluya:
             quiz_accuracy: accuracy,
           },
           ai_summary: aiSummary,
+          parsed: {
+            progress_summary: progressSummary,
+            difficulties,
+            recommendations,
+            emotional_state: emotionalState
+          }
         };
 
         tutorReport.students.push(studentReport);
 
-        // Save report to database
+        // Save report to database for the tutor
         if (messages && messages.length > 0) {
           const latestConversation = conversations?.[0];
           await supabase.from('tutor_reports').insert({
@@ -195,9 +225,14 @@ Genera un reporte breve (máximo 150 palabras) que incluya:
             tutor_id: tutorId,
             conversation_id: latestConversation?.id || null,
             topic: latestConversation?.title || 'Actividad general',
-            progress_summary: aiSummary || `${messages.length} mensajes, ${totalQuizzes} quizzes (${accuracy}% correctas)`,
-            daily_observation: `Conversaciones: ${conversations?.length || 0}, Mensajes: ${messages?.length || 0}`,
+            progress_summary: studentReport.parsed.progress_summary,
+            difficulties: studentReport.parsed.difficulties,
+            recommendations: studentReport.parsed.recommendations,
+            emotional_state: studentReport.parsed.emotional_state,
+            daily_observation: `Conversaciones: ${conversations?.length || 0}, Mensajes: ${messages?.length || 0}, Quizzes: ${totalQuizzes} (${accuracy}% correctas)`,
           });
+          
+          console.log(`Report saved for student ${studentProfile?.name} -> tutor ${tutorProfile?.name}`);
         }
       }
 
