@@ -44,18 +44,17 @@ export const TutorReportes = ({ students, tutorId }: TutorReportesProps) => {
   }, [students, tutorId]);
 
   const loadReports = async () => {
-    if (students.length === 0) {
+    if (!tutorId) {
       setLoading(false);
       return;
     }
 
     try {
-      const studentIds = students.map(s => s.id);
-      
+      // Obtener reportes donde el tutor_id coincide con el tutor actual
       const { data, error } = await supabase
         .from("tutor_reports")
         .select("*")
-        .in("student_id", studentIds)
+        .eq("tutor_id", tutorId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
