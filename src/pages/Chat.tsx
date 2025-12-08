@@ -83,6 +83,7 @@ const Chat = () => {
   const [isGeneratingInforme, setIsGeneratingInforme] = useState(false);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
+  const [sofiaNotification, setSofiaNotification] = useState<{ message: string; submessage: string } | null>(null);
   const [isGeneratingFichas, setIsGeneratingFichas] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -909,32 +910,25 @@ const Chat = () => {
       return;
     }
 
-    // Activar indicador de generación y mostrar toast con Sofia
+    // Activar indicador de generación y mostrar notificación centrada con Sofia
     if (type === "video") {
       setIsGeneratingVideo(true);
-      toast(
-        <div className="flex items-center gap-3">
-          <img src={sofiPiensa} alt="Sofia" className="w-10 h-10 object-contain" />
-          <div>
-            <p className="font-medium">¡Sofia está creando tu video!</p>
-            <p className="text-sm text-muted-foreground">Podría tardar hasta 5 minutos. Mientras podemos seguir conversando.</p>
-          </div>
-        </div>,
-        { duration: 3000 }
-      );
+      setSofiaNotification({
+        message: "¡Sofia está creando tu video!",
+        submessage: "Podría tardar hasta 5 minutos. Mientras podemos seguir conversando."
+      });
     } else {
       setIsGeneratingPodcast(true);
-      toast(
-        <div className="flex items-center gap-3">
-          <img src={sofiPiensa} alt="Sofia" className="w-10 h-10 object-contain" />
-          <div>
-            <p className="font-medium">¡Sofia está creando tu podcast!</p>
-            <p className="text-sm text-muted-foreground">Podría tardar hasta 5 minutos. Mientras podemos seguir conversando.</p>
-          </div>
-        </div>,
-        { duration: 3000 }
-      );
+      setSofiaNotification({
+        message: "¡Sofia está creando tu podcast!",
+        submessage: "Podría tardar hasta 5 minutos. Mientras podemos seguir conversando."
+      });
     }
+    
+    // Ocultar notificación después de 4 segundos
+    setTimeout(() => {
+      setSofiaNotification(null);
+    }, 4000);
     try {
       // Crear resumen de la conversación
       const conversationSummary = messages.filter(m => !m.id.startsWith('temp-')).map(msg => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.message}`).join("\n\n");
@@ -1118,6 +1112,21 @@ const Chat = () => {
                   <p className="text-sm text-muted-foreground">Se procesará automáticamente</p>
                 </div>
               </div>}
+            
+            {/* Notificación centrada de Sofia */}
+            {sofiaNotification && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+                <div className="bg-card/95 backdrop-blur-md border border-border shadow-xl rounded-2xl p-4 md:p-6 max-w-[90%] md:max-w-md animate-in fade-in zoom-in-95 duration-300">
+                  <div className="flex items-center gap-3 md:gap-4">
+                    <img src={sofiPiensa} alt="Sofia" className="w-12 h-12 md:w-16 md:h-16 object-contain animate-pulse" />
+                    <div>
+                      <p className="font-semibold text-foreground text-sm md:text-base">{sofiaNotification.message}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground mt-1">{sofiaNotification.submessage}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="max-w-5xl mx-auto px-3 md:px-6 md:pr-24 py-4 md:py-8 w-full">
               {chatItems.length === 0 ? <div className="space-y-6 md:space-y-8 py-6 md:py-12">
                   <div className="text-center space-y-2 md:space-y-3">
