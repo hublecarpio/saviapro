@@ -112,7 +112,35 @@ export const FichasDidacticas = ({ conversationId, fichasSetId, onClose }: Ficha
     }
   };
 
-  const handleFinishQuiz = () => {
+  const handleFinishQuiz = async () => {
+    // Guardar resultados del quiz en la base de datos
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Sesión expirada");
+        return;
+      }
+
+      const resultsToInsert = preguntas.map((pregunta, index) => ({
+        user_id: session.user.id,
+        conversation_id: conversationId,
+        ficha_id: pregunta.id,
+        selected_option: selectedAnswers.get(index) ?? -1,
+        is_correct: selectedAnswers.get(index) === pregunta.respuesta_correcta,
+      }));
+
+      const { error } = await supabase
+        .from("quiz_results")
+        .insert(resultsToInsert);
+
+      if (error) {
+        console.error("Error guardando resultados:", error);
+        // No mostramos error al usuario, los resultados se muestran igual
+      }
+    } catch (error) {
+      console.error("Error guardando resultados:", error);
+    }
+
     setShowResults(true);
   };
 

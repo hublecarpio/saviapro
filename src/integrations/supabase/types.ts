@@ -216,6 +216,36 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_results: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          ficha_id: string
+          id: string
+          is_correct: boolean
+          selected_option: number
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          ficha_id: string
+          id?: string
+          is_correct: boolean
+          selected_option: number
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          ficha_id?: string
+          id?: string
+          is_correct?: boolean
+          selected_option?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       starter_profiles: {
         Row: {
           age: number | null
@@ -269,6 +299,56 @@ export type Database = {
           value?: string
         }
         Relationships: []
+      }
+      tutor_reports: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          daily_observation: string | null
+          difficulties: string | null
+          emotional_state: string | null
+          id: string
+          progress_summary: string | null
+          recommendations: string | null
+          student_id: string
+          topic: string
+          tutor_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          daily_observation?: string | null
+          difficulties?: string | null
+          emotional_state?: string | null
+          id?: string
+          progress_summary?: string | null
+          recommendations?: string | null
+          student_id: string
+          topic: string
+          tutor_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          daily_observation?: string | null
+          difficulties?: string | null
+          emotional_state?: string | null
+          id?: string
+          progress_summary?: string | null
+          recommendations?: string | null
+          student_id?: string
+          topic?: string
+          tutor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutor_reports_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tutor_students: {
         Row: {
