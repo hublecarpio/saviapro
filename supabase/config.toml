@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.upload-to-s3]
 verify_jwt = false
+
+[functions.daily-reports]
+verify_jwt = false
