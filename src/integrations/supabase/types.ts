@@ -46,6 +46,50 @@ export type Database = {
           },
         ]
       }
+      document_embeddings: {
+        Row: {
+          chunk_index: number
+          content: string
+          content_chunk: string
+          created_at: string
+          document_id: string | null
+          embedding: string | null
+          id: string
+          metadata: Json | null
+          updated_at: string
+        }
+        Insert: {
+          chunk_index?: number
+          content: string
+          content_chunk: string
+          created_at?: string
+          document_id?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          content_chunk?: string
+          created_at?: string
+          document_id?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_embeddings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fichas_didacticas: {
         Row: {
           conversation_id: string
@@ -438,6 +482,21 @@ export type Database = {
       mark_invited_user_used: {
         Args: { user_email: string }
         Returns: undefined
+      }
+      search_documents: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          content_chunk: string
+          document_id: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
       }
       user_was_invited_by_tutor: {
         Args: { _tutor_id: string; _user_id: string }
