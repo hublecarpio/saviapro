@@ -30,8 +30,11 @@ verify_jwt = false
 [functions.daily-reports]
 verify_jwt = false
 
+[functions.extract-pdf-text]
+verify_jwt = false
+
 [functions.process-document]
-verify_jwt = true
+verify_jwt = false
 
 [functions.query-knowledge]
 verify_jwt = false

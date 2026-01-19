@@ -11,21 +11,39 @@ interface FileUploaderProps {
     onFileProcessed?: (response: any) => void;
 }
 
-// Función para extraer texto de archivos
+// Función para extraer texto de archivos usando AI para PDFs
 async function extractTextFromFile(file: File): Promise<string> {
     if (file.type === "text/plain") {
         return await file.text();
     }
     
-    // Para PDF y DOCX, intentamos leer como texto (fallback básico)
-    // En producción, se debería usar una librería de parsing
-    if (file.type === "application/pdf") {
-        // Para PDFs, retornamos un placeholder y dejamos que la edge function maneje
-        return `[Contenido del archivo PDF: ${file.name}]`;
-    }
-    
-    if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        return `[Contenido del archivo DOCX: ${file.name}]`;
+    // Para PDF y DOCX, usar la edge function con AI para extracción real
+    if (file.type === "application/pdf" || 
+        file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('file_name', file.name);
+            
+            const { data, error } = await supabase.functions.invoke('extract-pdf-text', {
+                body: formData,
+            });
+            
+            if (error) {
+                console.error("Error extracting PDF text:", error);
+                return `[Error al extraer texto del archivo: ${file.name}]`;
+            }
+            
+            if (data?.success && data?.extracted_text) {
+                console.log(`Extracted ${data.text_length || data.extracted_text.length} characters from ${file.name}`);
+                return data.extracted_text;
+            }
+            
+            return `[No se pudo extraer texto del archivo: ${file.name}]`;
+        } catch (err) {
+            console.error("PDF extraction error:", err);
+            return `[Error de extracción: ${file.name}]`;
+        }
     }
     
     return await file.text();
