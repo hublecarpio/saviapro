@@ -6,21 +6,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(id));
+}
+
 // Generar embedding semántico para la query usando Lovable AI
 async function generateQueryEmbedding(query: string, apiKey: string): Promise<number[]> {
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content: `Eres un extractor de características semánticas. Dado un texto, extrae EXACTAMENTE 768 características numéricas normalizadas entre -1 y 1 que representen el significado semántico del texto.
+    const response = await fetchWithTimeout(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [
+            {
+              role: "system",
+              content: `Eres un extractor de características semánticas. Dado un texto, extrae EXACTAMENTE 768 características numéricas normalizadas entre -1 y 1 que representen el significado semántico del texto.
 
 Responde SOLO con un array JSON de 768 números decimales, sin explicaciones ni texto adicional. El array debe capturar:
 - Temas principales (posiciones 0-100)
@@ -33,15 +41,17 @@ Responde SOLO con un array JSON de 768 números decimales, sin explicaciones ni 
 - Características generales (posiciones 701-767)
 
 Responde ÚNICAMENTE con el array JSON, ejemplo: [0.1, -0.3, 0.8, ...]`
-          },
-          {
-            role: "user",
-            content: `Genera el vector de embedding para esta consulta de búsqueda:\n\n${query}`
-          }
-        ],
-        temperature: 0.1,
-      }),
-    });
+            },
+            {
+              role: "user",
+              content: `Genera el vector de embedding para esta consulta de búsqueda:\n\n${query}`
+            }
+          ],
+          temperature: 0.1,
+        }),
+      },
+      12000
+    );
 
     if (!response.ok) {
       console.error("Error from AI gateway:", response.status);
@@ -85,27 +95,31 @@ Responde ÚNICAMENTE con el array JSON, ejemplo: [0.1, -0.3, 0.8, ...]`
 // Generar embedding basado en keywords
 async function generateKeywordEmbedding(text: string, apiKey: string): Promise<number[]> {
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+    const response = await fetchWithTimeout(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [
+            {
+              role: "system",
+              content: "Extrae las palabras o frases clave más importantes del texto. Responde SOLO con un array JSON de strings."
+            },
+            {
+              role: "user",
+              content: text
+            }
+          ],
+          temperature: 0.1,
+        }),
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content: "Extrae las palabras o frases clave más importantes del texto. Responde SOLO con un array JSON de strings."
-          },
-          {
-            role: "user",
-            content: text
-          }
-        ],
-        temperature: 0.1,
-      }),
-    });
+      12000
+    );
 
     if (!response.ok) {
       return generateFallbackEmbedding(text);
