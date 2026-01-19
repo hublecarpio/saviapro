@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,11 +22,29 @@ serve(async (req) => {
 
     console.log('Processing file:', fileName, 'Type:', file.type, 'Size:', file.size);
 
+    // Verificar tamaño máximo (5MB para extracción con AI)
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_SIZE) {
+      console.log('File too large for AI extraction, using fallback');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          extracted_text: `Documento: ${fileName}\n\n[El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(2)}MB) para extracción automática. Por favor, copia y pega el texto manualmente usando la opción "Pegar Texto".]`,
+          file_name: fileName,
+          extraction_method: 'size_limit'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
     
-    // Convertir archivo a base64
+    // Convertir archivo a base64 de forma segura (sin stack overflow)
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const base64 = base64Encode(arrayBuffer);
     
     // Determinar el mime type
     let mimeType = file.type;
@@ -34,6 +53,8 @@ serve(async (req) => {
       else if (fileName.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       else mimeType = 'application/octet-stream';
     }
+
+    console.log('Sending to AI for extraction, base64 length:', base64.length);
 
     // Usar Gemini con capacidad multimodal para extraer texto del PDF
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -83,24 +104,19 @@ Reglas:
       const errorText = await response.text();
       console.error("AI extraction error:", response.status, errorText);
       
-      // Si falla la extracción multimodal, intentar con descripción
-      if (response.status === 400 || response.status === 422) {
-        console.log("Multimodal extraction failed, returning filename as content");
-        return new Response(
-          JSON.stringify({
-            success: true,
-            extracted_text: `Documento: ${fileName}\n\n[El contenido de este archivo PDF no pudo ser extraído automáticamente. Por favor, copia y pega el texto manualmente usando la opción "Pegar Texto".]`,
-            file_name: fileName,
-            extraction_method: 'fallback'
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
-      }
-      
-      throw new Error(`AI extraction failed: ${response.status}`);
+      // Si falla la extracción multimodal, dar mensaje informativo
+      return new Response(
+        JSON.stringify({
+          success: true,
+          extracted_text: `Documento: ${fileName}\n\n[El contenido de este archivo no pudo ser extraído automáticamente. Por favor, copia y pega el texto manualmente usando la opción "Pegar Texto".]`,
+          file_name: fileName,
+          extraction_method: 'fallback'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
     }
 
     const data = await response.json();
