@@ -275,6 +275,32 @@ serve(async (req) => {
     }
     
     console.log('Detected response type:', tipo_respuesta);
+
+    // === CONSULTAR BASE DE CONOCIMIENTO RAG ===
+    let ragContext = '';
+    try {
+      console.log('Querying knowledge base for context...');
+      const { data: knowledgeResults, error: ragError } = await supabaseAdmin
+        .from('document_embeddings')
+        .select('content_chunk, metadata')
+        .limit(3);
+      
+      if (!ragError && knowledgeResults && knowledgeResults.length > 0) {
+        // Búsqueda simple por palabras clave del mensaje
+        const keywords = message.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+        const relevantDocs = knowledgeResults.filter((doc: any) => {
+          const chunk = doc.content_chunk.toLowerCase();
+          return keywords.some((kw: string) => chunk.includes(kw));
+        });
+        
+        if (relevantDocs.length > 0) {
+          ragContext = relevantDocs.map((d: any) => d.content_chunk).join('\n\n---\n\n');
+          console.log(`Found ${relevantDocs.length} relevant documents for context`);
+        }
+      }
+    } catch (ragErr) {
+      console.error('Error querying knowledge base:', ragErr);
+    }
     
     const webhookResponse = await fetch(
       'https://webhook.hubleconsulting.com/webhook/7e846525-ea3a-4213-8f66-5d0dad8547bc',
@@ -285,7 +311,8 @@ serve(async (req) => {
           mensaje: message.trim(),
           id_conversation: conversation_id,
           id_user: user_id,
-          tipo_respuesta: tipo_respuesta
+          tipo_respuesta: tipo_respuesta,
+          rag_context: ragContext || null
         })
       }
     );

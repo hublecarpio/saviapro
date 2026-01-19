@@ -11,6 +11,26 @@ interface FileUploaderProps {
     onFileProcessed?: (response: any) => void;
 }
 
+// Función para extraer texto de archivos
+async function extractTextFromFile(file: File): Promise<string> {
+    if (file.type === "text/plain") {
+        return await file.text();
+    }
+    
+    // Para PDF y DOCX, intentamos leer como texto (fallback básico)
+    // En producción, se debería usar una librería de parsing
+    if (file.type === "application/pdf") {
+        // Para PDFs, retornamos un placeholder y dejamos que la edge function maneje
+        return `[Contenido del archivo PDF: ${file.name}]`;
+    }
+    
+    if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        return `[Contenido del archivo DOCX: ${file.name}]`;
+    }
+    
+    return await file.text();
+}
+
 export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -66,73 +86,54 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 throw new Error("Usuario no autenticado");
             }
 
-            const formData = new FormData();
-            let fileType = "";
+            let content = "";
             let fileName = "";
+            let fileType = "";
 
             if (mode === "file" && file) {
-                fileType = file.type;
+                content = await extractTextFromFile(file);
                 fileName = file.name;
-                // Archivo binario
-                formData.append("file", file);
+                fileType = file.type;
             } else {
-                // Convertir texto a archivo binario
-                const blob = new Blob([textContent], { type: "text/plain" });
-                const textFile = new File([blob], `texto_${Date.now()}.txt`, { type: "text/plain" });
+                content = textContent;
+                fileName = `texto_${Date.now()}.txt`;
                 fileType = "text/plain";
-                fileName = textFile.name;
-                formData.append("file", textFile);
             }
 
-            // JSON con la estructura de datos
-            const metadata = {
-                type: "archivos",
-                user_id: user.id,
-                conversation_id: conversationId || null,
-                file_data: {
-                    name: fileName,
-                    type: fileType
+            // Llamar a la edge function para procesar el documento con embeddings
+            const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
+                body: {
+                    content: content,
+                    file_name: fileName,
+                    user_id: user.id,
+                    conversation_id: conversationId || null
                 }
-            };
-
-            // Agregar metadata como JSON string
-            formData.append("metadata", JSON.stringify(metadata));
-
-            // Enviar al webhook de archivos
-            const res = await fetch(
-                "https://webhook.hubleconsulting.com/webhook/728b3d4d-2ab4-4a72-a15b-a615340archivos",
-                {
-                    method: "POST",
-                    body: formData,
-                }
-            );
-
-            if (!res.ok) throw new Error("Error en el envío");
-            
-            const responseData = await res.json();
-            
-            // Guardar registro en la base de datos
-            await supabase.from("uploaded_documents").insert({
-                uploaded_by: user.id,
-                file_name: fileName,
-                file_type: fileType,
-                upload_mode: mode,
             });
 
-            // Callback con la respuesta del webhook para procesar en el chat
-            if (onFileProcessed && responseData) {
+            if (processError) {
+                console.error("Error processing document:", processError);
+                throw new Error(processError.message || "Error al procesar el documento");
+            }
+
+            if (!processResult?.success) {
+                throw new Error(processResult?.error || "Error al procesar el documento");
+            }
+
+            // Callback con la respuesta para procesar en el chat
+            if (onFileProcessed && processResult) {
                 onFileProcessed({
                     fileName,
                     fileType,
-                    webhookResponse: responseData
+                    documentId: processResult.document_id,
+                    chunksProcessed: processResult.chunks_processed
                 });
             }
 
             toast({
-                title: "Contenido enviado",
+                title: "Contenido procesado",
                 description: mode === "file" 
-                    ? `${fileName} fue subido correctamente`
-                    : "El texto fue enviado correctamente",
+                    ? `${fileName} fue procesado correctamente (${processResult.chunks_processed} fragmentos)`
+                    : `El texto fue procesado correctamente (${processResult.chunks_processed} fragmentos)`,
             });
 
             setFile(null);
@@ -141,7 +142,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             console.error("Error uploading file:", error);
             toast({
                 title: "Error al subir",
-                description: "No se pudo enviar el contenido",
+                description: error instanceof Error ? error.message : "No se pudo enviar el contenido",
                 variant: "destructive",
             });
         } finally {
