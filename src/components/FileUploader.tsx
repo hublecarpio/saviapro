@@ -52,6 +52,7 @@ async function extractTextFromFile(file: File): Promise<string> {
 export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [uploadStage, setUploadStage] = useState("");
     const [textContent, setTextContent] = useState("");
     const [mode, setMode] = useState<"file" | "text">("file");
     const { toast } = useToast();
@@ -99,6 +100,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
         setUploading(true);
 
         try {
+            setUploadStage("Autenticando...");
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 throw new Error("Usuario no autenticado");
@@ -109,6 +111,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             let fileType = "";
 
             if (mode === "file" && file) {
+                setUploadStage("Extrayendo texto del documento...");
                 content = await extractTextFromFile(file);
                 fileName = file.name;
                 fileType = file.type;
@@ -118,6 +121,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 fileType = "text/plain";
             }
 
+            setUploadStage("Generando embeddings...");
             // Llamar a la edge function para procesar el documento con embeddings
             const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
                 body: {
@@ -165,6 +169,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             });
         } finally {
             setUploading(false);
+            setUploadStage("");
         }
     };
 
@@ -254,7 +259,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 {uploading ? (
                     <>
                         <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        Procesando...
+                        {uploadStage || "Procesando..."}
                     </>
                 ) : (
                     mode === "file" ? "Subir archivo" : "Enviar texto"
