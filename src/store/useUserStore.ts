@@ -8,7 +8,7 @@ const initialUser: User = {
     roles: [],
     starterCompleted: false,
     isAuthenticated: false,
-    loading: false,
+    loading: true,
     error: null,
 }
 

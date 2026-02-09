@@ -20,6 +20,7 @@ import RegisterUser from "@/components/user/RegisterUser";
 import ListUser from "@/components/user/ListUser";
 import InviteRegister from "@/pages/InviteRegister";
 import { AdminConversationHistory } from "@/components/admin/AdminConversationHistory";
+import { AuthProvider } from "@/providers/AuthProvider";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+      <AuthProvider>
         <Routes>
           <Route path="/" element={<Auth />} />
           <Route path="/register/:token" element={<InviteRegister />} />
@@ -108,6 +110,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+      </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
