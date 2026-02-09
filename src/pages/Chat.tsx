@@ -1273,7 +1273,20 @@ const Chat = () => {
                                 {/* Mostrar las imágenes */}
                                 <div className="flex flex-wrap justify-center gap-2">
                                   {imageUrls.map((url, idx) => <div key={idx} className="relative group cursor-pointer rounded-lg overflow-hidden w-24 h-24 md:w-28 md:h-28" onClick={() => window.open(url, '_blank')}>
-                                      <img src={url} alt={`Imagen ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
+                                      <img
+                                        src={url}
+                                        alt={`Imagen ${idx + 1}`}
+                                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                          const target = e.currentTarget;
+                                          target.style.display = 'none';
+                                          const fallback = document.createElement('div');
+                                          fallback.className = 'w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-xs text-center p-2';
+                                          fallback.textContent = 'Error al cargar imagen';
+                                          target.parentElement?.appendChild(fallback);
+                                        }}
+                                      />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
                                         <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                                       </div>

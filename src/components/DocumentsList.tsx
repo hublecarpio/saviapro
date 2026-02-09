@@ -22,6 +22,13 @@ export const DocumentsList = () => {
 
   const loadDocuments = async () => {
     try {
+      // Skip loading if no active session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("uploaded_documents")
         .select("*")
