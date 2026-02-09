@@ -43,19 +43,33 @@ export const DocumentsList = () => {
 
   const handleDelete = async (id: string) => {
     try {
+      // Optimistic update with rollback
+      const previousDocs = documents;
+      setDocuments(prev => prev.filter(doc => doc.id !== id));
+
+      // Also delete related embeddings
+      const { error: embError } = await supabase
+        .from("document_embeddings")
+        .delete()
+        .eq("document_id", id);
+
+      if (embError) console.warn("Error deleting embeddings:", embError);
+
       const { error } = await supabase
         .from("uploaded_documents")
         .delete()
         .eq("id", id);
 
-      if (error) throw error;
+      if (error) {
+        // Rollback on error
+        setDocuments(previousDocs);
+        throw error;
+      }
 
       toast({
         title: "Documento eliminado",
-        description: "El documento fue eliminado correctamente",
+        description: "El documento y sus embeddings fueron eliminados",
       });
-
-      await loadDocuments();
     } catch (error) {
       console.error("Error deleting document:", error);
       toast({
@@ -69,7 +83,9 @@ export const DocumentsList = () => {
   useEffect(() => {
     loadDocuments();
 
-    // Suscripción en tiempo real para actualizar la lista
+    // Debounced realtime subscription to avoid race conditions
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    
     const channel = supabase
       .channel("documents-changes")
       .on(
@@ -80,12 +96,17 @@ export const DocumentsList = () => {
           table: "uploaded_documents",
         },
         () => {
-          loadDocuments();
+          // Debounce: only reload after 1s of no events
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            loadDocuments();
+          }, 1000);
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, []);
