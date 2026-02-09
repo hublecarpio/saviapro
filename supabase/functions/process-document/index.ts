@@ -150,6 +150,19 @@ serve(async (req) => {
       throw new Error("Missing required fields: content and user_id are required");
     }
 
+    // Validar que el contenido no sea un mensaje de error
+    if (content.startsWith('[Error') || content.startsWith('Error') || content.length < 20) {
+      console.error('Content is an error message or too short, skipping embedding:', content.slice(0, 100));
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'El contenido extraído es un error o está vacío. Intenta subir el archivo de nuevo.',
+          content_preview: content.slice(0, 100)
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
