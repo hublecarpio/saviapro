@@ -14,9 +14,8 @@ export const ProtectedRoute = ({
 }: ProtectedRouteProps) => {
   const user = useUserStore((state) => state.user);
   const location = useLocation();
-  console.log(user);
   // Mostrar loading mientras se verifica la sesión
-  if (user.loading && user.id != null) {
+  if (user.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
