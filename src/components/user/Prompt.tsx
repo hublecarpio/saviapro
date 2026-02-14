@@ -59,7 +59,7 @@ const Prompt = () => {
             .from("system_config")
             .select("value")
             .eq("key", "master_prompt")
-            .single();
+            .maybeSingle();
 
         if (data) {
             setMasterPrompt(data.value);
