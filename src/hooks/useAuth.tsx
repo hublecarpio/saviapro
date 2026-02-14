@@ -180,6 +180,9 @@ export const useAuth = () => {
 
         console.log('Auth state changed:', event);
 
+        // Ignorar INITIAL_SESSION - ya lo manejamos en initializeAuth
+        if (event === 'INITIAL_SESSION') return;
+
         if (event === 'SIGNED_IN' && session?.user) {
           const userData = await loadUserData(session.user.id);
           if (userData && window.location.pathname === '/') {
@@ -200,7 +203,8 @@ export const useAuth = () => {
       isSubscribed = false;
       subscription.unsubscribe();
     };
-  }, [loadUserData, redirectBasedOnRole, reset, navigate]); // Dependencias estables
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Solo montar una vez - las funciones del store son estables
 
   return {
     user,
