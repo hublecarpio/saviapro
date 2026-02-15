@@ -69,16 +69,18 @@ const Prompt = () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from("system_config")
-                .update({
+                .upsert({
+                    key: "master_prompt",
                     value: masterPrompt,
                     updated_by: user?.id,
                     updated_at: new Date().toISOString()
-                })
-                .eq("key", "master_prompt");
+                }, { onConflict: "key" })
+                .select();
 
             if (error) throw error;
+            if (!data || data.length === 0) throw new Error("No se pudo guardar el prompt maestro");
 
             toast({
                 title: "Guardado exitoso",
