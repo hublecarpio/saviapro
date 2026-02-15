@@ -3,9 +3,9 @@ import { NavBarUser } from "@/components/NavBarUser";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/useUserStore";
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 
-export function DashboardLayout({ children }) {
+export function DashboardLayout({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     const user = useUserStore((s) => s.user);

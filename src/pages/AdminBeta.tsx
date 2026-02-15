@@ -14,7 +14,7 @@ import { Trash2, UserPlus, Settings, LogOut, Users } from "lucide-react";
 import { NavBarUser } from "@/components/NavBarUser";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { User } from "@/lib/types";
-import { DashboardLayout } from "@/layout/DashboardLaout";
+import { DashboardLayout } from "@/layout/DashboardLayout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -127,7 +127,7 @@ const AdminBeta = () => {
         // Buscar quién invitó a este usuario
         const invite = invites?.find(i => i.email?.toLowerCase() === profile.email?.toLowerCase());
         const invitedBy = invite?.created_by ? profiles?.find(p => p.id === invite.created_by) : null;
-        
+
         return {
           ...profile,
           roles: userRoles.map(r => r.role),
@@ -362,11 +362,11 @@ const AdminBeta = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{user.email}</p>
-                            <Badge 
+                            <Badge
                               variant={
                                 user.intended_role === "admin" ? "default" :
-                                user.intended_role === "tutor" ? "secondary" :
-                                "outline"
+                                  user.intended_role === "tutor" ? "secondary" :
+                                    "outline"
                               }
                             >
                               {user.intended_role || "tutor"}
