@@ -75,10 +75,14 @@ const handleSignIn = async (e: React.FormEvent) => {
 
     if (rolesError) throw rolesError;
 
-    setRoles(roles?.map((r) => r.role) || []);
+    const userRoles = roles?.map((r) => r.role) || [];
+    setRoles(userRoles);
 
     // 🟢 5. Redirect limpio
     await redirect(user.id, roles);
+
+    // Asegurar que loading quede en false después de todo
+    useUserStore.getState().setLoading(false);
 
   } catch (error: any) {
     console.error("Error en handleSignIn:", error);

@@ -184,6 +184,11 @@ export const useAuth = () => {
         if (event === 'INITIAL_SESSION') return;
 
         if (event === 'SIGNED_IN' && session?.user) {
+          // Si el usuario ya está autenticado (login manejó todo), no recargar
+          const currentUser = useUserStore.getState().user;
+          if (currentUser.isAuthenticated && currentUser.id === session.user.id) {
+            return;
+          }
           const userData = await loadUserData(session.user.id);
           if (userData && window.location.pathname === '/') {
             setTimeout(() => {
