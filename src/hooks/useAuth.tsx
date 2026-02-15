@@ -178,8 +178,6 @@ export const useAuth = () => {
       async (event, session) => {
         if (!isSubscribed) return;
 
-        console.log('Auth state changed:', event);
-
         // Ignorar INITIAL_SESSION - ya lo manejamos en initializeAuth
         if (event === 'INITIAL_SESSION') return;
 
@@ -199,7 +197,7 @@ export const useAuth = () => {
           reset();
           navigate('/', { replace: true });
         } else if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed');
+          // Token refreshed silently
         }
       }
     );

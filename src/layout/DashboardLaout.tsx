@@ -12,7 +12,6 @@ export function DashboardLayout({ children }) {
     const setUser = useUserStore((s) => s.setUser);
     const setRoles = useUserStore((s) => s.setRoles);
     const reset = useUserStore((s) => s.reset);
-    console.log(user);
     useEffect(() => {
         const loadSession = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -29,12 +28,20 @@ export function DashboardLayout({ children }) {
                 .select("role")
                 .eq("user_id", user.id);
 
+            // Cargar perfil (name desde tabla profiles, igual que useAuth)
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('name, starter_completed')
+                .eq('id', user.id)
+                .single();
+
             setUser({
                 id: user.id,
                 email: user.email,
-                name: user.user_metadata?.name || null,
+                name: profileData?.name || null,
                 isAuthenticated: true,
                 loading: false,
+                starterCompleted: profileData?.starter_completed || false,
             });
 
             setRoles(roles?.map((r) => r.role) || []);
