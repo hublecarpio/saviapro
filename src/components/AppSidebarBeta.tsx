@@ -41,7 +41,6 @@ export function AppSidebarBeta({
   //onConversationSelect,
   // onNewConversation 
 }: AppSidebarProps) {
-  console.log(role)
   // validar el tipo de usuario
   const { open: sidebarOpen } = useSidebar();
   const [conversations, setConversations] = useState<Conversation[]>([]);

@@ -33,69 +33,76 @@ export const Login = () => {
   const setUser = useUserStore((s) => s.setUser);
   const setRoles = useUserStore((s) => s.setRoles);
   const reset = useUserStore((s) => s.reset);
-  const {user} = useUserStore();
-console.log(user)
+  const { user } = useUserStore();
 
-const handleSignIn = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-  try {
-    const validated = authSchema.parse({ email, password });
+    try {
+      const validated = authSchema.parse({ email, password });
 
-    // 🧹 1. Limpiar sesión anterior SOLO al iniciar login
-    await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-    reset();
+      // 🧹 1. Limpiar sesión anterior SOLO al iniciar login
+      await supabase.auth.signOut({ scope: "local" }).catch(() => { });
+      reset();
 
-    // 🟢 2. Login real
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: validated.email,
-      password: validated.password,
-    });
+      // 🟢 2. Login real
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: validated.email,
+        password: validated.password,
+      });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const user = data.user;
+      const user = data.user;
 
-    // 🟢 3. Guardar usuario en store
-    setUser({
-      id: user.id,
-      email: user.email!,
-      name: user.user_metadata?.name || null,
-      isAuthenticated: true,
-      loading: false,
-      error: null,
-    });
+      // 🟢 3. Cargar perfil desde tabla profiles (fuente de verdad para el name)
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('name, starter_completed')
+        .eq('id', user.id)
+        .single();
 
-    // 🟢 4. Cargar roles
-    const { data: roles, error: rolesError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
+      // 🟢 4. Guardar usuario en store
+      setUser({
+        id: user.id,
+        email: user.email!,
+        name: profileData?.name || null,
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+        starterCompleted: profileData?.starter_completed || false,
+      });
 
-    if (rolesError) throw rolesError;
+      // 🟢 5. Cargar roles
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
 
-    const userRoles = roles?.map((r) => r.role) || [];
-    setRoles(userRoles);
+      if (rolesError) throw rolesError;
 
-    // 🟢 5. Redirect limpio
-    await redirect(user.id, roles);
+      const userRoles = roles?.map((r) => r.role) || [];
+      setRoles(userRoles);
 
-    // Asegurar que loading quede en false después de todo
-    useUserStore.getState().setLoading(false);
+      // 🟢 5. Redirect limpio
+      await redirect(user.id, roles);
 
-  } catch (error: any) {
-    console.error("Error en handleSignIn:", error);
+      // Asegurar que loading quede en false después de todo
+      useUserStore.getState().setLoading(false);
 
-    if (error instanceof z.ZodError) {
-      toast.error(error.errors[0].message);
-    } else {
-      toast.error(error.message || "Error al iniciar sesión");
+    } catch (error: any) {
+      console.error("Error en handleSignIn:", error);
+
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error(error.message || "Error al iniciar sesión");
+      }
     }
-  }
 
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
 
   const redirect = async (userid: string, roles: any[]) => {
@@ -122,7 +129,7 @@ const handleSignIn = async (e: React.FormEvent) => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!forgotPasswordEmail) {
       toast.error("Por favor ingresa tu correo electrónico");
       return;
@@ -203,8 +210,8 @@ const handleSignIn = async (e: React.FormEvent) => {
       {/* Botón de olvidaste tu contraseña */}
       <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
         <DialogTrigger asChild>
-          <Button 
-            variant="link" 
+          <Button
+            variant="link"
             className="w-full mt-2 text-sm text-muted-foreground hover:text-primary"
           >
             ¿Olvidaste tu contraseña?
@@ -230,9 +237,9 @@ const handleSignIn = async (e: React.FormEvent) => {
                 className="h-11"
               />
             </div>
-            <Button 
-              type="submit" 
-              className="w-full h-11" 
+            <Button
+              type="submit"
+              className="w-full h-11"
               disabled={isRecovering}
             >
               {isRecovering ? (
