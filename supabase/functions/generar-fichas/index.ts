@@ -53,22 +53,22 @@ serve(async (req) => {
 
     console.log("Generando quiz para conversation:", conversation_id);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY no configurada");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY no configurada");
     }
 
     // PASO 1: Generar resumen del tema principal de la conversación
     console.log("Paso 1: Generando resumen del tema...");
     
-    const resumenResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resumenResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           {
             role: "system",
@@ -175,14 +175,14 @@ INSTRUCCIONES IMPORTANTES:
 5. Las preguntas deben ser claras y no ambiguas
 6. Varía el índice de la respuesta correcta (no siempre la misma posición)`;
 
-    const quizResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const quizResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           {
             role: "system",

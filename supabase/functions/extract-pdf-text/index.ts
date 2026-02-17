@@ -23,7 +23,7 @@ async function extractText(
   const pageContext = pageInstruction || "todo el documento";
   try {
     const response = await fetchWithTimeout(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
         method: "POST",
         headers: {
@@ -31,7 +31,7 @@ async function extractText(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "gemini-2.5-flash-lite",
           messages: [
             {
               role: "system",
@@ -108,7 +108,7 @@ serve(async (req) => {
       );
     }
 
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')!;
     
     // Convert to base64 - use Uint8Array to minimize memory
     const arrayBuffer = await file.arrayBuffer();
@@ -126,7 +126,7 @@ serve(async (req) => {
     // For files under 4MB: single full extraction (most memory-efficient)
     if (fileSizeMB <= 4) {
       console.log('Attempting full extraction');
-      const result = await extractText(base64, mimeType, fileName, lovableApiKey);
+      const result = await extractText(base64, mimeType, fileName, geminiApiKey);
       
       if (result.success && result.text.length > 10) {
         console.log('Full extraction succeeded:', result.text.length, 'chars');
@@ -158,7 +158,7 @@ serve(async (req) => {
       const pageInstruction = `las páginas ${startPage} a ${endPage}`;
       
       console.log(`Extracting pages ${startPage}-${endPage}...`);
-      const result = await extractText(base64, mimeType, fileName, lovableApiKey, pageInstruction);
+      const result = await extractText(base64, mimeType, fileName, geminiApiKey, pageInstruction);
       
       if (result.text && result.text.length > 5) {
         allTexts.push(result.text);

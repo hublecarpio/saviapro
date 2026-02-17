@@ -439,17 +439,17 @@ serve(async (req) => {
         .join('\n');
       
       try {
-        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
         
-        if (LOVABLE_API_KEY) {
-          const titleResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        if (GEMINI_API_KEY) {
+          const titleResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Authorization': `Bearer ${GEMINI_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash-lite',
+              model: 'gemini-2.5-flash-lite',
               messages: [
                 {
                   role: 'system',
@@ -488,7 +488,7 @@ serve(async (req) => {
             console.error('AI title generation failed:', titleResponse.status);
           }
         } else {
-          console.log('LOVABLE_API_KEY not available, skipping AI title generation');
+          console.log('GEMINI_API_KEY not available, skipping AI title generation');
         }
       } catch (titleError) {
         console.error('Error generating AI title:', titleError);

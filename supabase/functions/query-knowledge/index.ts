@@ -12,11 +12,11 @@ function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number) {
   return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(id));
 }
 
-// Generar embedding semántico para la query usando Lovable AI
+// Generar embedding semántico para la query usando Google Gemini AI
 async function generateQueryEmbedding(query: string, apiKey: string): Promise<number[]> {
   try {
     const response = await fetchWithTimeout(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
         method: "POST",
         headers: {
@@ -24,7 +24,7 @@ async function generateQueryEmbedding(query: string, apiKey: string): Promise<nu
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "gemini-2.5-flash-lite",
           messages: [
             {
               role: "system",
@@ -96,7 +96,7 @@ Responde ÚNICAMENTE con el array JSON, ejemplo: [0.1, -0.3, 0.8, ...]`
 async function generateKeywordEmbedding(text: string, apiKey: string): Promise<number[]> {
   try {
     const response = await fetchWithTimeout(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
         method: "POST",
         headers: {
@@ -104,7 +104,7 @@ async function generateKeywordEmbedding(text: string, apiKey: string): Promise<n
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "gemini-2.5-flash-lite",
           messages: [
             {
               role: "system",
@@ -214,12 +214,12 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Generar embedding semántico para la query usando AI
-    const queryEmbedding = await generateQueryEmbedding(query, lovableApiKey);
+    const queryEmbedding = await generateQueryEmbedding(query, geminiApiKey);
     const embeddingString = `[${queryEmbedding.join(',')}]`;
 
     // Buscar documentos similares usando la función RPC

@@ -80,7 +80,7 @@ function generateHashEmbedding(text: string, keywords: string[]): number[] {
 async function generateEmbeddingForChunk(chunk: string, apiKey: string): Promise<number[]> {
   try {
     const response = await fetchWithTimeout(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
         method: "POST",
         headers: {
@@ -88,7 +88,7 @@ async function generateEmbeddingForChunk(chunk: string, apiKey: string): Promise
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "gemini-2.5-flash-lite",
           messages: [
             {
               role: "system",
@@ -165,7 +165,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -206,7 +206,7 @@ serve(async (req) => {
       console.log(`Processing batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(chunks.length / BATCH_SIZE)}`);
       
       const batchResults = await Promise.all(
-        batch.map((chunk, idx) => generateEmbeddingForChunk(chunk, lovableApiKey).then(embedding => ({
+        batch.map((chunk, idx) => generateEmbeddingForChunk(chunk, geminiApiKey).then(embedding => ({
           document_id: finalDocumentId,
           content: content.slice(0, 5000), // Limit stored content size
           content_chunk: chunk,
