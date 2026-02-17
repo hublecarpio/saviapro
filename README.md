@@ -1,73 +1,54 @@
-# Welcome to your Lovable project
+# SaviaPro (BIEX)
 
-## Project info
+Plataforma educativa con IA para tutores y estudiantes.
 
-**URL**: https://lovable.dev/projects/75954941-7386-40ff-9984-d720174a5449
+## Stack
 
-## How can I edit this code?
+- **Frontend**: React + Vite + TypeScript + shadcn-ui + Tailwind CSS
+- **Backend**: Supabase (self-hosted) — PostgreSQL, Auth, Storage, Edge Functions
+- **IA**: Google Gemini, DeepSeek, webhooks n8n
+- **Infraestructura**: EasyPanel (App + Supabase compose)
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/75954941-7386-40ff-9984-d720174a5449) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Desarrollo local
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+git clone https://github.com/hublecarpio/saviapro.git
+cd saviapro
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Requisito: Node.js y npm ([instalar con nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Despliegue
 
-**Use GitHub Codespaces**
+La app se despliega en **EasyPanel** con dos servicios:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. **App** (frontend) — Usa `docker/Dockerfile` para build
+2. **Supabase** (compose) — Contiene DB, Kong, Auth, Edge Functions, Storage
 
-## What technologies are used for this project?
+### Variables de entorno
 
-This project is built with:
+**App (frontend):**
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_PROJECT_ID`
 
-## How can I deploy this project?
+**Supabase compose → servicio `functions`:**
 
-Simply open [Lovable](https://lovable.dev/projects/75954941-7386-40ff-9984-d720174a5449) and click on Share -> Publish.
+- `GEMINI_API_KEY`
+- `DEEPSEEK_API_KEY`
+- `GOOGLE_CLOUD_API_KEY`
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `GLOBAL_S3_ENDPOINT`
 
-## Can I connect a custom domain to my Lovable project?
+## Estructura del proyecto
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```
+├── src/                  # Frontend React
+├── supabase/functions/   # Edge Functions (Deno)
+├── docker/
+│   ├── Dockerfile        # Build del frontend
+│   └── nginx.conf        # Servidor para SPA
+└── public/               # Assets estáticos
+```

@@ -1,6 +1,7 @@
 # Documentación Técnica - Sofía AI Tutor
 
 ## Índice
+
 1. [Arquitectura General](#arquitectura-general)
 2. [Estructura del Proyecto](#estructura-del-proyecto)
 3. [Base de Datos](#base-de-datos)
@@ -24,7 +25,7 @@
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    SUPABASE (Lovable Cloud)                      │
+│                    SUPABASE (Self-Hosted)                        │
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │                     Edge Functions                          ││
 │  │  • chat           • daily-reports    • upload-to-s3        ││
@@ -182,6 +183,7 @@ supabase/
 ### Tablas Principales
 
 #### `profiles`
+
 Información básica del usuario.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -192,6 +194,7 @@ Información básica del usuario.
 | created_at | timestamp | Fecha de creación |
 
 #### `user_roles`
+
 Roles de los usuarios (admin, tutor, student).
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -201,6 +204,7 @@ Roles de los usuarios (admin, tutor, student).
 | created_at | timestamp | Fecha de creación |
 
 #### `tutor_students`
+
 Relación tutor-estudiante.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -210,6 +214,7 @@ Relación tutor-estudiante.
 | created_at | timestamp | Fecha de creación |
 
 #### `conversations`
+
 Conversaciones de chat.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -220,6 +225,7 @@ Conversaciones de chat.
 | updated_at | timestamp | Última actualización |
 
 #### `messages`
+
 Mensajes del chat.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -231,6 +237,7 @@ Mensajes del chat.
 | created_at | timestamp | Fecha de creación |
 
 #### `starter_profiles`
+
 Respuestas del cuestionario inicial.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -243,6 +250,7 @@ Respuestas del cuestionario inicial.
 | updated_at | timestamp | Última actualización |
 
 #### `fichas_didacticas`
+
 Fichas de estudio/quiz generadas.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -257,6 +265,7 @@ Fichas de estudio/quiz generadas.
 | created_at | timestamp | Fecha de creación |
 
 #### `quiz_results`
+
 Resultados de quizzes.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -269,6 +278,7 @@ Resultados de quizzes.
 | created_at | timestamp | Fecha de creación |
 
 #### `mind_maps`
+
 Mapas mentales generados.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -280,6 +290,7 @@ Mapas mentales generados.
 | created_at | timestamp | Fecha de creación |
 
 #### `tutor_reports`
+
 Reportes de tutores sobre estudiantes.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -296,6 +307,7 @@ Reportes de tutores sobre estudiantes.
 | created_at | timestamp | Fecha de creación |
 
 #### `invited_users`
+
 Usuarios invitados pendientes de registro.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -309,6 +321,7 @@ Usuarios invitados pendientes de registro.
 | created_at | timestamp | Fecha de creación |
 
 #### `uploaded_documents`
+
 Documentos subidos.
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -320,6 +333,7 @@ Documentos subidos.
 | created_at | timestamp | Fecha de creación |
 
 #### `system_config`
+
 Configuración del sistema (prompts, etc.).
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
@@ -343,8 +357,10 @@ Configuración del sistema (prompts, etc.).
 ## Edge Functions
 
 ### `chat`
+
 **Propósito**: Procesa mensajes del chat y genera respuestas de IA.
 **Flujo**:
+
 1. Recibe mensaje del usuario
 2. Detecta tipo de respuesta (informativa, socratic, etc.)
 3. Obtiene contexto del estudiante (perfil, documentos)
@@ -353,8 +369,10 @@ Configuración del sistema (prompts, etc.).
 6. Soporta generación de: mapas mentales, fichas, informes, video, podcast
 
 ### `daily-reports`
+
 **Propósito**: Genera reportes diarios automáticos para tutores.
 **Flujo**:
+
 1. Obtiene todos los tutores y sus estudiantes
 2. Para cada estudiante, analiza conversaciones del día
 3. Genera resumen con IA
@@ -362,44 +380,56 @@ Configuración del sistema (prompts, etc.).
 5. Envía a webhook externo
 
 ### `upload-to-s3`
+
 **Propósito**: Sube archivos a almacenamiento S3 externo.
 **Flujo**:
+
 1. Recibe archivo en base64
 2. Genera nombre único
 3. Sube a bucket S3
 4. Retorna URL pública
 
 ### `generar-fichas`
+
 **Propósito**: Genera fichas didácticas/quiz de una conversación.
 **Flujo**:
+
 1. Obtiene mensajes de conversación
 2. Llama a IA para generar preguntas
 3. Guarda fichas en BD
 
 ### `generate-media`
+
 **Propósito**: Genera video o podcast de una conversación.
 **Flujo**:
+
 1. Obtiene contenido de conversación
 2. Llama a servicio externo de generación
 3. Retorna URL del media
 
 ### `transcribe-audio`
+
 **Propósito**: Transcribe audio a texto.
 **Flujo**:
+
 1. Recibe audio en base64
 2. Llama a API de transcripción (Google Cloud)
 3. Retorna texto transcrito
 
 ### `get-starter-profile`
+
 **Propósito**: Obtiene perfil inicial del estudiante para contexto.
 
 ### `get-system-prompt`
+
 **Propósito**: Obtiene prompt del sistema desde configuración.
 
 ### `send-password-reset`
+
 **Propósito**: Envía email de reset de contraseña.
 
 ### `create-student` / `delete-user` / `update-invited-user`
+
 **Propósito**: Gestión de usuarios.
 
 ---
@@ -477,7 +507,9 @@ TutorDashboard.tsx
 ## Componentes Clave
 
 ### Chat.tsx
+
 Componente principal del chat. Maneja:
+
 - Estado de la conversación actual
 - Envío/recepción de mensajes
 - Generación de herramientas (fichas, mapas, etc.)
@@ -485,13 +517,17 @@ Componente principal del chat. Maneja:
 - Grabación de audio
 
 ### AppSidebar.tsx
+
 Sidebar izquierdo con lista de conversaciones. Permite:
+
 - Ver conversaciones anteriores
 - Crear nueva conversación
 - Navegar entre conversaciones
 
 ### ChatToolsSidebar.tsx
+
 Sidebar derecho con herramientas. Botones para:
+
 - Generar fichas
 - Generar mapa mental
 - Generar video
@@ -500,13 +536,17 @@ Sidebar derecho con herramientas. Botones para:
 - Ver documentos
 
 ### FichasDidacticas.tsx
+
 Componente de quiz interactivo. Muestra:
+
 - Preguntas con opciones múltiples
 - Navegación entre fichas
 - Resultados y respuestas correctas
 
 ### TutorTabs.tsx
+
 Tabs del dashboard de tutor con vistas de:
+
 - Resumen general
 - Avance de estudiantes
 - Reportes diarios
@@ -518,15 +558,16 @@ Tabs del dashboard de tutor con vistas de:
 
 ### Roles del Sistema
 
-| Rol | Descripción | Acceso |
-|-----|-------------|--------|
-| `admin` | Administrador del sistema | Todo el sistema, gestión de usuarios, configuración |
-| `tutor` | Tutor/profesor | Dashboard de tutor, ver estudiantes, reportes |
-| `student` | Estudiante | Chat, cuestionario inicial, herramientas de estudio |
+| Rol       | Descripción               | Acceso                                              |
+| --------- | ------------------------- | --------------------------------------------------- |
+| `admin`   | Administrador del sistema | Todo el sistema, gestión de usuarios, configuración |
+| `tutor`   | Tutor/profesor            | Dashboard de tutor, ver estudiantes, reportes       |
+| `student` | Estudiante                | Chat, cuestionario inicial, herramientas de estudio |
 
 ### Políticas RLS
 
 Todas las tablas tienen Row Level Security habilitado:
+
 - **profiles**: Usuarios ven su perfil, admins ven todos, tutores ven sus estudiantes
 - **conversations/messages**: Solo el propietario puede ver/editar
 - **tutor_students**: Tutores ven sus estudiantes, estudiantes ven sus tutores
@@ -547,6 +588,7 @@ Todas las tablas tienen Row Level Security habilitado:
 ## Variables de Entorno
 
 ### Frontend (Vite)
+
 ```
 VITE_SUPABASE_URL=https://[project-id].supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=[anon-key]
@@ -554,6 +596,7 @@ VITE_SUPABASE_PROJECT_ID=[project-id]
 ```
 
 ### Edge Functions (Secrets)
+
 ```
 SUPABASE_URL
 SUPABASE_ANON_KEY
@@ -564,46 +607,49 @@ AWS_SECRET_ACCESS_KEY
 GLOBAL_S3_ENDPOINT
 DEEPSEEK_API_KEY
 GOOGLE_CLOUD_API_KEY
-LOVABLE_API_KEY
+GEMINI_API_KEY
 ```
 
 ---
 
 ## Stack Tecnológico
 
-| Categoría | Tecnología |
-|-----------|------------|
-| Frontend | React 18, TypeScript, Vite |
-| Styling | Tailwind CSS, shadcn/ui |
-| State | Zustand, TanStack Query |
-| Routing | React Router v6 |
-| Backend | Supabase (Lovable Cloud) |
-| Database | PostgreSQL |
-| Auth | Supabase Auth |
-| Functions | Supabase Edge Functions (Deno) |
-| Storage | Supabase Storage + S3 externo |
-| AI | n8n webhooks + DeepSeek |
+| Categoría | Tecnología                              |
+| --------- | --------------------------------------- |
+| Frontend  | React 18, TypeScript, Vite              |
+| Styling   | Tailwind CSS, shadcn/ui                 |
+| State     | Zustand, TanStack Query                 |
+| Routing   | React Router v6                         |
+| Backend   | Supabase (Self-Hosted)                  |
+| Database  | PostgreSQL                              |
+| Auth      | Supabase Auth                           |
+| Functions | Supabase Edge Functions (Deno)          |
+| Storage   | Supabase Storage + S3 externo           |
+| AI        | Google Gemini + n8n webhooks + DeepSeek |
 
 ---
 
 ## Notas de Desarrollo
 
 ### Convenciones
+
 - Componentes en PascalCase
 - Hooks con prefijo `use`
 - Edge functions en kebab-case
 - Tablas en snake_case
 
 ### Design System
+
 - Colores definidos en `index.css` con variables CSS
 - Componentes base de shadcn/ui personalizados
 - Tokens semánticos para theming
 
 ### Debugging
+
 - Edge functions tienen logging extensivo
 - Console logs en frontend para desarrollo
 - Supabase Analytics para monitoreo
 
 ---
 
-*Última actualización: Diciembre 2024*
+_Última actualización: Febrero 2026_

@@ -1134,7 +1134,7 @@ const Chat = () => {
           if (error.message.includes("429")) {
             toast.error("Límite de peticiones excedido. Intenta de nuevo en unos momentos.");
           } else if (error.message.includes("402")) {
-            toast.error("Se requiere agregar créditos a tu cuenta de Lovable AI.");
+            toast.error("Error de créditos en el servicio de IA. Verifica tu API key.");
           } else {
             toast.error("Error al generar las fichas");
           }
