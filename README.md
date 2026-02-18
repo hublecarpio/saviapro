@@ -33,13 +33,12 @@ La app se despliega en **EasyPanel** con dos servicios:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_SUPABASE_PROJECT_ID`
 
 **Supabase compose → servicio `functions`:**
 
 - `GEMINI_API_KEY`
 - `DEEPSEEK_API_KEY`
-- `GOOGLE_CLOUD_API_KEY`
+
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `GLOBAL_S3_ENDPOINT`
 
 ## Estructura del proyecto

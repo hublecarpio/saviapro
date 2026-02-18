@@ -29,7 +29,7 @@
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │                     Edge Functions                          ││
 │  │  • chat           • daily-reports    • upload-to-s3        ││
-│  │  • create-student • generar-fichas   • transcribe-audio    ││
+│  │  • create-student • generar-fichas   • extract-pdf-text    ││
 │  │  • delete-user    • generate-media   • get-starter-profile ││
 │  │  • send-password-reset • get-system-prompt                 ││
 │  │  • update-invited-user • webhook-integration               ││
@@ -169,7 +169,7 @@ supabase/
 │   ├── get-starter-profile/   # Obtener perfil inicial
 │   ├── get-system-prompt/     # Obtener prompt del sistema
 │   ├── send-password-reset/   # Enviar reset de contraseña
-│   ├── transcribe-audio/      # Transcribir audio
+│   ├── extract-pdf-text/      # Extraer texto de PDF
 │   ├── update-invited-user/   # Actualizar usuario invitado
 │   ├── upload-to-s3/          # Subir archivos a S3
 │   └── webhook-integration/   # Integración con webhooks
@@ -407,15 +407,6 @@ Configuración del sistema (prompts, etc.).
 2. Llama a servicio externo de generación
 3. Retorna URL del media
 
-### `transcribe-audio`
-
-**Propósito**: Transcribe audio a texto.
-**Flujo**:
-
-1. Recibe audio en base64
-2. Llama a API de transcripción (Google Cloud)
-3. Retorna texto transcrito
-
 ### `get-starter-profile`
 
 **Propósito**: Obtiene perfil inicial del estudiante para contexto.
@@ -472,7 +463,7 @@ Chat.tsx
     │       ├── Generar Informe → chat (action_type: report)
     │       └── Subir Documento → upload-to-s3
     │
-    └── Audio → transcribe-audio → Mensaje de texto
+    └── Audio → webhook n8n → Transcripción con Gemini → Mensaje de texto
 ```
 
 ### 3. Flujo del Tutor
@@ -592,7 +583,6 @@ Todas las tablas tienen Row Level Security habilitado:
 ```
 VITE_SUPABASE_URL=https://[project-id].supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=[anon-key]
-VITE_SUPABASE_PROJECT_ID=[project-id]
 ```
 
 ### Edge Functions (Secrets)
@@ -601,12 +591,10 @@ VITE_SUPABASE_PROJECT_ID=[project-id]
 SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
-SUPABASE_DB_URL
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY
 GLOBAL_S3_ENDPOINT
 DEEPSEEK_API_KEY
-GOOGLE_CLOUD_API_KEY
 GEMINI_API_KEY
 ```
 
