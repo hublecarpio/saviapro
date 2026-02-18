@@ -73,7 +73,7 @@ serve(async (req) => {
 
     // Construir el link personalizado con el dominio correcto
     const token = resetData.properties?.hashed_token;
-    const resetLink = `https://app.biexedu.com/reset-password?token=${token}&type=recovery`;
+    const resetLink = `${Deno.env.get('APP_URL')}/reset-password?token=${token}&type=recovery`;
 
     // Enviar el link al webhook del cliente
     const webhookPayload = {
@@ -85,7 +85,7 @@ serve(async (req) => {
     console.log('Enviando a webhook:', webhookPayload);
 
     const webhookResponse = await fetch(
-      'https://webhook.hubleconsulting.com/webhook/apicorreo88a1a578-5653-457a-b408-ae3cbb06cff6',
+      Deno.env.get('WEBHOOK_EMAIL_URL')!,
       {
         method: 'POST',
         headers: {

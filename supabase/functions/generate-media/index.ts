@@ -63,7 +63,7 @@ serve(async (req) => {
         console.log(`🔄 Calling webhook for ${type}...`);
         
         const webhookResponse = await fetch(
-          "https://webhook.hubleconsulting.com/webhook/1fba6f6e-3c2f-4c50-bfbe-488df7c7eebc",
+          Deno.env.get('WEBHOOK_MEDIA_URL')!,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

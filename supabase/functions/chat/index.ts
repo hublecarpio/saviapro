@@ -124,7 +124,7 @@ serve(async (req) => {
         console.log('📤 Enviando payload al webhook de mapa mental:', JSON.stringify({ ...mindMapPayload, tema: mindMapPayload.tema.substring(0, 100) + '...' }));
         
         const mindMapResponse = await fetch(
-          'https://flowhook.iamhuble.space/webhook/f71225ad-7798-4e52-bd89-35a1e79549e9',
+          Deno.env.get('WEBHOOK_MINDMAP_URL')!,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -185,7 +185,7 @@ serve(async (req) => {
       };
 
       try {
-        const webhookResponse = await fetch('https://webhook.hubleconsulting.com/webhook/154f3182-4561-4897-b57a-51db1fd2informe', {
+        const webhookResponse = await fetch(Deno.env.get('WEBHOOK_INFORME_URL')!, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(informeContext)
@@ -303,7 +303,7 @@ serve(async (req) => {
     }
     
     const webhookResponse = await fetch(
-      'https://webhook.hubleconsulting.com/webhook/7e846525-ea3a-4213-8f66-5d0dad8547bc',
+      Deno.env.get('WEBHOOK_MESSAGES_URL')!,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

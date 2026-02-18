@@ -97,7 +97,7 @@ const Chat = () => {
     isRecording,
     toggleRecording
   } = useAudioRecorder({
-    webhookUrl: "https://webhook.hubleconsulting.com/webhook/c9763ae5-02d6-46e8-ab9e-7300d98756a0",
+    webhookUrl: import.meta.env.VITE_WEBHOOK_AUDIO_URL,
     onTranscriptionReceived: text => {
       console.log("✅ Transcription received:", text);
       setTranscribedText(text);
@@ -756,7 +756,7 @@ const Chat = () => {
       });
 
       // Enviar al webhook externo de archivos
-      const res = await fetch("https://webhook.hubleconsulting.com/webhook/728b3d4d-2ab4-4a72-a15b-a615340archivos", {
+      const res = await fetch(import.meta.env.VITE_WEBHOOK_FILES_URL, {
         method: "POST",
         body: formData
       });
@@ -777,7 +777,7 @@ const Chat = () => {
         });
 
         // Enviar la respuesta del webhook de archivos al webhook de mensajes
-        const webhookRes = await fetch("https://webhook.hubleconsulting.com/webhook/7e846525-ea3a-4213-8f66-5d0dad8547bc", {
+        const webhookRes = await fetch(import.meta.env.VITE_WEBHOOK_MESSAGES_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"

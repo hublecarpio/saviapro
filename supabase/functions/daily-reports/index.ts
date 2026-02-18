@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const WEBHOOK_URL = 'https://webhook.hubleconsulting.com/webhook/c388170a-5b5b-4dc7-a506-c655c47ffa85';
+const WEBHOOK_URL = Deno.env.get('WEBHOOK_DAILY_REPORTS_URL')!;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

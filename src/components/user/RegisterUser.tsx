@@ -178,11 +178,11 @@ const RegisterUser = () => {
             }
 
             // Construir URL de registro con el token usando el dominio personalizado
-            const registerUrl = `https://app.biexedu.com/register/${inviteData.token}`;
+            const registerUrl = `${import.meta.env.VITE_APP_URL}/register/${inviteData.token}`;
 
             // Llamar a la webhook con el email y la URL de registro
             try {
-                await fetch("https://webhook.hubleconsulting.com/webhook/970fcfa4-6000-4858-bb42-14a592CREA", {
+                await fetch(import.meta.env.VITE_WEBHOOK_CREATE_USER_URL, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
