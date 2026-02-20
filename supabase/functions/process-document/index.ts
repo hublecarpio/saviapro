@@ -172,6 +172,7 @@ serve(async (req) => {
     let finalDocumentId = document_id;
     
     if (!finalDocumentId) {
+      console.log('Creating new document record for:', file_name);
       const { data: newDoc, error: docError } = await supabase
         .from('uploaded_documents')
         .insert({
@@ -195,9 +196,12 @@ serve(async (req) => {
     const chunks = chunkText(content, 1000, 200);
     console.log(`Split content into ${chunks.length} chunks`);
 
-    // Process chunks in parallel batches of 3 for speed
-    const BATCH_SIZE = 3;
+    // Process chunks in parallel batches to speed up and avoid 504 Gateway Timeout
+    // Incremental batch size and time limit checker
+    const BATCH_SIZE = 5; // Aumentar batch
     const allEmbeddings = [];
+    const startTime = Date.now();
+    const TIMEOUT_LIMIT = 45000; // 45 seconds max execution time warning limit
     
     for (let batchStart = 0; batchStart < chunks.length; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, chunks.length);
@@ -223,19 +227,28 @@ serve(async (req) => {
       );
       
       allEmbeddings.push(...batchResults);
+
+      // Si nos estamos acercando al timeout del proxy (ej. EasyPanel Edge function), hacer inserts en lotes y salir
+      if (Date.now() - startTime > TIMEOUT_LIMIT) {
+          console.warn(`Timeout limit reached (${TIMEOUT_LIMIT}ms). Inserting ${allEmbeddings.length} chunks out of ${chunks.length} so far.`);
+          break; 
+      }
     }
 
-    // Insert all embeddings
-    const { error: insertError } = await supabase
-      .from('document_embeddings')
-      .insert(allEmbeddings);
+    // Insert all computed embeddings so far
+    if (allEmbeddings.length > 0) {
+      const { error: insertError } = await supabase
+        .from('document_embeddings')
+        .insert(allEmbeddings);
 
-    if (insertError) {
-      console.error('Error inserting embeddings:', insertError);
-      throw new Error(`Failed to insert embeddings: ${insertError.message}`);
+      if (insertError) {
+        console.error('Error inserting embeddings:', insertError);
+        throw new Error(`Failed to insert embeddings: ${insertError.message}`);
+      }
+      console.log(`Successfully processed and inserted document with ${allEmbeddings.length} chunks`);
+    } else {
+        throw new Error("No embeddings were generated (Timeout or API failure).");
     }
-
-    console.log(`Successfully processed document with ${allEmbeddings.length} chunks`);
 
     return new Response(
       JSON.stringify({
