@@ -9,7 +9,7 @@ export const useAuth = () => {
   const { user, setUser, setLoading, setError, reset } = useUserStore();
 
   // Función para cargar datos del usuario (useCallback para evitar recreación)
-  const loadUserData = useCallback(async (userId: string) => {
+  const loadUserData = useCallback(async (userId: string, email?: string) => {
     try {
       setLoading(true);
 
@@ -34,12 +34,15 @@ export const useAuth = () => {
         console.error('Error al cargar perfil:', profileError);
       }
 
-      // Obtener email del usuario
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      let userEmail = email;
+      if (!userEmail) {
+        const { data: { session } } = await supabase.auth.getSession();
+        userEmail = session?.user?.email || null;
+      }
 
       setUser({
         id: userId,
-        email: authUser?.email || null,
+        email: userEmail || null,
         name: profileData?.name || null,
         roles,
         starterCompleted: profileData?.starter_completed || false,
@@ -84,7 +87,7 @@ export const useAuth = () => {
       if (error) throw error;
 
       if (data.user) {
-        const userData = await loadUserData(data.user.id);
+        const userData = await loadUserData(data.user.id, data.user.email);
         if (userData) {
           // Pequeño delay para evitar race conditions
           setTimeout(() => {
@@ -160,7 +163,7 @@ export const useAuth = () => {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
-        await loadUserData(session.user.id);
+        await loadUserData(session.user.id, session.user.email);
       } else {
         setLoading(false);
       }
@@ -187,7 +190,7 @@ export const useAuth = () => {
           if (currentUser.isAuthenticated && currentUser.id === session.user.id) {
             return;
           }
-          const userData = await loadUserData(session.user.id);
+          const userData = await loadUserData(session.user.id, session.user.email);
           if (userData && window.location.pathname === '/') {
             setTimeout(() => {
               redirectBasedOnRole(userData.roles, userData.starterCompleted);

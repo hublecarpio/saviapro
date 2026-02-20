@@ -94,16 +94,28 @@ serve(async (req) => {
 
     console.log('Enviando a webhook:', webhookPayload);
 
-    const webhookResponse = await fetch(
-      Deno.env.get('WEBHOOK_EMAIL_URL')!,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookPayload),
-      }
-    );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    let webhookResponse;
+    try {
+      webhookResponse = await fetch(
+        Deno.env.get('WEBHOOK_EMAIL_URL')!,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookPayload),
+          signal: controller.signal
+        }
+      );
+    } catch (e: any) {
+      console.error('Error (posible timeout) en webhook:', e);
+      throw new Error('El servicio de correo está tardando demasiado en responder');
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!webhookResponse.ok) {
       console.error('Error en webhook:', await webhookResponse.text());
