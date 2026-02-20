@@ -55,10 +55,44 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
     const [uploadStage, setUploadStage] = useState("");
     const [textContent, setTextContent] = useState("");
     const [mode, setMode] = useState<"file" | "text">("file");
+    const [isDragging, setIsDragging] = useState(false);
     const { toast } = useToast();
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0];
+
+        if (!selected) return;
+
+        if (![
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "text/plain"
+        ].includes(selected.type)) {
+            toast({
+                title: "Formato no permitido",
+                description: "Solo se aceptan archivos .pdf, .docx y .txt",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setFile(selected);
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const selected = e.dataTransfer.files?.[0];
 
         if (!selected) return;
 
@@ -203,7 +237,12 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             {mode === "file" ? (
                 <>
                     {!file && (
-                        <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:border-primary hover:bg-primary/5">
+                        <label 
+                            className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isDragging ? "border-primary bg-primary/10 scale-[1.02]" : "hover:border-primary hover:bg-primary/5 border-border"}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                        >
                             <input
                                 type="file"
                                 accept=".pdf,.docx,.txt"
