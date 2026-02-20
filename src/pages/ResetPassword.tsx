@@ -15,8 +15,6 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -48,16 +46,19 @@ const ResetPassword = () => {
     verifyToken();
   }, [searchParams, navigate]);
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newPass = formData.get("new-password") as string;
+    const confirmPass = formData.get("confirm-password") as string;
     
-    if (newPassword !== confirmPassword) {
+    if (newPass !== confirmPass) {
       toast.error("Las contraseñas no coinciden");
       return;
     }
 
     try {
-      passwordSchema.parse(newPassword);
+      passwordSchema.parse(newPass);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -69,7 +70,7 @@ const ResetPassword = () => {
 
     try {
       const { error } = await supabase.auth.updateUser({
-        password: newPassword
+        password: newPass
       });
 
       if (error) throw error;
@@ -120,8 +121,6 @@ const ResetPassword = () => {
                   name="new-password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
                   required
                   autoComplete="new-password"
                   className="h-11 pr-10"
@@ -144,8 +143,6 @@ const ResetPassword = () => {
                   name="confirm-password"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   autoComplete="new-password"
                   className="h-11 pr-10"
