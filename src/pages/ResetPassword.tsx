@@ -117,11 +117,13 @@ const ResetPassword = () => {
               <div className="relative">
                 <Input
                   id="new-password"
+                  name="new-password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                   className="h-11 pr-10"
                 />
                 <button
@@ -139,11 +141,13 @@ const ResetPassword = () => {
               <div className="relative">
                 <Input
                   id="confirm-password"
+                  name="confirm-password"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                   className="h-11 pr-10"
                 />
                 <button

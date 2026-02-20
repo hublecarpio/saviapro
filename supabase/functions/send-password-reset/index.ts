@@ -72,7 +72,17 @@ serve(async (req) => {
     console.log('Link de recuperación generado:', resetData);
 
     // Construir el link personalizado con el dominio correcto
-    const token = resetData.properties?.hashed_token;
+    // resetData.properties?.action_link contiene el token verdadero (PKCE) en la query.
+    // hashed_token es para uso interno de la BDD. Tenemos que extraer la query de action_link.
+    console.log("Action link: ", resetData.properties?.action_link);
+    const actionLink = new URL(resetData.properties?.action_link || '');
+    const token = actionLink.searchParams.get('token');
+    
+    if (!token) {
+      console.error('No se pudo extraer el token del action_link:', resetData.properties?.action_link);
+      throw new Error('Error al generar el link de recuperación');
+    }
+    
     const resetLink = `${Deno.env.get('APP_URL')}/reset-password?token=${token}&type=recovery`;
 
     // Enviar el link al webhook del cliente
@@ -108,6 +118,7 @@ serve(async (req) => {
         success: true, 
         message: 'Se ha enviado el correo con las instrucciones para restablecer tu contraseña' 
       }),
+      
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
