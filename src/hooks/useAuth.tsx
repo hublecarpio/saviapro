@@ -178,30 +178,33 @@ export const useAuth = () => {
     let isSubscribed = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!isSubscribed) return;
 
-        // Ignorar INITIAL_SESSION - ya lo manejamos en initializeAuth
-        if (event === 'INITIAL_SESSION') return;
+        // Liberar el hilo principal inmediatamente para evitar deadlocks en el login
+        setTimeout(async () => {
+          // Ignorar INITIAL_SESSION - ya lo manejamos en initializeAuth
+          if (event === 'INITIAL_SESSION') return;
 
-        if (event === 'SIGNED_IN' && session?.user) {
-          // Si el usuario ya está autenticado (login manejó todo), no recargar
-          const currentUser = useUserStore.getState().user;
-          if (currentUser.isAuthenticated && currentUser.id === session.user.id) {
-            return;
+          if (event === 'SIGNED_IN' && session?.user) {
+            // Si el usuario ya está autenticado (login manejó todo), no recargar
+            const currentUser = useUserStore.getState().user;
+            if (currentUser.isAuthenticated && currentUser.id === session.user.id) {
+              return;
+            }
+            const userData = await loadUserData(session.user.id, session.user.email);
+            if (userData && window.location.pathname === '/') {
+              setTimeout(() => {
+                redirectBasedOnRole(userData.roles, userData.starterCompleted);
+              }, 100);
+            }
+          } else if (event === 'SIGNED_OUT') {
+            reset();
+            navigate('/', { replace: true });
+          } else if (event === 'TOKEN_REFRESHED') {
+            // Token refreshed silently
           }
-          const userData = await loadUserData(session.user.id, session.user.email);
-          if (userData && window.location.pathname === '/') {
-            setTimeout(() => {
-              redirectBasedOnRole(userData.roles, userData.starterCompleted);
-            }, 100);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          reset();
-          navigate('/', { replace: true });
-        } else if (event === 'TOKEN_REFRESHED') {
-          // Token refreshed silently
-        }
+        }, 0);
       }
     );
 
