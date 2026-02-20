@@ -112,7 +112,7 @@ serve(async (req) => {
     
     // Convert to base64 - use Uint8Array to minimize memory
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = base64Encode(new Uint8Array(arrayBuffer));
+    const base64 = base64Encode(arrayBuffer);
     
     let mimeType = file.type;
     if (!mimeType) {
