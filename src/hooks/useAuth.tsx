@@ -28,9 +28,9 @@ export const useAuth = () => {
         .from('profiles')
         .select('name, starter_completed')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (profileError && profileError.code !== 'PGRST116') {
+      if (profileError) {
         console.error('Error al cargar perfil:', profileError);
       }
 
