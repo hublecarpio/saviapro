@@ -46,6 +46,13 @@ export function AppSidebar({
         filter: `user_id=eq.${user.id}`
       }, () => {
         loadConversations(false); // Actualización silenciosa sin loading
+      }).on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        loadConversations(false);
       }).subscribe();
       return () => {
         supabase.removeChannel(channel);

@@ -67,6 +67,53 @@ export const AdminConversationHistory = () => {
     loadUsers();
   }, []);
 
+  useEffect(() => {
+    if (!selectedUserId) return;
+
+    const channel = supabase
+      .channel(`admin-history-${selectedUserId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations", filter: `user_id=eq.${selectedUserId}` },
+        () => {
+          loadConversations(selectedUserId, true);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        () => {
+          loadConversations(selectedUserId, true);
+          if (selectedConversation) {
+            loadConversationContent(selectedConversation, true);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "mind_maps" },
+        () => {
+          if (selectedConversation) {
+            loadConversationContent(selectedConversation, true);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "fichas_didacticas" },
+        () => {
+          if (selectedConversation) {
+            loadConversationContent(selectedConversation, true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedUserId, selectedConversation]);
+
   const loadUsers = async () => {
     try {
       const { data, error } = await supabase
@@ -88,11 +135,13 @@ export const AdminConversationHistory = () => {
     }
   };
 
-  const loadConversations = async (userId: string) => {
-    setLoadingConversations(true);
-    setConversations([]);
-    setSelectedConversation(null);
-    setConversationContent(null);
+  const loadConversations = async (userId: string, isBackgroundRefresh = false) => {
+    if (!isBackgroundRefresh) {
+      setLoadingConversations(true);
+      setConversations([]);
+      setSelectedConversation(null);
+      setConversationContent(null);
+    }
 
     try {
       const { data, error } = await supabase
@@ -115,9 +164,11 @@ export const AdminConversationHistory = () => {
     }
   };
 
-  const loadConversationContent = async (conversation: Conversation) => {
-    setLoadingContent(true);
-    setSelectedConversation(conversation);
+  const loadConversationContent = async (conversation: Conversation, isBackgroundRefresh = false) => {
+    if (!isBackgroundRefresh) {
+      setLoadingContent(true);
+      setSelectedConversation(conversation);
+    }
 
     try {
       const [messagesResult, mindMapsResult, fichasResult] = await Promise.all([
@@ -158,7 +209,7 @@ export const AdminConversationHistory = () => {
   const handleUserChange = (userId: string) => {
     setSelectedUserId(userId);
     if (userId) {
-      loadConversations(userId);
+      loadConversations(userId, false);
     } else {
       setConversations([]);
       setSelectedConversation(null);

@@ -60,6 +60,27 @@ const Tutor = () => {
           loadStudents(user.id);
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        () => {
+          loadStudents(user.id);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "mind_maps" },
+        () => {
+          loadStudents(user.id);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations" },
+        () => {
+          loadStudents(user.id);
+        }
+      )
       .subscribe();
 
     return () => {

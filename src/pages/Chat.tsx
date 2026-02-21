@@ -621,6 +621,10 @@ const Chat = () => {
       };
       setMessages(prev => [...prev, optimisticUserMessage]);
       console.log("📤 Sending message to edge function...");
+
+      // Actualizar el timestamp de la conversación para que suba en el sidebar
+      await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
+
       const {
         error
       } = await supabase.functions.invoke("chat", {
@@ -735,6 +739,9 @@ const Chat = () => {
       } else {
         console.log("✅ Mensaje de archivo del usuario guardado en BD con URL permanente");
       }
+
+      // Actualizar el timestamp de la conversación para que suba en el sidebar
+      await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
 
       // Crear FormData con el archivo binario y metadata JSON
       const formData = new FormData();
