@@ -403,7 +403,7 @@ const Chat = () => {
     }).subscribe(status => {
       // console.log("📡 Realtime subscription status:", status);
       if (status === 'SUBSCRIBED') {
-        console.log("✅ Successfully subscribed to realtime updates");
+        // console.log("✅ Successfully subscribed to realtime updates");
       } else if (status === 'CHANNEL_ERROR') {
         console.error("❌ Realtime subscription error");
       } else if (status === 'TIMED_OUT') {
@@ -412,7 +412,7 @@ const Chat = () => {
     });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channel).catch(() => {});
     };
   }, [currentConversationId]);
 
@@ -677,11 +677,11 @@ const Chat = () => {
       // console.log("📝 Mensaje procesado del webhook de archivos:", response);
       if (response) {
         toast.success("Archivo procesado, enviando al asistente...");
-        console.log("📤 Enviando al Edge Function 'chat'...", {
+        /* console.log("📤 Enviando al Edge Function 'chat'...", {
           mensaje: response.substring(0, 100) + "...",
           id_conversation: conversationId,
           id_user: user.id
-        });
+        }); */
 
         // Use the Edge Function to send the response to the AI agent and save it to the DB
         const { error: chatError } = await supabase.functions.invoke("chat", {
