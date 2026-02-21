@@ -667,140 +667,70 @@ const Chat = () => {
       console.log("📝 Mensaje procesado del webhook de archivos:", response);
       if (response) {
         toast.success("Archivo procesado, enviando al asistente...");
-        console.log("📤 Enviando al webhook de mensajes...", {
+        console.log("📤 Enviando al Edge Function 'chat'...", {
           mensaje: response.substring(0, 100) + "...",
           id_conversation: conversationId,
-          id_user: user.id,
-          tipo_respuesta: "visual"
+          id_user: user.id
         });
 
-        let webhookData: any = null;
-        let webhookSuccess = false;
-
-        try {
-          // Enviar la respuesta del webhook de archivos al webhook de mensajes
-          // Esto puede tomar bastante tiempo si el agente está procesando la imagen/archivo
-          const webhookRes = await fetch(import.meta.env.VITE_WEBHOOK_MESSAGES_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              mensaje: response,
-              id_conversation: conversationId,
-              id_user: user.id,
-              tipo_respuesta: "visual"
-            })
-          });
-          
-          console.log("📥 Status del webhook de mensajes:", webhookRes.status);
-          if (webhookRes.ok) {
-            webhookData = await webhookRes.json();
-            console.log("📥 Respuesta del webhook de mensajes:", webhookData);
-            webhookSuccess = true;
-          } else {
-            console.warn("⚠️ Error del webhook de mensajes (Status " + webhookRes.status + "), usaremos polling");
-          }
-        } catch (webhookError) {
-          // Capturar errores de timeout o red para que NO aborte la función
-          console.warn("⚠️ Timeout o error de red llamando al webhook de mensajes, usaremos polling:", webhookError);
-        }
-
-        // El webhook responde con un array: [{ mensajes: [...], images: [...] }]
-        let directResponse = null;
-        let imageUrls: string[] = [];
-        if (webhookSuccess && Array.isArray(webhookData) && webhookData.length > 0) {
-          const responseItem = webhookData[0];
-          // Combinar todos los mensajes en uno
-          if (responseItem.mensajes && Array.isArray(responseItem.mensajes)) {
-            directResponse = responseItem.mensajes.join('\n\n');
-          }
-          // Obtener imágenes si las hay
-          if (responseItem.images && Array.isArray(responseItem.images)) {
-            imageUrls = responseItem.images;
-          }
-        } else if (webhookSuccess) {
-          // Fallback a la estructura anterior
-          directResponse = webhookData?.respuesta || webhookData?.response?.respuesta || webhookData?.response?.mensaje || webhookData?.message || webhookData?.mensaje;
-        }
-        if (directResponse || imageUrls.length > 0) {
-          console.log("💬 Respuesta directa del webhook:", directResponse);
-          console.log("🖼️ Imágenes:", imageUrls);
-
-          // Formatear el mensaje con imágenes si las hay
-          let finalMessage = directResponse || '';
-          if (imageUrls.length > 0) {
-            finalMessage += `\n\n[IMAGES]${imageUrls.join('|')}[/IMAGES]`;
-          }
-          console.log("📝 Mensaje final a mostrar:", finalMessage);
-          const assistantMessage: Message = {
-            id: `assistant-${Date.now()}`,
-            role: "assistant",
-            message: finalMessage,
-            created_at: new Date().toISOString(),
-            conversation_id: conversationId
-          };
-
-          // Guardar el mensaje del asistente en la base de datos
-          const {
-            error: saveError
-          } = await supabase.from("messages").insert({
+        // Use the Edge Function to send the response to the AI agent and save it to the DB
+        const { error: chatError } = await supabase.functions.invoke("chat", {
+          body: {
+            message: response,
             conversation_id: conversationId,
             user_id: user.id,
-            role: "assistant",
-            message: finalMessage
-          });
-          if (saveError) {
-            console.error("❌ Error guardando mensaje del asistente:", saveError);
-          } else {
-            console.log("✅ Mensaje del asistente guardado en BD");
+            tipo_respuesta: "visual"
           }
-          setMessages(prev => [...prev, assistantMessage]);
-          console.log("✅ Mensaje añadido al estado del chat");
+        });
+
+        if (chatError) {
+          console.error("❌ Error de la Edge Function 'chat':", chatError);
+          toast.error("Hubo un error contactando al asistente.");
           setIsLoading(false);
-          toast.success("Archivo procesado correctamente");
-        } else {
-          // Si no hay respuesta directa, iniciar polling para buscar la respuesta
-          console.log("🔄 Iniciando polling para obtener respuesta del asistente...");
-          toast.info("Procesando archivo, esperando respuesta...");
-          // Ya no creamos fileMessageTime aquí porque puede ser más nuevo que el mensaje del asistente
-          // Usamos userMessageTime creado justo antes del insert
-          const pollForAssistantResponse = async (attempts = 0) => {
-            if (attempts > 120) {
-              // 120 intentos x 2 segundos = 240 segundos (4 minutos) máximo para archivos largos
-              console.log("⏱️ Tiempo de espera agotado para respuesta del archivo");
-              toast.error("El agente está tardando más de lo esperado. La respuesta aparecerá pronto.");
+          return;
+        }
+
+        console.log("✅ Solicitud al asistente enviada exitosamente, iniciando polling...");
+        toast.info("Esperando respuesta del asistente...");
+
+        const pollForAssistantResponse = async (attempts = 0) => {
+          if (attempts > 60) {
+            // 60 intentos x 2 segundos = 120 segundos máximo (el Edge Function tiene timeout de Deno de ~60s-120s)
+            console.log("⏱️ Tiempo de espera agotado para respuesta del archivo");
+            toast.error("La respuesta de Sofia aparecerá pronto en la conversación.");
+            setIsLoading(false);
+            return;
+          }
+
+          const {
+            data: newMessages
+          } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", {
+            ascending: true
+          });
+
+          if (newMessages) {
+            // Buscar si hay una respuesta del asistente más reciente que el mensaje del usuario (archivo)
+            const hasNewAssistantMessage = newMessages.some(m => m.role === "assistant" && new Date(m.created_at) > new Date(userMessageTime));
+            if (hasNewAssistantMessage) {
+              console.log("✅ Respuesta del asistente recibida via polling");
+              setMessages(newMessages.filter(m => !m.id.startsWith('temp-') && !m.id.startsWith('file-')) as Message[]);
               setIsLoading(false);
+              toast.success("Archivo y respuesta procesados correctamente");
               return;
             }
-            const {
-              data: newMessages
-            } = await supabase.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", {
-              ascending: true
-            });
-            if (newMessages) {
-              // Buscar si hay una respuesta del asistente más reciente que el mensaje del usuario (archivo)
-              const hasNewAssistantMessage = newMessages.some(m => m.role === "assistant" && new Date(m.created_at) > new Date(userMessageTime));
-              if (hasNewAssistantMessage) {
-                console.log("✅ Respuesta del asistente recibida via polling");
-                setMessages(newMessages.filter(m => !m.id.startsWith('temp-') && !m.id.startsWith('file-')) as Message[]);
-                setIsLoading(false);
-                toast.success("Archivo procesado correctamente");
-                return;
-              }
-            }
+          }
 
-            // Esperar 2 segundos y reintentar
-            setTimeout(() => pollForAssistantResponse(attempts + 1), 2000);
-          };
+          // Esperar 2 segundos y reintentar
+          setTimeout(() => pollForAssistantResponse(attempts + 1), 2000);
+        };
 
-          // Iniciar polling después de un breve delay
-          setTimeout(() => pollForAssistantResponse(), 2000);
-          return; // Salir del try, el polling manejará setIsLoading
-        }
+        // Iniciar polling después de un breve delay
+        setTimeout(() => pollForAssistantResponse(), 2000);
+
       } else {
         console.log("⚠️ Respuesta del webhook sin contenido procesable:", data);
         toast.success("Archivo procesado correctamente");
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("❌ Error processing file:", error);
