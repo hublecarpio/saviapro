@@ -200,7 +200,11 @@ export const useAuth = () => {
             }
           } else if (event === 'SIGNED_OUT') {
             reset();
-            navigate('/', { replace: true });
+            // No redirigir si estamos en la ruta de registro por invitación,
+            // ya que InviteRegister fuerza un signOut para limpiar la sesión.
+            if (!window.location.pathname.startsWith('/register/')) {
+              navigate('/', { replace: true });
+            }
           } else if (event === 'TOKEN_REFRESHED') {
             // Token refreshed silently
           }
