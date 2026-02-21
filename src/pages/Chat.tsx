@@ -100,7 +100,7 @@ const Chat = () => {
   } = useAudioRecorder({
     webhookUrl: import.meta.env.VITE_WEBHOOK_AUDIO_URL,
     onTranscriptionReceived: text => {
-      console.log("✅ Transcription received:", text);
+      // console.log("✅ Transcription received:", text);
       setTranscribedText(text);
     }
   });
@@ -257,40 +257,40 @@ const Chat = () => {
 
     // Suscribirse a nuevos mensajes
     const channelName = `chat-${currentConversationId}`;
-    console.log("🔌 Setting up realtime channel:", channelName, "for conversation:", currentConversationId);
+    // console.log("🔌 Setting up realtime channel:", channelName, "for conversation:", currentConversationId);
     const channel = supabase.channel(channelName).on("postgres_changes", {
       event: "INSERT",
       schema: "public",
       table: "messages",
       filter: `conversation_id=eq.${currentConversationId}`
     }, payload => {
-      console.log("🔔 Realtime INSERT received:", payload);
+      // console.log("🔔 Realtime INSERT received:", payload);
       const newMessage = payload.new as Message;
       setMessages(prev => {
         // Verificar si ya existe por ID real
         if (prev.some(m => m.id === newMessage.id)) {
-          console.log("⚠️ Message already exists, ignoring");
+          // console.log("⚠️ Message already exists, ignoring");
           return prev;
         }
 
         // Si es mensaje del usuario, remover el mensaje temporal/optimista
         if (newMessage.role === "user") {
           const filteredPrev = prev.filter(m => !m.id.startsWith("temp-"));
-          console.log("✅ Replacing optimistic message with real one");
+          // console.log("✅ Replacing optimistic message with real one");
           return [...filteredPrev, newMessage];
         }
 
         // Detectar si es un mensaje de generación de mapa mental
         if (newMessage.role === "assistant" && (newMessage.message.toLowerCase().includes("mapa mental") || newMessage.message.includes("🧠"))) {
-          console.log("🎨 Mind map generation detected, showing progress bar");
+          // console.log("🎨 Mind map generation detected, showing progress bar");
           setIsGeneratingMindMap(true);
           setIsLoading(false);
         }
-        console.log("✅ Adding message to UI:", {
+        /* console.log("✅ Adding message to UI:", {
           id: newMessage.id,
           role: newMessage.role,
           preview: newMessage.message.substring(0, 50)
-        });
+        }); */
 
         // Detectar si es un mensaje de video/podcast completado o con error
         if (newMessage.role === "assistant") {
@@ -298,7 +298,7 @@ const Chat = () => {
           const isVideoError = newMessage.message.includes("Error generando el video") || 
                                newMessage.message.includes("generación del video está tomando más tiempo");
           if (isVideoSuccess || isVideoError) {
-            console.log("🎬 Video generation complete (success:", isVideoSuccess, ")");
+            // console.log("🎬 Video generation complete (success:", isVideoSuccess, ")");
             setIsGeneratingVideo(false);
             if (isVideoSuccess) {
               setHasVideoGenerated(true);
@@ -309,14 +309,14 @@ const Chat = () => {
           const isPodcastError = newMessage.message.includes("Error generando el podcast") || 
                                   newMessage.message.includes("generación del podcast está tomando más tiempo");
           if (isPodcastSuccess || isPodcastError) {
-            console.log("🎙️ Podcast generation complete (success:", isPodcastSuccess, ")");
+            // console.log("🎙️ Podcast generation complete (success:", isPodcastSuccess, ")");
             setIsGeneratingPodcast(false);
             if (isPodcastSuccess) {
               setHasPodcastGenerated(true);
             }
           }
           if (newMessage.message.includes("informe") || newMessage.message.includes("📄")) {
-            console.log("📄 Informe generation complete");
+            // console.log("📄 Informe generation complete");
             setIsGeneratingInforme(false);
           }
         }
@@ -325,7 +325,7 @@ const Chat = () => {
 
       // Si es un mensaje del asistente, detener loading
       if (newMessage.role === "assistant") {
-        console.log("🤖 Assistant message received, stopping loading");
+        // console.log("🤖 Assistant message received, stopping loading");
         setIsLoading(false);
       }
     }).on("postgres_changes", {
@@ -334,18 +334,18 @@ const Chat = () => {
       table: "mind_maps",
       filter: `conversation_id=eq.${currentConversationId}`
     }, payload => {
-      console.log("🗺️ New mind map received via realtime:", payload);
+      // console.log("🗺️ New mind map received via realtime:", payload);
       const newMindMap = payload.new as MindMap;
       setMindMaps(prev => {
         if (prev.some(m => m.id === newMindMap.id)) {
-          console.log("⚠️ Mind map already exists, ignoring");
+          // console.log("⚠️ Mind map already exists, ignoring");
           return prev;
         }
-        console.log("✅ Adding mind map to UI");
+        // console.log("✅ Adding mind map to UI");
         return [...prev, newMindMap];
       });
       // Detener indicador de generación al recibir el mapa
-      console.log("🎉 Mind map generation complete, hiding progress bar");
+      // console.log("🎉 Mind map generation complete, hiding progress bar");
       setIsGeneratingMindMap(false);
     }).on("postgres_changes", {
       event: "INSERT",
@@ -353,7 +353,7 @@ const Chat = () => {
       table: "fichas_didacticas",
       filter: `conversation_id=eq.${currentConversationId}`
     }, payload => {
-      console.log("📚 New ficha received via realtime:", payload);
+      // console.log("📚 New ficha received via realtime:", payload);
       const newFicha = payload.new as any;
 
       // Verificar si ya existe un set con este timestamp (agrupar por minuto)
@@ -401,7 +401,7 @@ const Chat = () => {
         }
       });
     }).subscribe(status => {
-      console.log("📡 Realtime subscription status:", status);
+      // console.log("📡 Realtime subscription status:", status);
       if (status === 'SUBSCRIBED') {
         console.log("✅ Successfully subscribed to realtime updates");
       } else if (status === 'CHANNEL_ERROR') {
@@ -420,7 +420,7 @@ const Chat = () => {
   useEffect(() => {
     if (transcribedText && !processingTranscriptionRef.current) {
       processingTranscriptionRef.current = true;
-      console.log("📤 Sending transcribed text to chat:", transcribedText);
+      // console.log("📤 Sending transcribed text to chat:", transcribedText);
       handleSend(transcribedText).finally(() => {
         setTranscribedText(null);
         processingTranscriptionRef.current = false;
@@ -428,7 +428,7 @@ const Chat = () => {
     }
   }, [transcribedText]);
   const loadMessages = async (conversationId: string) => {
-    console.log("Loading messages for conversation:", conversationId);
+    // console.log("Loading messages for conversation:", conversationId);
     const {
       data,
       error
@@ -440,7 +440,7 @@ const Chat = () => {
       console.error("Error loading messages:", error);
       return;
     }
-    console.log("Messages loaded:", data?.length);
+    // console.log("Messages loaded:", data?.length);
     setMessages((data || []) as Message[]);
   };
   const createNewConversation = async (firstMessage?: string) => {
@@ -501,7 +501,7 @@ const Chat = () => {
         conversation_id: conversationId
       };
       setMessages(prev => [...prev, optimisticUserMessage]);
-      console.log("📤 Sending message to edge function...");
+      // console.log("📤 Sending message to edge function...");
 
       // Actualizar el timestamp de la conversación para que suba en el sidebar
       await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
@@ -520,12 +520,12 @@ const Chat = () => {
         setMessages(prev => prev.filter(m => m.id !== optimisticUserMessage.id));
         throw error;
       }
-      console.log("✅ Message sent, polling for response...");
+      // console.log("✅ Message sent, polling for response...");
 
       // Polling para obtener la respuesta (más confiable que realtime)
       const pollForResponse = async (attempts = 0) => {
         if (attempts > 15) {
-          console.log("⏱️ Max polling attempts reached");
+          // console.log("⏱️ Max polling attempts reached");
           setIsLoading(false);
           return;
         }
@@ -538,7 +538,7 @@ const Chat = () => {
           // Buscar si hay una respuesta del asistente más reciente que nuestro mensaje
           const hasNewAssistantMessage = newMessages.some(m => m.role === "assistant" && new Date(m.created_at) > new Date(optimisticUserMessage.created_at));
           if (hasNewAssistantMessage) {
-            console.log("✅ Response received via polling");
+            // console.log("✅ Response received via polling");
             // Reemplazar mensajes temporales con los reales
             setMessages(newMessages.filter(m => !m.id.startsWith('temp-')) as Message[]);
             setIsLoading(false);
@@ -597,7 +597,7 @@ const Chat = () => {
       s3FormData.append('file', file);
       s3FormData.append('userId', user.id);
       s3FormData.append('conversationId', conversationId);
-      console.log("📤 Subiendo archivo a S3...");
+      // console.log("📤 Subiendo archivo a S3...");
       const s3Response = await supabase.functions.invoke('upload-to-s3', {
         body: s3FormData
       });
@@ -607,7 +607,7 @@ const Chat = () => {
         permanentFileUrl = localFileUrl;
       } else {
         permanentFileUrl = s3Response.data.url;
-        console.log("✅ Archivo subido a S3:", permanentFileUrl);
+        // console.log("✅ Archivo subido a S3:", permanentFileUrl);
       }
 
       // Preparar mensaje final para base de datos con URL permanente
@@ -628,7 +628,7 @@ const Chat = () => {
       if (userMsgError) {
         console.error("❌ Error guardando mensaje de archivo del usuario:", userMsgError);
       } else {
-        console.log("✅ Mensaje de archivo del usuario guardado en BD con URL permanente");
+        // console.log("✅ Mensaje de archivo del usuario guardado en BD con URL permanente");
       }
 
       // Actualizar el timestamp de la conversación para que suba en el sidebar
@@ -648,10 +648,10 @@ const Chat = () => {
         }
       };
       formData.append("metadata", JSON.stringify(metadata));
-      console.log("📤 Enviando archivo al webhook de archivos...", {
+      /* console.log("📤 Enviando archivo al webhook de archivos...", {
         fileName: file.name,
         metadata
-      });
+      }); */
 
       // Enviar al webhook externo de archivos
       const res = await fetch(import.meta.env.VITE_WEBHOOK_FILES_URL, {
@@ -660,7 +660,7 @@ const Chat = () => {
       });
       if (!res.ok) throw new Error("Error en el webhook de archivos");
       const data = await res.json();
-      console.log("📥 Respuesta del webhook de archivos:", data);
+      // console.log("📥 Respuesta del webhook de archivos:", data);
 
       // Extraer el mensaje de la respuesta - buscar en diferentes formatos posibles
       const rawResponse = data?.mensaje || data?.respuesta || data?.message || data?.response?.mensaje || data?.response?.respuesta || data?.response?.text || data?.response?.message || data?.response?.content || (typeof data === 'string' ? data : null);
@@ -674,7 +674,7 @@ const Chat = () => {
         response = JSON.stringify(rawResponse);
       }
       
-      console.log("📝 Mensaje procesado del webhook de archivos:", response);
+      // console.log("📝 Mensaje procesado del webhook de archivos:", response);
       if (response) {
         toast.success("Archivo procesado, enviando al asistente...");
         console.log("📤 Enviando al Edge Function 'chat'...", {
@@ -701,13 +701,13 @@ const Chat = () => {
           return;
         }
 
-        console.log("✅ Solicitud al asistente enviada exitosamente, iniciando polling...");
+        // console.log("✅ Solicitud al asistente enviada exitosamente, iniciando polling...");
         toast.info("Esperando respuesta del asistente...");
 
         const pollForAssistantResponse = async (attempts = 0) => {
           if (attempts > 60) {
             // 60 intentos x 2 segundos = 120 segundos máximo (el Edge Function tiene timeout de Deno de ~60s-120s)
-            console.log("⏱️ Tiempo de espera agotado para respuesta del archivo");
+            // console.log("⏱️ Tiempo de espera agotado para respuesta del archivo");
             toast.error("La respuesta de Sofia aparecerá pronto en la conversación.");
             setIsLoading(false);
             return;
@@ -723,7 +723,7 @@ const Chat = () => {
             // Buscar si hay una respuesta del asistente más reciente que el mensaje del usuario (archivo)
             const hasNewAssistantMessage = newMessages.some(m => m.role === "assistant" && new Date(m.created_at) > new Date(userMessageTime));
             if (hasNewAssistantMessage) {
-              console.log("✅ Respuesta del asistente recibida via polling");
+              // console.log("✅ Respuesta del asistente recibida via polling");
               setMessages(newMessages.filter(m => !m.id.startsWith('temp-') && !m.id.startsWith('file-')) as Message[]);
               setIsLoading(false);
               toast.success("Archivo y respuesta procesados correctamente");
