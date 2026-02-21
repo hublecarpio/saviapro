@@ -82,15 +82,15 @@ export function AppSidebar({
 
       // Obtener el título actualizado o el primer mensaje de cada conversación
       const conversationsWithTitle = await Promise.all((conversationsData || []).map(async conv => {
-        // Si el título ya es descriptivo, usarlo
-        if (conv.title && conv.title !== 'Nueva conversación' && !conv.title.startsWith('Hola') && conv.title.length >= 15) {
+        // Si el título ya es descriptivo y no es el por defecto, lo respetamos siempre
+        if (conv.title && conv.title !== 'Nueva conversación' && !conv.title.startsWith('Hola') && conv.title.length > 0) {
           return {
             ...conv,
-            first_message: conv.title
+            first_message: conv.title // Mantenemos first_message para compatibilidad con la UI, pero usamos su título real
           };
         }
 
-        // Si no, obtener el primer mensaje del usuario
+        // Si no, obtener el primer mensaje del usuario para usarlo como título sugerido
         const {
           data: messages
         } = await supabase.from('messages').select('message').eq('conversation_id', conv.id).eq('role', 'user').order('created_at', {
@@ -98,6 +98,7 @@ export function AppSidebar({
         }).limit(1).maybeSingle();
         return {
           ...conv,
+          title: conv.title || 'Nueva conversación',
           first_message: messages?.message || conv.title || 'Nueva conversación'
         };
       }));
@@ -149,7 +150,7 @@ export function AppSidebar({
       setConversations(prev => prev.map(c => c.id === conversationId ? {
         ...c,
         title: editTitle.trim(),
-        first_message: editTitle.trim()
+        first_message: editTitle.trim() // Actualizamos esto también para la UI
       } : c));
     }
     setEditingId(null);
