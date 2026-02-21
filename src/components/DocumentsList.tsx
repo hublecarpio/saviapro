@@ -14,8 +14,11 @@ interface Document {
   upload_mode: string;
   created_at: string;
 }
+interface DocumentsListProps {
+  refreshTrigger?: number;
+}
 
-export const DocumentsList = () => {
+export const DocumentsList = ({ refreshTrigger = 0 }: DocumentsListProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -116,7 +119,7 @@ export const DocumentsList = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [refreshTrigger]);
 
   if (loading) {
     return (

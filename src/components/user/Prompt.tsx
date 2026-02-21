@@ -95,6 +95,8 @@ const Prompt = () => {
             });
         }
     };
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
     if (loading) {
         return (
             <Loading />
@@ -144,12 +146,12 @@ const Prompt = () => {
                                 <CardContent>
                                     <div className="pt-6">
                                         <Label className="font-semibold text-lg">Subir Archivos (.pdf / .docx) o Texto</Label>
-                                        <FileUploader />
+                                        <FileUploader onFileProcessed={() => setRefreshTrigger(prev => prev + 1)} />
                                     </div>
                                 </CardContent>
                             </Card>
                             
-                            <DocumentsList />
+                            <DocumentsList refreshTrigger={refreshTrigger} />
                         </div>
                     </TabsContent>
                 </Tabs>

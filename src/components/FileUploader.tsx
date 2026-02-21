@@ -141,18 +141,39 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             }
 
             let content = "";
-            let fileName = "";
+            let originalFileName = "";
             let fileType = "";
 
             if (mode === "file" && file) {
                 setUploadStage("Extrayendo texto del documento...");
                 content = await extractTextFromFile(file);
-                fileName = file.name;
+                originalFileName = file.name;
                 fileType = file.type;
             } else {
                 content = textContent;
-                fileName = `texto_${Date.now()}.txt`;
+                originalFileName = `texto_${Date.now()}.txt`;
                 fileType = "text/plain";
+            }
+            
+            // Sanitize file name
+            const fileName = originalFileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+
+            if (mode === "file" && file) {
+                setUploadStage("Subiendo archivo original...");
+                const s3FormData = new FormData();
+                s3FormData.append('file', file);
+                s3FormData.append('userId', user.id);
+                s3FormData.append('conversationId', conversationId || 'global_prompt');
+
+                const s3Response = await supabase.functions.invoke('upload-to-s3', {
+                    body: s3FormData
+                });
+
+                if (s3Response.error) {
+                    console.warn("S3 upload error:", s3Response.error);
+                    // Decide whether to fail the whole process or continue...
+                    // Here we continue for robustness as the original behavior didn't have S3 upload at all
+                }
             }
 
             setUploadStage("Generando embeddings...");
@@ -162,7 +183,9 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                     content: content,
                     file_name: fileName,
                     user_id: user.id,
-                    conversation_id: conversationId || null
+                    conversation_id: conversationId || null,
+                    file_type: fileType,
+                    upload_mode: mode
                 }
             });
 
