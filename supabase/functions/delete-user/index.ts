@@ -62,7 +62,16 @@ serve(async (req) => {
       throw new Error('Cannot delete your own account');
     }
 
-    console.log(`Admin ${requestingUser.email} is deleting user ${userId}`);
+    // Obtener email del usuario antes de borrar el perfil
+    const { data: userProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const userEmail = userProfile?.email;
+
+    console.log(`Admin ${requestingUser.email} is deleting user ${userId} (${userEmail || 'unknown email'})`);
 
     // Eliminar datos relacionados usando service role (bypass RLS)
     console.log('Deleting related data...');
@@ -76,6 +85,12 @@ serve(async (req) => {
     await supabaseAdmin.from("tutor_students").delete().eq("tutor_id", userId);
     await supabaseAdmin.from("tutor_students").delete().eq("student_id", userId);
     await supabaseAdmin.from("invited_users").delete().eq("created_by", userId);
+    
+    // Eliminar también la invitación que se le hizo a este usuario
+    if (userEmail) {
+      await supabaseAdmin.from("invited_users").delete().eq("email", userEmail);
+    }
+    
     await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
     await supabaseAdmin.from("profiles").delete().eq("id", userId);
 
