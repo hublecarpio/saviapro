@@ -613,6 +613,8 @@ const Chat = () => {
       // Preparar mensaje final para base de datos con URL permanente
       const finalFileMessageWithUrl = `${fileMessageContent} [FILE_URL]${permanentFileUrl}|${file.name}|${file.type}[/FILE_URL]`;
 
+      const userMessageTime = new Date().toISOString();
+      
       // Guardar el mensaje del usuario (archivo) en la base de datos CON la URL permanente
       const {
         error: userMsgError
@@ -620,7 +622,8 @@ const Chat = () => {
         conversation_id: conversationId,
         user_id: user.id,
         role: "user",
-        message: finalFileMessageWithUrl
+        message: finalFileMessageWithUrl,
+        created_at: userMessageTime
       });
       if (userMsgError) {
         console.error("❌ Error guardando mensaje de archivo del usuario:", userMsgError);
@@ -760,7 +763,8 @@ const Chat = () => {
           // Si no hay respuesta directa, iniciar polling para buscar la respuesta
           console.log("🔄 Iniciando polling para obtener respuesta del asistente...");
           toast.info("Procesando archivo, esperando respuesta...");
-          const fileMessageTime = new Date().toISOString();
+          // Ya no creamos fileMessageTime aquí porque puede ser más nuevo que el mensaje del asistente
+          // Usamos userMessageTime creado justo antes del insert
           const pollForAssistantResponse = async (attempts = 0) => {
             if (attempts > 120) {
               // 120 intentos x 2 segundos = 240 segundos (4 minutos) máximo para archivos largos
@@ -775,8 +779,8 @@ const Chat = () => {
               ascending: true
             });
             if (newMessages) {
-              // Buscar si hay una respuesta del asistente más reciente
-              const hasNewAssistantMessage = newMessages.some(m => m.role === "assistant" && new Date(m.created_at) > new Date(fileMessageTime));
+              // Buscar si hay una respuesta del asistente más reciente que el mensaje del usuario (archivo)
+              const hasNewAssistantMessage = newMessages.some(m => m.role === "assistant" && new Date(m.created_at) > new Date(userMessageTime));
               if (hasNewAssistantMessage) {
                 console.log("✅ Respuesta del asistente recibida via polling");
                 setMessages(newMessages.filter(m => !m.id.startsWith('temp-') && !m.id.startsWith('file-')) as Message[]);
