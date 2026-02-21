@@ -61,6 +61,7 @@ export const AdminConversationHistory = () => {
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [visibleMessagesCount, setVisibleMessagesCount] = useState(10);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -141,6 +142,7 @@ export const AdminConversationHistory = () => {
       setConversations([]);
       setSelectedConversation(null);
       setConversationContent(null);
+      setVisibleMessagesCount(10);
     }
 
     try {
@@ -168,6 +170,7 @@ export const AdminConversationHistory = () => {
     if (!isBackgroundRefresh) {
       setLoadingContent(true);
       setSelectedConversation(conversation);
+      setVisibleMessagesCount(10);
     }
 
     try {
@@ -535,8 +538,8 @@ export const AdminConversationHistory = () => {
                             Mensajes ({conversationContent.messages.length})
                           </AccordionTrigger>
                           <AccordionContent>
-                            <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                              {conversationContent.messages.slice(0, 10).map((msg) => (
+                            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                              {conversationContent.messages.slice(0, visibleMessagesCount).map((msg) => (
                                 <div
                                   key={msg.id}
                                   className={`p-2 rounded text-xs ${
@@ -544,13 +547,20 @@ export const AdminConversationHistory = () => {
                                   }`}
                                 >
                                   <p className="font-medium">{msg.role === "user" ? "Usuario" : "Asistente"}</p>
-                                  <p className="truncate">{msg.message}</p>
+                                  <p className="whitespace-pre-wrap break-words">{msg.message}</p>
                                 </div>
                               ))}
-                              {conversationContent.messages.length > 10 && (
-                                <p className="text-xs text-muted-foreground text-center">
-                                  ...y {conversationContent.messages.length - 10} mensajes más
-                                </p>
+                              {conversationContent.messages.length > visibleMessagesCount && (
+                                <div className="text-center pt-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setVisibleMessagesCount(prev => prev + 5)}
+                                    className="text-xs"
+                                  >
+                                    Cargar {Math.min(5, conversationContent.messages.length - visibleMessagesCount)} mensajes más
+                                  </Button>
+                                </div>
                               )}
                             </div>
                           </AccordionContent>
