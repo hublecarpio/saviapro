@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download, MessageSquare, Brain, FileText, Loader2, User, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import html2pdf from "html2pdf.js";
@@ -62,6 +63,7 @@ export const AdminConversationHistory = () => {
   const [loadingContent, setLoadingContent] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [visibleMessagesCount, setVisibleMessagesCount] = useState(10);
+  const [selectedMindMap, setSelectedMindMap] = useState<MindMap | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -574,11 +576,20 @@ export const AdminConversationHistory = () => {
                             <AccordionContent>
                               <div className="space-y-2">
                                 {conversationContent.mindMaps.map((mm) => (
-                                  <div key={mm.id} className="p-2 bg-muted rounded text-xs">
-                                    <p className="font-medium">{mm.tema}</p>
-                                    <p className="text-muted-foreground">
-                                      {new Date(mm.created_at).toLocaleDateString("es-ES")}
-                                    </p>
+                                  <div key={mm.id} className="p-3 bg-muted rounded flex justify-between items-center text-xs">
+                                    <div className="overflow-hidden mr-2">
+                                      <p className="font-medium truncate" title={mm.tema}>{mm.tema}</p>
+                                      <p className="text-muted-foreground mt-1">
+                                        {new Date(mm.created_at).toLocaleString("es-ES")}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setSelectedMindMap(mm)}
+                                    >
+                                      Ver Mapa
+                                    </Button>
                                   </div>
                                 ))}
                               </div>
@@ -616,6 +627,24 @@ export const AdminConversationHistory = () => {
           )}
         </CardContent>
       </Card>
+
+      {selectedMindMap && (
+        <Dialog open={!!selectedMindMap} onOpenChange={() => setSelectedMindMap(null)}>
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-4">
+            <DialogHeader>
+              <DialogTitle className="truncate">Mapa Mental: {selectedMindMap.tema}</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 bg-white rounded-md overflow-hidden border mt-2">
+              <iframe
+                srcDoc={selectedMindMap.html_content}
+                className="w-full h-full border-0"
+                title={`Mapa mental ${selectedMindMap.tema}`}
+                sandbox="allow-scripts allow-downloads allow-same-origin"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
