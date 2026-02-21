@@ -81,8 +81,8 @@ const Chat = () => {
   const [transcribedText, setTranscribedText] = useState<string | null>(null);
   const [isGeneratingMindMap, setIsGeneratingMindMap] = useState(false);
   const [isGeneratingInforme, setIsGeneratingInforme] = useState(false);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState<string | null>(null);
+  const [isGeneratingPodcast, setIsGeneratingPodcast] = useState<string | null>(null);
   const [sofiaNotification, setSofiaNotification] = useState<{ message: string; submessage: string } | null>(null);
   const [isGeneratingFichas, setIsGeneratingFichas] = useState(false);
   const [hasVideoGenerated, setHasVideoGenerated] = useState(false);
@@ -300,7 +300,7 @@ const Chat = () => {
                                newMessage.message.includes("generación del video está tomando más tiempo");
           if (isVideoSuccess || isVideoError) {
             // console.log("🎬 Video generation complete (success:", isVideoSuccess, ")");
-            setIsGeneratingVideo(false);
+            setIsGeneratingVideo(null);
             if (isVideoSuccess) {
               setHasVideoGenerated(true);
             }
@@ -311,7 +311,7 @@ const Chat = () => {
                                   newMessage.message.includes("generación del podcast está tomando más tiempo");
           if (isPodcastSuccess || isPodcastError) {
             // console.log("🎙️ Podcast generation complete (success:", isPodcastSuccess, ")");
-            setIsGeneratingPodcast(false);
+            setIsGeneratingPodcast(null);
             if (isPodcastSuccess) {
               setHasPodcastGenerated(true);
             }
@@ -830,13 +830,13 @@ const Chat = () => {
 
     // Activar indicador de generación y mostrar notificación centrada con Sofia
     if (type === "video") {
-      setIsGeneratingVideo(true);
+      setIsGeneratingVideo(currentConversationId);
       setSofiaNotification({
         message: "¡Sofia está creando tu video!",
         submessage: "Podría tardar hasta 5 minutos. Mientras podemos seguir conversando."
       });
     } else {
-      setIsGeneratingPodcast(true);
+      setIsGeneratingPodcast(currentConversationId);
       setSofiaNotification({
         message: "¡Sofia está creando tu podcast!",
         submessage: "Podría tardar hasta 5 minutos. Mientras podemos seguir conversando."
@@ -879,9 +879,9 @@ const Chat = () => {
       toast.error("Error al iniciar la generación");
       // Siempre desactivar el indicador de carga cuando hay error
       if (type === "video") {
-        setIsGeneratingVideo(false);
+        setIsGeneratingVideo(null);
       } else {
-        setIsGeneratingPodcast(false);
+        setIsGeneratingPodcast(null);
       }
     }
   };
@@ -1313,7 +1313,7 @@ const Chat = () => {
               })}
 
                   {/* Indicador de Sofia pensando - para loading normal */}
-                  {isLoading && !isGeneratingMindMap && !isGeneratingVideo && !isGeneratingPodcast && !isGeneratingFichas && <div className="flex justify-start">
+                  {isLoading && !isGeneratingMindMap && isGeneratingVideo !== currentConversationId && isGeneratingPodcast !== currentConversationId && !isGeneratingFichas && <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
                         <SofiaThinking />
                         <span className="text-xs md:text-sm text-muted-foreground">
@@ -1341,7 +1341,7 @@ const Chat = () => {
                     </div>}
 
                   {/* Indicador para generación de video */}
-                  {isGeneratingVideo && <div className="flex justify-start">
+                  {isGeneratingVideo === currentConversationId && <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
                         <SofiaThinking />
                         <span className="text-xs md:text-sm text-muted-foreground">
@@ -1351,7 +1351,7 @@ const Chat = () => {
                     </div>}
 
                   {/* Indicador para generación de podcast */}
-                  {isGeneratingPodcast && <div className="flex justify-start">
+                  {isGeneratingPodcast === currentConversationId && <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
                         <SofiaThinking />
                         <span className="text-xs md:text-sm text-muted-foreground">
@@ -1471,10 +1471,10 @@ const Chat = () => {
         </div>
 
         {/* Sidebar derecho con herramientas - Solo Desktop/Tablet */}
-        <ChatToolsSidebar isLoading={isLoading} hasMessages={messages.length > 0} isGeneratingMindMap={isGeneratingMindMap} isGeneratingVideo={isGeneratingVideo} isGeneratingPodcast={isGeneratingPodcast} isGeneratingFichas={isGeneratingFichas} isGeneratingInforme={isGeneratingInforme} hasVideoGenerated={hasVideoGenerated} hasPodcastGenerated={hasPodcastGenerated} onGenerateVideo={() => handleGenerateResumen("video")} onGeneratePodcast={() => handleGenerateResumen("podcast")} onRequestMindMap={handleRequestMindMap} onGenerateFichas={handleGenerateFichas} onRequestInforme={handleRequestInforme} />
+        <ChatToolsSidebar isLoading={isLoading} hasMessages={messages.length > 0} isGeneratingMindMap={isGeneratingMindMap} isGeneratingVideo={isGeneratingVideo === currentConversationId} isGeneratingPodcast={isGeneratingPodcast === currentConversationId} isGeneratingFichas={isGeneratingFichas} isGeneratingInforme={isGeneratingInforme} hasVideoGenerated={hasVideoGenerated} hasPodcastGenerated={hasPodcastGenerated} onGenerateVideo={() => handleGenerateResumen("video")} onGeneratePodcast={() => handleGenerateResumen("podcast")} onRequestMindMap={handleRequestMindMap} onGenerateFichas={handleGenerateFichas} onRequestInforme={handleRequestInforme} />
 
         {/* Botón flotante para móvil */}
-        <MobileChatToolsFAB isLoading={isLoading} hasMessages={messages.length > 0} isGeneratingMindMap={isGeneratingMindMap} isGeneratingVideo={isGeneratingVideo} isGeneratingPodcast={isGeneratingPodcast} isGeneratingFichas={isGeneratingFichas} hasVideoGenerated={hasVideoGenerated} hasPodcastGenerated={hasPodcastGenerated} onGenerateVideo={() => handleGenerateResumen("video")} onGeneratePodcast={() => handleGenerateResumen("podcast")} onRequestMindMap={handleRequestMindMap} onGenerateFichas={handleGenerateFichas} />
+        <MobileChatToolsFAB isLoading={isLoading} hasMessages={messages.length > 0} isGeneratingMindMap={isGeneratingMindMap} isGeneratingVideo={isGeneratingVideo === currentConversationId} isGeneratingPodcast={isGeneratingPodcast === currentConversationId} isGeneratingFichas={isGeneratingFichas} hasVideoGenerated={hasVideoGenerated} hasPodcastGenerated={hasPodcastGenerated} onGenerateVideo={() => handleGenerateResumen("video")} onGeneratePodcast={() => handleGenerateResumen("podcast")} onRequestMindMap={handleRequestMindMap} onGenerateFichas={handleGenerateFichas} />
       </div>
 
       {/* Modal de edición de perfil */}
