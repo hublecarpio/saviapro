@@ -40,7 +40,8 @@ const AdminBeta = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "invited_users" },
-        () => {
+        (payload) => {
+          console.log("🟢 REALTIME EVENT: Cambio en invited_users", payload);
           loadInvitedUsers();
           loadRegisteredUsers();
         }
@@ -48,18 +49,23 @@ const AdminBeta = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles" },
-        () => {
+        (payload) => {
+          console.log("🟢 REALTIME EVENT: Cambio en profiles", payload);
           loadRegisteredUsers();
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "user_roles" },
-        () => {
+        (payload) => {
+          console.log("🟢 REALTIME EVENT: Cambio en user_roles", payload);
           loadRegisteredUsers();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log("📡 ESTATUS WEBSOCKET ADMIN:", status);
+        if (err) console.error("Error websocket:", err);
+      });
 
     return () => {
       supabase.removeChannel(channel);
