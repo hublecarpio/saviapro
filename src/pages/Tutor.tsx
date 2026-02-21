@@ -41,6 +41,32 @@ const Tutor = () => {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel("tutor-dashboard-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tutor_students" },
+        () => {
+          loadStudents(user.id);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => {
+          loadStudents(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const checkAuth = async () => {
     try {
       const {
