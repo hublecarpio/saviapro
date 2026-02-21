@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Download, MessageSquare, Brain, FileText, Loader2, User, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import html2pdf from "html2pdf.js";
@@ -633,6 +633,7 @@ export const AdminConversationHistory = () => {
           <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-4">
             <DialogHeader>
               <DialogTitle className="truncate">Mapa Mental: {selectedMindMap.tema}</DialogTitle>
+              <DialogDescription className="sr-only">Vista completa del mapa mental</DialogDescription>
             </DialogHeader>
             <div className="flex-1 bg-white rounded-md overflow-hidden border mt-2">
               <iframe

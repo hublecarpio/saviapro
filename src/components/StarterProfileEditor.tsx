@@ -417,6 +417,9 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
         <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Editar Mi Perfil</DialogTitle>
+            <DialogDescription className="sr-only">
+              Cargando editor de perfil de usuario
+            </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

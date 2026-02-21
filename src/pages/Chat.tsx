@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, BookOpen, UserCog, FileUp, ExternalLink, Download } from "lucide-react";
 import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
@@ -1488,6 +1488,9 @@ const Chat = () => {
                 Abrir en página
               </Button>
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Vista completa del mapa mental
+            </DialogDescription>
           </DialogHeader>
           {selectedMindMap && <div className="flex-1 flex items-center justify-center overflow-hidden">
               <iframe srcDoc={selectedMindMap.html_content} className="w-full h-full border-0 rounded-lg" title={`Mapa mental: ${selectedMindMap.tema}`} sandbox="allow-scripts allow-same-origin" style={{
