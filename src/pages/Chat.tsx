@@ -91,6 +91,7 @@ const Chat = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingTranscriptionRef = useRef(false);
+  const dragCounter = useRef(0);
 
   // Hook de grabación de audio
   const {
@@ -783,7 +784,7 @@ const Chat = () => {
         }
       } else {
         console.log("⚠️ Respuesta del webhook sin contenido procesable:", data);
-        toast.success("Archivo enviado correctamente");
+        toast.success("Archivo procesado correctamente");
       }
     } catch (error) {
       console.error("❌ Error processing file:", error);
@@ -801,20 +802,34 @@ const Chat = () => {
       await processFile(file);
     }
   };
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
   };
+
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
   };
+
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    dragCounter.current = 0;
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       await processFile(files[0]);
@@ -1057,7 +1072,7 @@ const Chat = () => {
           <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
 
           {/* Messages Area con scroll propio */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden relative w-full" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative w-full" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
             {isDragging && <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm z-50 flex items-center justify-center border-2 border-dashed border-primary">
                 <div className="text-center">
                   <Paperclip className="h-12 w-12 mx-auto mb-3 text-primary" />
