@@ -31,6 +31,35 @@ const ListUser = () => {
 
     useEffect(() => {
         checkAdminStatus();
+
+        const channel = supabase
+            .channel("list-users-changes")
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "profiles" },
+                () => {
+                    loadRegisteredUsers();
+                }
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "user_roles" },
+                () => {
+                    loadRegisteredUsers();
+                }
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "invited_users" },
+                () => {
+                    loadRegisteredUsers();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const checkAdminStatus = async () => {

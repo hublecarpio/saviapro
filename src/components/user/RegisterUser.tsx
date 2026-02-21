@@ -25,6 +25,21 @@ const RegisterUser = () => {
 
     useEffect(() => {
         checkAdminStatus();
+
+        const channel = supabase
+            .channel("register-users-changes")
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "invited_users" },
+                () => {
+                    loadInvitedUsers();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const checkAdminStatus = async () => {
