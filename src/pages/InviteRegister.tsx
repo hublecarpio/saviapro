@@ -35,8 +35,8 @@ const InviteRegister = () => {
 
   const validateToken = async () => {
     try {
-      // Solo cerramos sesión si realmente hay un usuario logueado en este momento,
-      // para evitar que el evento SIGNED_OUT redirija a la raíz estúpidamente.
+      // Solo cerramos sesión si hay un usuario logueado en este momento,
+      // para evitar que el evento SIGNED_OUT desencadene una redirección global a la raíz.
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         await supabase.auth.signOut();
