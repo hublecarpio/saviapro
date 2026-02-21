@@ -49,39 +49,46 @@ const Tutor = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tutor_students" },
-        () => {
+        (payload) => {
+          console.log("Realtime event received [tutor_students]:", payload);
           loadStudents(user.id);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles" },
-        () => {
+        (payload) => {
+          console.log("Realtime event received [profiles]:", payload);
           loadStudents(user.id);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },
-        () => {
+        (payload) => {
+          console.log("Realtime event received [messages]:", payload);
           loadStudents(user.id);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "mind_maps" },
-        () => {
+        (payload) => {
+          console.log("Realtime event received [mind_maps]:", payload);
           loadStudents(user.id);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations" },
-        () => {
+        (payload) => {
+          console.log("Realtime event received [conversations]:", payload);
           loadStudents(user.id);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Tutor Dashboard Realtime subscription status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -146,6 +153,7 @@ const Tutor = () => {
 
       if (profError) throw profError;
 
+      // Mantener los estudiantes anteriores mientras cargamos para evitar parpadeos
       setStudents(profiles || []);
 
       // Cargar métricas para cada estudiante
