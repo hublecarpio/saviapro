@@ -162,6 +162,48 @@ const RegisterUser = () => {
         }
 
         try {
+            const normalizedEmail = newUserEmail.toLowerCase();
+            
+            // Check if email already exists in profiles
+            const { data: existingProfile } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("email", normalizedEmail)
+                .limit(1);
+                
+            if (existingProfile && existingProfile.length > 0) {
+                toast({
+                    title: "Email ya registrado",
+                    description: "Este usuario ya tiene una cuenta en el sistema",
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            // Check if email exists in invited_users
+            const { data: existingInvite } = await supabase
+                .from("invited_users")
+                .select("used")
+                .eq("email", normalizedEmail)
+                .limit(1);
+
+            if (existingInvite && existingInvite.length > 0) {
+                if (existingInvite[0].used) {
+                    toast({
+                        title: "Email ya registrado",
+                        description: "Este usuario ya ha sido invitado y registrado",
+                        variant: "destructive",
+                    });
+                } else {
+                    toast({
+                        title: "Email ya invitado",
+                        description: "Este usuario ya tiene una invitación pendiente",
+                        variant: "destructive",
+                    });
+                }
+                return;
+            }
+
             const { data: { user } } = await supabase.auth.getUser();
             
             // Si es estudiante, el created_by es el tutor seleccionado

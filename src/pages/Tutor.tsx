@@ -172,10 +172,43 @@ const Tutor = () => {
     try {
       setCreating(true);
 
+      const normalizedEmail = newStudentEmail.toLowerCase();
+            
+      // Check if email already exists in profiles
+      const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", normalizedEmail)
+          .limit(1);
+          
+      if (existingProfile && existingProfile.length > 0) {
+          toast.error("Este usuario ya tiene una cuenta en el sistema");
+          setCreating(false);
+          return;
+      }
+
+      // Check if email exists in invited_users
+      const { data: existingInvite } = await supabase
+          .from("invited_users")
+          .select("used")
+          .eq("email", normalizedEmail)
+          .limit(1);
+
+      if (existingInvite && existingInvite.length > 0) {
+          if (existingInvite[0].used) {
+              toast.error("Este usuario ya ha sido invitado y registrado");
+          } else {
+              toast.error("Este usuario ya tiene una invitación pendiente");
+          }
+          setCreating(false);
+          return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         toast.error("No hay sesión activa");
+        setCreating(false);
         return;
       }
 
