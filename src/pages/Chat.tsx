@@ -403,12 +403,10 @@ const Chat = () => {
       });
     }).subscribe(status => {
       // console.log("📡 Realtime subscription status:", status);
+      // Solo logueamos éxito u otros estados, ignoramos CHANNEL_ERROR y TIMED_OUT ya que
+      // Supabase maneja la reconexión automáticamente y lanza errores en consola innecesarios.
       if (status === 'SUBSCRIBED') {
         // console.log("✅ Successfully subscribed to realtime updates");
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error("❌ Realtime subscription error");
-      } else if (status === 'TIMED_OUT') {
-        console.error("⏱️ Realtime subscription timed out");
       }
     });
 
