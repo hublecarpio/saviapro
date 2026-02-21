@@ -671,32 +671,42 @@ const Chat = () => {
           tipo_respuesta: "visual"
         });
 
-        // Enviar la respuesta del webhook de archivos al webhook de mensajes
-        const webhookRes = await fetch(import.meta.env.VITE_WEBHOOK_MESSAGES_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            mensaje: response,
-            id_conversation: conversationId,
-            id_user: user.id,
-            tipo_respuesta: "visual"
-          })
-        });
-        console.log("📥 Status del webhook de mensajes:", webhookRes.status);
-        if (!webhookRes.ok) {
-          const errorText = await webhookRes.text();
-          console.error("❌ Error del webhook de mensajes:", errorText);
-          throw new Error("Error en el webhook de mensajes");
+        let webhookData: any = null;
+        let webhookSuccess = false;
+
+        try {
+          // Enviar la respuesta del webhook de archivos al webhook de mensajes
+          // Esto puede tomar bastante tiempo si el agente está procesando la imagen/archivo
+          const webhookRes = await fetch(import.meta.env.VITE_WEBHOOK_MESSAGES_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              mensaje: response,
+              id_conversation: conversationId,
+              id_user: user.id,
+              tipo_respuesta: "visual"
+            })
+          });
+          
+          console.log("📥 Status del webhook de mensajes:", webhookRes.status);
+          if (webhookRes.ok) {
+            webhookData = await webhookRes.json();
+            console.log("📥 Respuesta del webhook de mensajes:", webhookData);
+            webhookSuccess = true;
+          } else {
+            console.warn("⚠️ Error del webhook de mensajes (Status " + webhookRes.status + "), usaremos polling");
+          }
+        } catch (webhookError) {
+          // Capturar errores de timeout o red para que NO aborte la función
+          console.warn("⚠️ Timeout o error de red llamando al webhook de mensajes, usaremos polling:", webhookError);
         }
-        const webhookData = await webhookRes.json();
-        console.log("📥 Respuesta del webhook de mensajes:", webhookData);
 
         // El webhook responde con un array: [{ mensajes: [...], images: [...] }]
         let directResponse = null;
         let imageUrls: string[] = [];
-        if (Array.isArray(webhookData) && webhookData.length > 0) {
+        if (webhookSuccess && Array.isArray(webhookData) && webhookData.length > 0) {
           const responseItem = webhookData[0];
           // Combinar todos los mensajes en uno
           if (responseItem.mensajes && Array.isArray(responseItem.mensajes)) {
@@ -706,7 +716,7 @@ const Chat = () => {
           if (responseItem.images && Array.isArray(responseItem.images)) {
             imageUrls = responseItem.images;
           }
-        } else {
+        } else if (webhookSuccess) {
           // Fallback a la estructura anterior
           directResponse = webhookData?.respuesta || webhookData?.response?.respuesta || webhookData?.response?.mensaje || webhookData?.message || webhookData?.mensaje;
         }
@@ -752,10 +762,10 @@ const Chat = () => {
           toast.info("Procesando archivo, esperando respuesta...");
           const fileMessageTime = new Date().toISOString();
           const pollForAssistantResponse = async (attempts = 0) => {
-            if (attempts > 30) {
-              // 30 intentos x 1 segundo = 30 segundos máximo
+            if (attempts > 120) {
+              // 120 intentos x 2 segundos = 240 segundos (4 minutos) máximo para archivos largos
               console.log("⏱️ Tiempo de espera agotado para respuesta del archivo");
-              toast.error("Tiempo de espera agotado. Revisa la conversación más tarde.");
+              toast.error("El agente está tardando más de lo esperado. La respuesta aparecerá pronto.");
               setIsLoading(false);
               return;
             }
@@ -776,12 +786,12 @@ const Chat = () => {
               }
             }
 
-            // Esperar 1 segundo y reintentar
-            setTimeout(() => pollForAssistantResponse(attempts + 1), 1000);
+            // Esperar 2 segundos y reintentar
+            setTimeout(() => pollForAssistantResponse(attempts + 1), 2000);
           };
 
           // Iniciar polling después de un breve delay
-          setTimeout(() => pollForAssistantResponse(), 1000);
+          setTimeout(() => pollForAssistantResponse(), 2000);
           return; // Salir del try, el polling manejará setIsLoading
         }
       } else {
