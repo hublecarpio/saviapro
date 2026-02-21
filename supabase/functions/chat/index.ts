@@ -57,7 +57,17 @@ serve(async (req) => {
       }
     );
 
-    const { message, conversation_id, user_id, image, skip_user_message, action_type, mind_map_user_id } = await req.json();
+    let reqBody;
+    try {
+      reqBody = await req.json();
+    } catch (e) {
+      console.error('Error parsing request body:', e);
+      return new Response(
+        JSON.stringify({ error: 'Body inválido o demasiado grande', details: e instanceof Error ? e.message : 'Unknown' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const { message, conversation_id, user_id, image, skip_user_message, action_type, mind_map_user_id } = reqBody;
     
     // Si es una acción directa (mapa mental o informe), no necesitamos validar el mensaje
     if (!action_type && (!message || typeof message !== 'string' || message.trim().length === 0)) {
@@ -258,8 +268,14 @@ serve(async (req) => {
     // Call n8n webhook for AI response
     console.log('Calling n8n webhook for AI response...');
     
+    // Manejo de mensajes largos (sanitización básica para JSON)
+    // Eliminamos caracteres de control que puedan romper el JSON
+    const safeMessage = typeof message === 'string' 
+      ? message.replace(/[\x00-\x1F\x7F]/g, "") 
+      : String(message);
+
     // Detectar tipo de respuesta esperada basándose en el mensaje
-    const messageLower = message.toLowerCase().trim();
+    const messageLower = safeMessage.toLowerCase().trim();
     let tipo_respuesta = 'informativa'; // default
     
     // Palabras clave para tipo visual
@@ -286,8 +302,9 @@ serve(async (req) => {
         .limit(3);
       
       if (!ragError && knowledgeResults && knowledgeResults.length > 0) {
-        // Búsqueda simple por palabras clave del mensaje
-        const keywords = message.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+        // Búsqueda simple por palabras clave del mensaje (limitado para no romper regex)
+        const searchMessage = safeMessage.substring(0, 1000); // Limitar a 1000 chars para la búsqueda RAG
+        const keywords = searchMessage.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
         const relevantDocs = knowledgeResults.filter((doc: any) => {
           const chunk = doc.content_chunk.toLowerCase();
           return keywords.some((kw: string) => chunk.includes(kw));
@@ -308,7 +325,7 @@ serve(async (req) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mensaje: message.trim(),
+          mensaje: safeMessage.trim(),
           id_conversation: conversation_id,
           id_user: user_id,
           tipo_respuesta: tipo_respuesta,
@@ -322,8 +339,16 @@ serve(async (req) => {
       throw new Error('Error al obtener respuesta del agente');
     }
 
-    const webhookData = await webhookResponse.json();
-    console.log('Webhook response received:', JSON.stringify(webhookData));
+    let webhookData;
+    const responseText = await webhookResponse.text();
+    try {
+      webhookData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ Failed to parse webhook response as JSON. Raw response:', responseText.substring(0, 500));
+      throw new Error(`El agente devolvió un formato no válido. Asegúrate de que n8n no haya fallado por timeout. Raw: ${responseText.substring(0, 100)}`);
+    }
+
+    console.log('Webhook response received:', JSON.stringify(webhookData).substring(0, 200) + '...');
 
     // Process the array of messages from n8n
     // The response format is: [{"mensajes": ["msg1", "msg2", ...], "images": ["url1", "url2", ...], "images_count": 2}]
