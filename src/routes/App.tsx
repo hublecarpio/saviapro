@@ -13,7 +13,6 @@ import NotFound from "../pages/NotFound";
 import MindMap from "../pages/MindMap";
 import ResetPassword from "../pages/ResetPassword";
 import { ProtectedRoute } from "./ProtetectedRoute";
-import AdminBeta from "@/pages/AdminBeta";
 import { DashboardLayout } from "@/layout/DashboardLayout";
 import Prompt from "@/components/user/Prompt";
 import RegisterUser from "@/components/user/RegisterUser";
