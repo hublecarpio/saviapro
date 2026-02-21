@@ -573,8 +573,25 @@ const Chat = () => {
     }
     setIsLoading(true);
     toast.info(`Subiendo archivo: ${file.name}`);
+
+    // Mostrar el archivo en el chat DE INMEDIATO como mensaje temporal
+    const fileMessageContent = `📎 Archivo: ${file.name}`;
+    const localFileUrl = URL.createObjectURL(file);
+    const tempFileMessageWithUrl = `${fileMessageContent} [FILE_URL]${localFileUrl}|${file.name}|${file.type}[/FILE_URL]`;
+    
+    // El ID DEBE empezar con 'temp-' para que el Realtime channel lo reemplace
+    const tempMessageId = `temp-${Date.now()}`;
+    const fileMessage: Message = {
+      id: tempMessageId,
+      role: "user",
+      message: tempFileMessageWithUrl,
+      created_at: new Date().toISOString(),
+      conversation_id: conversationId
+    };
+    setMessages(prev => [...prev, fileMessage]);
+
     try {
-      // Primero subir el archivo a S3 para obtener URL permanente
+      // Subir el archivo a S3 para obtener URL permanente
       const s3FormData = new FormData();
       s3FormData.append('file', file);
       s3FormData.append('userId', user.id);
@@ -586,24 +603,14 @@ const Chat = () => {
       let permanentFileUrl: string;
       if (s3Response.error || !s3Response.data?.url) {
         console.warn("⚠️ No se pudo subir a S3, usando URL temporal:", s3Response.error);
-        permanentFileUrl = URL.createObjectURL(file);
+        permanentFileUrl = localFileUrl;
       } else {
         permanentFileUrl = s3Response.data.url;
         console.log("✅ Archivo subido a S3:", permanentFileUrl);
       }
 
-      // Mostrar el archivo en el chat como mensaje del usuario con link de descarga
-      const fileMessageContent = `📎 Archivo: ${file.name}`;
-      const fileMessageWithUrl = `${fileMessageContent} [FILE_URL]${permanentFileUrl}|${file.name}|${file.type}[/FILE_URL]`;
-      const fileMessage: Message = {
-        id: `file-${Date.now()}`,
-        role: "user",
-        message: fileMessageWithUrl,
-        created_at: new Date().toISOString(),
-        conversation_id: conversationId
-      };
-      setMessages(prev => [...prev, fileMessage]);
-      toast.info(`Procesando archivo: ${file.name}`);
+      // Preparar mensaje final para base de datos con URL permanente
+      const finalFileMessageWithUrl = `${fileMessageContent} [FILE_URL]${permanentFileUrl}|${file.name}|${file.type}[/FILE_URL]`;
 
       // Guardar el mensaje del usuario (archivo) en la base de datos CON la URL permanente
       const {
@@ -612,7 +619,7 @@ const Chat = () => {
         conversation_id: conversationId,
         user_id: user.id,
         role: "user",
-        message: fileMessageWithUrl
+        message: finalFileMessageWithUrl
       });
       if (userMsgError) {
         console.error("❌ Error guardando mensaje de archivo del usuario:", userMsgError);
