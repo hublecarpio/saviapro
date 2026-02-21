@@ -62,10 +62,8 @@ export function AppSidebar({
   const loadConversations = async (showLoading: boolean = false) => {
     try {
       if (!user) {
-        console.log('No user found, skipping conversations load');
         return;
       }
-      console.log('Loading conversations for user:', user.id);
       if (showLoading) setLoading(true);
       const {
         data: conversationsData,
@@ -102,11 +100,10 @@ export function AppSidebar({
           first_message: messages?.message || conv.title || 'Nueva conversación'
         };
       }));
-      console.log('Conversations loaded:', conversationsWithTitle.length);
       setConversations(conversationsWithTitle);
       setLoading(false);
     } catch (error) {
-      console.log("error: ", error);
+      console.error("error: ", error);
     }
   };
   const handleDelete = async (e: React.MouseEvent, conversationId: string) => {

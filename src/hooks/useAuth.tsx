@@ -61,13 +61,30 @@ export const useAuth = () => {
   }, [setUser, setLoading, setError]);
 
   // Función para redirigir basado en rol
-  const redirectBasedOnRole = useCallback((roles: string[], starterCompleted: boolean) => {
+  const redirectBasedOnRole = useCallback(async (userId: string, roles: string[], starterCompleted: boolean) => {
     if (roles.includes('admin')) {
       navigate('/admin', { replace: true });
     } else if (roles.includes('tutor')) {
       navigate('/tutor', { replace: true });
     } else if (starterCompleted) {
-      navigate('/chat', { replace: true });
+      try {
+        const { data } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (data && data.id) {
+          navigate(`/chat/${data.id}`, { replace: true });
+        } else {
+          navigate('/chat', { replace: true });
+        }
+      } catch (error) {
+        console.error('Error fetching latest conversation:', error);
+        navigate('/chat', { replace: true });
+      }
     } else {
       navigate('/starter', { replace: true });
     }
@@ -91,7 +108,7 @@ export const useAuth = () => {
         if (userData) {
           // Pequeño delay para evitar race conditions
           setTimeout(() => {
-            redirectBasedOnRole(userData.roles, userData.starterCompleted);
+            redirectBasedOnRole(data.user.id, userData.roles, userData.starterCompleted);
           }, 100);
         }
       }
@@ -195,7 +212,7 @@ export const useAuth = () => {
             const userData = await loadUserData(session.user.id, session.user.email);
             if (userData && window.location.pathname === '/') {
               setTimeout(() => {
-                redirectBasedOnRole(userData.roles, userData.starterCompleted);
+                redirectBasedOnRole(session.user.id, userData.roles, userData.starterCompleted);
               }, 100);
             }
           } else if (event === 'SIGNED_OUT') {
