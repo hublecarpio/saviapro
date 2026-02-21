@@ -44,7 +44,6 @@ const coerceToArray = (value: any): string[] => {
 
 const normalizeProfileData = (raw: ProfileData, ageGroup: AgeGroup): ProfileData => {
   if (!ageGroup || !starterSchema[ageGroup]) {
-    console.log("⚠️ No hay grupo de edad o schema, retornando datos raw");
     return raw;
   }
   
@@ -62,7 +61,6 @@ const normalizeProfileData = (raw: ProfileData, ageGroup: AgeGroup): ProfileData
     }
   }
 
-  console.log("🔄 Datos normalizados:", normalized);
   return normalized;
 };
 
@@ -88,22 +86,16 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
       if (error) throw error;
 
       if (data) {
-        console.log("📊 Datos cargados de starter_profiles:", data);
-        
         // Extraer profile_data (contiene todas las respuestas del usuario)
         const rawProfile = (data.profile_data || {}) as ProfileData;
-        console.log("📝 Profile data raw:", rawProfile);
 
         // Priorizar la edad de la columna age, luego de profile_data
         const ageFromData = data.age ?? rawProfile.age ?? null;
         const parsedAge = typeof ageFromData === 'string' ? parseInt(ageFromData, 10) : ageFromData;
         const cleanAge = (typeof parsedAge === 'number' && !isNaN(parsedAge)) ? parsedAge : null;
-        
-        console.log("👤 Edad detectada:", cleanAge);
 
         // Inferir grupo de edad
         const inferredGroup: AgeGroup = (data.age_group as AgeGroup) || inferAgeGroupFromAge(cleanAge);
-        console.log("🎯 Grupo de edad:", inferredGroup);
 
         // Normalizar datos según el grupo de edad
         const normalized = normalizeProfileData(rawProfile, inferredGroup);
@@ -114,13 +106,10 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
           age: cleanAge ?? "",
         };
 
-        console.log("✅ Datos finales a mostrar:", finalData);
-
         setProfileData(finalData);
         setAgeGroup(inferredGroup);
       } else {
         // No hay perfil guardado, crear uno nuevo
-        console.log("ℹ️ No se encontró perfil, creando nuevo");
         setProfileData({
           age: "",
         });
@@ -144,21 +133,15 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
     try {
       setSaving(true);
 
-      console.log("💾 Guardando perfil...", profileData);
-
       // Parsear edad
       const ageValue = typeof profileData.age === "number" ? profileData.age : parseInt(profileData.age, 10);
       const cleanAge = Number.isNaN(ageValue) ? null : ageValue;
 
-      console.log("👤 Edad a guardar:", cleanAge);
-
       // Determinar grupo de edad
       const finalAgeGroup: AgeGroup = ageGroup || inferAgeGroupFromAge(cleanAge || undefined);
-      console.log("🎯 Grupo de edad a guardar:", finalAgeGroup);
 
       // Normalizar datos finales (asegurar arrays para multiple/ranking)
       const finalProfileData = normalizeProfileData(profileData, finalAgeGroup);
-      console.log("📝 Datos finales a guardar:", finalProfileData);
 
       // Upsert en la tabla starter_profiles
       const { error } = await supabase.from("starter_profiles").upsert(
@@ -175,8 +158,6 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
       );
 
       if (error) throw error;
-
-      console.log("✅ Perfil guardado exitosamente");
 
       toast({
         title: "¡Guardado! ✨",
