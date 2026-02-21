@@ -237,7 +237,29 @@ const Tutor = () => {
 
       if (error) {
         console.error("Error inviting student:", error);
-        toast({ title: "Error", description: error.message || "Error al enviar invitación", variant: "destructive" });
+        let errorMessage = "Error al enviar invitación";
+        
+        // Intentar extraer el mensaje de error de la respuesta si es un error HTTP de Supabase
+        if (error.context && typeof error.context === 'object' && error.context.blob) {
+            try {
+                // Read the blob text
+                const text = await (error.context.blob as Blob).text();
+                const parsed = JSON.parse(text);
+                if (parsed.error) {
+                    errorMessage = parsed.error;
+                }
+            } catch (e) {
+                // If we can't parse it, fallback to default or generic message
+                console.error("Failed to parse error blob:", e);
+                if (error.message && !error.message.includes("non-2xx")) {
+                    errorMessage = error.message;
+                }
+            }
+        } else if (error.message && !error.message.includes("non-2xx")) {
+            errorMessage = error.message;
+        }
+
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
         return;
       }
 
