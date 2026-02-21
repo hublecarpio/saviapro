@@ -96,6 +96,7 @@ const Chat = () => {
   // Hook de grabación de audio
   const {
     isRecording,
+    isProcessing,
     toggleRecording
   } = useAudioRecorder({
     webhookUrl: import.meta.env.VITE_WEBHOOK_AUDIO_URL,
@@ -1390,9 +1391,13 @@ const Chat = () => {
                       <FileUp className="h-3.5 w-3.5 text-muted-foreground" />
                     </Button>
 
-                    <Button variant="ghost" size="icon" onClick={toggleRecording} disabled={isLoading} className={`h-7 w-7 rounded-full hover:bg-accent/50 transition-all ${isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground animate-pulse" : ""}`} title={isRecording ? "Detener grabación" : "Iniciar grabación de audio"}>
-                      {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5 text-muted-foreground" />}
+                    <Button variant="ghost" size="icon" onClick={toggleRecording} disabled={isLoading || isProcessing} className={`h-7 w-7 rounded-full hover:bg-accent/50 transition-all ${isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground animate-pulse" : ""}`} title={isRecording ? "Detener grabación" : "Iniciar grabación de audio"}>
+                      {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5 text-muted-foreground" />}
                     </Button>
+                    
+                    {isProcessing && (
+                      <span className="text-[10px] text-primary animate-pulse ml-1 font-medium">Procesando audio...</span>
+                    )}
                   </div>
 
                   <span className="flex-1" />
@@ -1447,9 +1452,13 @@ const Chat = () => {
                       <FileUp className="h-4 w-4 text-muted-foreground" />
                     </Button>
 
-                    <Button variant="ghost" size="icon" onClick={toggleRecording} disabled={isLoading} className={`h-8 w-8 rounded-full hover:bg-accent/50 transition-all ${isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground animate-pulse" : ""}`} title={isRecording ? "Detener grabación" : "Grabar audio"}>
-                      {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-muted-foreground" />}
+                    <Button variant="ghost" size="icon" onClick={toggleRecording} disabled={isLoading || isProcessing} className={`h-8 w-8 rounded-full hover:bg-accent/50 transition-all ${isRecording ? "bg-destructive hover:bg-destructive text-destructive-foreground animate-pulse" : ""}`} title={isRecording ? "Detener grabación" : "Grabar audio"}>
+                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-muted-foreground" />}
                     </Button>
+
+                    {isProcessing && (
+                      <span className="text-xs text-primary animate-pulse ml-1 font-medium">Procesando audio...</span>
+                    )}
                   </div>
 
                   <p className="text-xs text-muted-foreground/70">

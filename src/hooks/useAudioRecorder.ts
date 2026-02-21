@@ -7,11 +7,15 @@ interface UseAudioRecorderProps {
 
 export const useAudioRecorder = ({ webhookUrl, onTranscriptionReceived }: UseAudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const isStartingRef = useRef(false);
 
   const startRecording = async () => {
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -35,6 +39,8 @@ export const useAudioRecorder = ({ webhookUrl, onTranscriptionReceived }: UseAud
         const formData = new FormData();
         formData.append("file", blob, `audio.${mimeType === "audio/webm" ? "webm" : "mp4"}`);
 
+        setIsProcessing(true);
+
         try {
           const res = await fetch(webhookUrl, {
             method: "POST",
@@ -52,12 +58,29 @@ export const useAudioRecorder = ({ webhookUrl, onTranscriptionReceived }: UseAud
             data?.message;
 
           if (responseText) {
-            onTranscriptionReceived(responseText);
+            const cleanText = responseText.trim();
+            const lowerText = cleanText.toLowerCase();
+            // Filtrar respuestas vacías o placeholders de silencio comunes en Whisper/STT
+            if (
+              cleanText &&
+              !lowerText.includes("[no speech]") &&
+              !lowerText.includes("[silencio]") &&
+              !lowerText.includes("[blank audio]") &&
+              cleanText !== "!" &&
+              cleanText !== "." &&
+              cleanText !== "¿?"
+            ) {
+              onTranscriptionReceived(cleanText);
+            } else {
+              console.log("Audio ignorado (silencio o texto irrelevante):", cleanText);
+            }
           } else {
             console.error("No se encontró texto en la respuesta del webhook:", data);
           }
         } catch (err) {
           console.error("Error enviando audio:", err);
+        } finally {
+          setIsProcessing(false);
         }
 
         // Limpiar
@@ -72,6 +95,8 @@ export const useAudioRecorder = ({ webhookUrl, onTranscriptionReceived }: UseAud
       setIsRecording(true);
     } catch (error) {
       console.error("No se pudo acceder al micrófono:", error);
+    } finally {
+      isStartingRef.current = false;
     }
   };
 
@@ -90,5 +115,5 @@ export const useAudioRecorder = ({ webhookUrl, onTranscriptionReceived }: UseAud
     }
   };
 
-  return { isRecording, toggleRecording };
+  return { isRecording, isProcessing, toggleRecording };
 };
