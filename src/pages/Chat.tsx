@@ -413,7 +413,12 @@ const Chat = () => {
     });
 
     return () => {
-      supabase.removeChannel(channel).catch(() => {});
+      // Remover subscripción cuidadosamente
+      if (channel) {
+        supabase.removeChannel(channel).catch(err => {
+          console.warn("Error silence on unmount removeChannel:", err);
+        });
+      }
     };
   }, [currentConversationId]);
 
@@ -1230,7 +1235,7 @@ const Chat = () => {
                           <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl overflow-hidden shadow-sm">
                             {/* Preview compacto del mapa */}
                             <div className="relative h-48 md:h-56 overflow-hidden bg-background/50">
-                              <iframe srcDoc={mindMap.html_content} className="w-full h-full border-0 pointer-events-none scale-75 origin-top-left" title={`Preview: ${mindMap.tema}`} sandbox="allow-scripts allow-same-origin" style={{
+                              <iframe srcDoc={mindMap.html_content} className="w-full h-full border-0 pointer-events-none scale-75 origin-top-left" title={`Preview: ${mindMap.tema}`} sandbox="allow-scripts" style={{
                           width: '133%',
                           height: '133%'
                         }} />
@@ -1502,7 +1507,7 @@ const Chat = () => {
             </DialogDescription>
           </DialogHeader>
           {selectedMindMap && <div className="flex-1 flex items-center justify-center overflow-hidden">
-              <iframe srcDoc={selectedMindMap.html_content} className="w-full h-full border-0 rounded-lg" title={`Mapa mental: ${selectedMindMap.tema}`} sandbox="allow-scripts allow-same-origin" style={{
+              <iframe srcDoc={selectedMindMap.html_content} className="w-full h-full border-0 rounded-lg" title={`Mapa mental: ${selectedMindMap.tema}`} sandbox="allow-scripts" style={{
             minHeight: '400px',
             maxHeight: '600px'
           }} />
