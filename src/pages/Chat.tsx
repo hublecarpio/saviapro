@@ -663,7 +663,17 @@ const Chat = () => {
       console.log("📥 Respuesta del webhook de archivos:", data);
 
       // Extraer el mensaje de la respuesta - buscar en diferentes formatos posibles
-      const response = data?.mensaje || data?.respuesta || data?.message || data?.response?.mensaje || data?.response?.respuesta || data?.response?.text || data?.response?.message || data?.response?.content || (typeof data === 'string' ? data : null);
+      const rawResponse = data?.mensaje || data?.respuesta || data?.message || data?.response?.mensaje || data?.response?.respuesta || data?.response?.text || data?.response?.message || data?.response?.content || (typeof data === 'string' ? data : null);
+      
+      let response = '';
+      if (Array.isArray(rawResponse)) {
+        response = rawResponse.join('\n\n');
+      } else if (typeof rawResponse === 'string') {
+        response = rawResponse;
+      } else if (rawResponse) {
+        response = JSON.stringify(rawResponse);
+      }
+      
       console.log("📝 Mensaje procesado del webhook de archivos:", response);
       if (response) {
         toast.success("Archivo procesado, enviando al asistente...");
