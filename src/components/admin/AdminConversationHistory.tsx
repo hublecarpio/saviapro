@@ -75,16 +75,14 @@ export const AdminConversationHistory = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations", filter: `user_id=eq.${selectedUserId}` },
-        (payload) => {
-          console.log("Admin Realtime [conversations]:", payload);
+        () => {
           loadConversations(selectedUserId, true);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },
-        (payload) => {
-          console.log("Admin Realtime [messages]:", payload);
+        () => {
           loadConversations(selectedUserId, true);
           if (selectedConversation) {
             loadConversationContent(selectedConversation, true);
@@ -94,8 +92,7 @@ export const AdminConversationHistory = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "mind_maps" },
-        (payload) => {
-          console.log("Admin Realtime [mind_maps]:", payload);
+        () => {
           if (selectedConversation) {
             loadConversationContent(selectedConversation, true);
           }
@@ -104,16 +101,13 @@ export const AdminConversationHistory = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "fichas_didacticas" },
-        (payload) => {
-          console.log("Admin Realtime [fichas_didacticas]:", payload);
+        () => {
           if (selectedConversation) {
             loadConversationContent(selectedConversation, true);
           }
         }
       )
-      .subscribe((status) => {
-        console.log("Admin Dashboard Realtime subscription status:", status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
