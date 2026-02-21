@@ -679,7 +679,8 @@ const Chat = () => {
             message: response,
             conversation_id: conversationId,
             user_id: user.id,
-            tipo_respuesta: "visual"
+            tipo_respuesta: "visual",
+            skip_user_message: true
           }
         });
 
