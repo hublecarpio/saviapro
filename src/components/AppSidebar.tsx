@@ -120,6 +120,7 @@ export function AppSidebar({
       console.error('Error deleting conversation:', error);
     } else {
       toast.success("Conversación eliminada");
+      setConversations(prev => prev.filter(c => c.id !== conversationId));
       if (currentConversationId === conversationId) {
         onNewConversation();
       }
