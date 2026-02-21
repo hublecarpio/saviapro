@@ -35,6 +35,10 @@ const InviteRegister = () => {
 
   const validateToken = async () => {
     try {
+      // Si el usuario ya estaba logueado con otra cuenta (ej: es el admin probando el link),
+      // cerramos la sesión para evitar conflictos y que pueda registrarse desde cero.
+      await supabase.auth.signOut();
+
       const { data, error } = await supabase
         .from("invited_users")
         .select("email, used")
