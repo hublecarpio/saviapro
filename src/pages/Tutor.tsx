@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { User,  UserPlus, Eye, X, MessageSquare, Brain, Calendar } from "lucide-react";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 
@@ -26,6 +26,7 @@ interface StudentMetrics {
 
 const Tutor = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [studentMetrics, setStudentMetrics] = useState<Record<string, StudentMetrics>>({});
@@ -108,7 +109,7 @@ const Tutor = () => {
       setStudentMetrics(metrics);
     } catch (error) {
       console.error("Error loading students:", error);
-      toast.error("Error al cargar estudiantes");
+      toast({ title: "Error", description: "Error al cargar estudiantes", variant: "destructive" });
     }
   };
 
@@ -160,12 +161,12 @@ const Tutor = () => {
 
   const handleCreateStudent = async () => {
     if (!newStudentEmail) {
-      toast.error("Por favor ingresa un correo electrónico");
+      toast({ title: "Error", description: "Por favor ingresa un correo electrónico", variant: "destructive" });
       return;
     }
 
     if (students.length >= 2) {
-      toast.error("Solo puedes crear máximo 2 estudiantes");
+      toast({ title: "Error", description: "Solo puedes crear máximo 2 estudiantes", variant: "destructive" });
       return;
     }
 
@@ -182,7 +183,11 @@ const Tutor = () => {
           .limit(1);
           
       if (existingProfile && existingProfile.length > 0) {
-          toast.error("Este usuario ya tiene una cuenta en el sistema");
+          toast({
+              title: "Email ya registrado",
+              description: "Este usuario ya tiene una cuenta en el sistema",
+              variant: "destructive",
+          });
           setCreating(false);
           return;
       }
@@ -196,9 +201,17 @@ const Tutor = () => {
 
       if (existingInvite && existingInvite.length > 0) {
           if (existingInvite[0].used) {
-              toast.error("Este usuario ya ha sido invitado y registrado");
+              toast({
+                  title: "Email ya registrado",
+                  description: "Este usuario ya ha sido invitado y registrado",
+                  variant: "destructive",
+              });
           } else {
-              toast.error("Este usuario ya tiene una invitación pendiente");
+              toast({
+                  title: "Email ya invitado",
+                  description: "Este usuario ya tiene una invitación pendiente",
+                  variant: "destructive",
+              });
           }
           setCreating(false);
           return;
@@ -207,7 +220,7 @@ const Tutor = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        toast.error("No hay sesión activa");
+        toast({ title: "Error", description: "No hay sesión activa", variant: "destructive" });
         setCreating(false);
         return;
       }
@@ -224,22 +237,22 @@ const Tutor = () => {
 
       if (error) {
         console.error("Error inviting student:", error);
-        toast.error(error.message || "Error al enviar invitación");
+        toast({ title: "Error", description: error.message || "Error al enviar invitación", variant: "destructive" });
         return;
       }
 
       if (!data.success) {
-        toast.error(data.error || "Error al enviar invitación");
+        toast({ title: "Error", description: data.error || "Error al enviar invitación", variant: "destructive" });
         return;
       }
 
-      toast.success("Invitación enviada al estudiante");
+      toast({ title: "Éxito", description: "Invitación enviada al estudiante" });
       setShowCreateDialog(false);
       setNewStudentEmail("");
       await loadStudents(user.id);
     } catch (error) {
       console.error("Error inviting student:", error);
-      toast.error("Error al enviar invitación");
+      toast({ title: "Error", description: "Error al enviar invitación", variant: "destructive" });
     } finally {
       setCreating(false);
     }
