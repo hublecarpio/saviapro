@@ -30,6 +30,22 @@ export const TutorResumen = ({ students, tutorId }: TutorResumenProps) => {
 
   useEffect(() => {
     loadStudentActivities();
+
+    if (students.length === 0) return;
+
+    const channel = supabase
+      .channel("tutor-resumen-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        loadStudentActivities();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "quiz_results" }, () => {
+        loadStudentActivities();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [students]);
 
   const loadStudentActivities = async () => {

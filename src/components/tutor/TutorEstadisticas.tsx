@@ -39,6 +39,25 @@ export const TutorEstadisticas = ({ students, tutorId }: TutorEstadisticasProps)
 
   useEffect(() => {
     loadGroupStats();
+
+    if (students.length === 0) return;
+
+    const channel = supabase
+      .channel("tutor-estadisticas-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        loadGroupStats();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "quiz_results" }, () => {
+        loadGroupStats();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
+        loadGroupStats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [students]);
 
   const loadGroupStats = async () => {

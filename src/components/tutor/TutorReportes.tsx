@@ -41,6 +41,19 @@ export const TutorReportes = ({ students, tutorId }: TutorReportesProps) => {
 
   useEffect(() => {
     loadReports();
+
+    if (!tutorId) return;
+
+    const channel = supabase
+      .channel("tutor-reportes-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tutor_reports", filter: `tutor_id=eq.${tutorId}` }, () => {
+        loadReports();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [students, tutorId]);
 
   const loadReports = async () => {

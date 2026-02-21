@@ -36,6 +36,23 @@ export const TutorAvance = ({ students, tutorId }: TutorAvanceProps) => {
   useEffect(() => {
     if (selectedStudent) {
       loadStudentProgress(selectedStudent);
+
+      const channel = supabase
+        .channel(`tutor-avance-${selectedStudent}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `user_id=eq.${selectedStudent}` }, () => {
+          loadStudentProgress(selectedStudent);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "quiz_results", filter: `user_id=eq.${selectedStudent}` }, () => {
+          loadStudentProgress(selectedStudent);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `user_id=eq.${selectedStudent}` }, () => {
+          loadStudentProgress(selectedStudent);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [selectedStudent]);
 
