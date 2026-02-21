@@ -745,6 +745,7 @@ const Chat = () => {
           setMessages(prev => [...prev, assistantMessage]);
           console.log("✅ Mensaje añadido al estado del chat");
           setIsLoading(false);
+          toast.success("Archivo procesado correctamente");
         } else {
           // Si no hay respuesta directa, iniciar polling para buscar la respuesta
           console.log("🔄 Iniciando polling para obtener respuesta del asistente...");
@@ -770,6 +771,7 @@ const Chat = () => {
                 console.log("✅ Respuesta del asistente recibida via polling");
                 setMessages(newMessages.filter(m => !m.id.startsWith('temp-') && !m.id.startsWith('file-')) as Message[]);
                 setIsLoading(false);
+                toast.success("Archivo procesado correctamente");
                 return;
               }
             }
