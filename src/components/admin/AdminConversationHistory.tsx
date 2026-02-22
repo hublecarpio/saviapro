@@ -421,13 +421,7 @@ export const AdminConversationHistory = () => {
                 <SelectContent>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <User className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{user.name || user.email || "Sin nombre"}</span>
-                        {user.email && user.name && (
-                          <span className="text-muted-foreground text-xs truncate">({user.email})</span>
-                        )}
-                      </div>
+                      {user.name || user.email || "Sin nombre"}
                     </SelectItem>
                   ))}
                 </SelectContent>
