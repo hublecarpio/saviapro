@@ -19,6 +19,7 @@ import { useUserStore } from "@/store/useUserStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { SofiaThinking } from "@/components/SofiaThinking";
 import sofiPiensa from "@/assets/sofi_piensa.png";
+import { GenerationProgressBar } from "@/components/GenerationProgressBar";
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -1316,7 +1317,7 @@ const Chat = () => {
               })}
 
                   {/* Indicador de Sofia pensando - para loading normal */}
-                  {isLoading && isGeneratingMindMap !== currentConversationId && isGeneratingVideo !== currentConversationId && isGeneratingPodcast !== currentConversationId && isGeneratingFichas !== currentConversationId && <div className="flex justify-start">
+                  {isLoading && isGeneratingMindMap !== currentConversationId && isGeneratingVideo !== currentConversationId && isGeneratingPodcast !== currentConversationId && isGeneratingFichas !== currentConversationId && isGeneratingInforme !== currentConversationId && <div className="flex justify-start">
                       <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
                         <SofiaThinking />
                         <span className="text-xs md:text-sm text-muted-foreground">
@@ -1325,53 +1326,41 @@ const Chat = () => {
                       </div>
                     </div>}
 
-                  {/* Indicador específico para generación de mapa mental */}
-                  {isGeneratingMindMap === currentConversationId && <div className="flex justify-start w-full mb-4">
-                      <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl p-4 shadow-sm">
-                        <div className="flex items-center gap-3 mb-3">
-                          <Brain className="h-5 w-5 text-primary animate-pulse" />
-                          <span className="text-sm font-medium text-foreground">
-                            Generando mapa mental...
-                          </span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                          <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '70%' }} />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Sofia está organizando los conceptos...
-                        </p>
-                      </div>
-                    </div>}
+                  {/* Indicadores de progreso simulado para generación de recursos multimedia/documentos */}
+                  <GenerationProgressBar
+                    isGenerating={isGeneratingMindMap === currentConversationId}
+                    type="mindmap"
+                    label="Generando mapa mental..."
+                    subLabel="Sofia está organizando los conceptos..."
+                  />
 
-                  {/* Indicador para generación de video */}
-                  {isGeneratingVideo === currentConversationId && <div className="flex justify-start">
-                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
-                        <SofiaThinking />
-                        <span className="text-xs md:text-sm text-muted-foreground">
-                          Sofia está generando el video...
-                        </span>
-                      </div>
-                    </div>}
+                  <GenerationProgressBar
+                    isGenerating={isGeneratingVideo === currentConversationId}
+                    type="video"
+                    label="Generando video resumen..."
+                    subLabel="Sofia está editando y procesando el video..."
+                  />
 
-                  {/* Indicador para generación de podcast */}
-                  {isGeneratingPodcast === currentConversationId && <div className="flex justify-start">
-                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
-                        <SofiaThinking />
-                        <span className="text-xs md:text-sm text-muted-foreground">
-                          Sofia está generando el podcast...
-                        </span>
-                      </div>
-                    </div>}
+                  <GenerationProgressBar
+                    isGenerating={isGeneratingPodcast === currentConversationId}
+                    type="podcast"
+                    label="Generando podcast..."
+                    subLabel="Sofia está sintetizando el audio..."
+                  />
 
-                  {/* Indicador para generación de fichas */}
-                  {isGeneratingFichas === currentConversationId && <div className="flex justify-start">
-                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
-                        <SofiaThinking />
-                        <span className="text-xs md:text-sm text-muted-foreground">
-                          Sofia está generando las fichas...
-                        </span>
-                      </div>
-                    </div>}
+                  <GenerationProgressBar
+                    isGenerating={isGeneratingFichas === currentConversationId}
+                    type="fichas"
+                    label="Generando fichas didácticas..."
+                    subLabel="Sofia está extrayendo información clave..."
+                  />
+
+                  <GenerationProgressBar
+                    isGenerating={isGeneratingInforme === currentConversationId}
+                    type="informe"
+                    label="Generando informe..."
+                    subLabel="Sofia está redactando el documento..."
+                  />
 
                   <div ref={messagesEndRef} />
                 </div>}
