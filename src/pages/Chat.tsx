@@ -94,8 +94,8 @@ const Chat = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingTranscriptionRef = useRef(false);
   const dragCounter = useRef(0);
-  // Controla si el próximo scroll debe ser instantáneo (apertura de conversación) o suave (mensaje nuevo)
-  const isInitialLoadRef = useRef(false);
+  // Controla si el scroll inicial ya fue ejecutado (para no interferir con el scroll suave de mensajes nuevos)
+  const isInitialScrollDoneRef = useRef(false);
 
   // Hook de grabación de audio
   const {
@@ -129,12 +129,9 @@ const Chat = () => {
     }
   };
   useEffect(() => {
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      setTimeout(() => scrollToBottom(true), 50);
-    } else {
-      scrollToBottom();
-    }
+    // Solo hacer scroll suave cuando llega un nuevo mensaje después de la carga inicial
+    if (!isInitialScrollDoneRef.current) return;
+    scrollToBottom();
   }, [messages, mindMaps, fichasSets]);
 
   // Combinar mensajes, mapas mentales y fichas en un solo array ordenado
@@ -194,17 +191,16 @@ const Chat = () => {
     setHasPodcastGenerated(false);
     setShowFichas(false);
     setSelectedFichasId(null);
-    // Marcar que la próxima actualización de mensajes es una carga inicial → scroll instantáneo al fondo
-    isInitialLoadRef.current = true;
+    // Marcar que el scroll inicial aún no se ha hecho para esta conversación
+    isInitialScrollDoneRef.current = false;
 
     // Cargar mensajes existentes y verificar si ya hay video/podcast
     const loadInitialMessages = async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("messages").select("*").eq("conversation_id", currentConversationId).order("created_at", {
-        ascending: true
-      });
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
       if (error) {
         console.error("Error loading messages:", error);
         toast.error("Error cargando mensajes");
@@ -212,12 +208,10 @@ const Chat = () => {
       }
       const messagesData = (data || []) as Message[];
       setMessages(messagesData);
-      
-      // Verificar si ya existe video o podcast en los mensajes
-      const hasVideo = messagesData.some(m => 
+      const hasVideo = messagesData.some(m =>
         m.role === "assistant" && m.message.includes("Video resumen generado")
       );
-      const hasPodcast = messagesData.some(m => 
+      const hasPodcast = messagesData.some(m =>
         m.role === "assistant" && m.message.includes("Podcast resumen generado")
       );
       setHasVideoGenerated(hasVideo);
@@ -226,12 +220,11 @@ const Chat = () => {
 
     // Cargar mapas mentales existentes
     const loadInitialMindMaps = async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("mind_maps").select("*").eq("conversation_id", currentConversationId).order("created_at", {
-        ascending: true
-      });
+      const { data, error } = await supabase
+        .from("mind_maps")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
       if (error) {
         console.error("Error loading mind maps:", error);
         return;
@@ -241,31 +234,24 @@ const Chat = () => {
 
     // Cargar fichas existentes agrupadas por created_at
     const loadInitialFichas = async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("fichas_didacticas").select("*").eq("conversation_id", currentConversationId).order("created_at", {
-        ascending: true
-      });
+      const { data, error } = await supabase
+        .from("fichas_didacticas")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
       if (error) {
         console.error("Error loading fichas:", error);
         return;
       }
       if (data && data.length > 0) {
-        // Agrupar fichas por created_at (asumiendo que las 7 fichas se crean juntas)
         const grouped = new Map<string, typeof data>();
         data.forEach(ficha => {
           const key = new Date(ficha.created_at).toISOString();
-          if (!grouped.has(key)) {
-            grouped.set(key, []);
-          }
+          if (!grouped.has(key)) grouped.set(key, []);
           grouped.get(key)!.push(ficha);
         });
-
-        // Convertir a FichasSet[]
         const fichasSetsData: FichasSet[] = Array.from(grouped.entries()).map(([timestamp, fichas]) => ({
           id: fichas[0].id,
-          // Usar el ID de la primera ficha como ID del set
           created_at: timestamp,
           conversation_id: currentConversationId,
           user_id: fichas[0].user_id,
@@ -278,9 +264,23 @@ const Chat = () => {
         setFichasSets(fichasSetsData);
       }
     };
-    loadInitialMessages();
-    loadInitialMindMaps();
-    loadInitialFichas();
+
+    // Cargar todo en paralelo y hacer scroll UNA SOLA VEZ cuando todo esté listo
+    Promise.all([
+      loadInitialMessages(),
+      loadInitialMindMaps(),
+      loadInitialFichas(),
+    ]).then(() => {
+      // Esperar dos frames de animación para que React haya pintado el contenido
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            scrollToBottom(true);
+            isInitialScrollDoneRef.current = true;
+          }, 80);
+        });
+      });
+    });
 
     // Suscribirse a nuevos mensajes
     const channelName = `chat-${currentConversationId}`;
