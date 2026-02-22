@@ -368,7 +368,7 @@ const RegisterUser = () => {
                             </div>
                         )}
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                             <Input
                                 type="email"
                                 placeholder={
@@ -380,7 +380,7 @@ const RegisterUser = () => {
                                 onChange={(e) => setNewUserEmail(e.target.value)}
                                 onKeyPress={(e) => e.key === "Enter" && handleInviteUser()}
                             />
-                            <Button onClick={handleInviteUser}>
+                            <Button onClick={handleInviteUser} className="shrink-0">
                                 <UserPlus className="w-4 h-4 mr-2" />
                                 Invitar {inviteType === "admin" ? "Admin" : inviteType === "tutor" ? "Tutor" : "Estudiante"}
                             </Button>
@@ -408,13 +408,13 @@ const RegisterUser = () => {
                                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                                     >
                                         <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-medium">{user.email}</p>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                                <p className="font-medium truncate min-w-0">{user.email}</p>
                                                 <Badge variant={
                                                     user.inviteType === "admin" ? "default" :
                                                     user.inviteType === "tutor" ? "secondary" : 
                                                     "outline"
-                                                }>
+                                                } className="shrink-0">
                                                     {user.inviteType === "admin" ? "Admin" : 
                                                      user.inviteType === "tutor" ? "Tutor" : "Estudiante"}
                                                 </Badge>

@@ -448,7 +448,7 @@ export const AdminConversationHistory = () => {
           )}
 
           {conversations.length > 0 && (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Lista de conversaciones */}
               <div>
                 <h3 className="font-medium mb-2 flex items-center gap-2">
@@ -544,7 +544,7 @@ export const AdminConversationHistory = () => {
                               {conversationContent.messages.slice(0, visibleMessagesCount).map((msg) => (
                                 <div
                                   key={msg.id}
-                                  className={`p-2 rounded text-xs ${
+                                  className={`p-2 rounded text-xs overflow-hidden ${
                                     msg.role === "user" ? "bg-blue-50" : "bg-gray-50"
                                   }`}
                                 >

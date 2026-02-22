@@ -210,26 +210,28 @@ const ListUser = () => {
                                 No hay usuarios registrados aún
                             </p>
                         ) : (
-                            <div className="rounded-md border">
+                            <div className="rounded-md border overflow-x-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Nombre</TableHead>
                                             <TableHead>Email</TableHead>
                                             <TableHead>Roles</TableHead>
-                                            <TableHead>Invitado por</TableHead>
-                                            <TableHead>Starter</TableHead>
-                                            <TableHead>Fecha</TableHead>
+                                            <TableHead className="hidden md:table-cell">Invitado por</TableHead>
+                                            <TableHead className="hidden md:table-cell">Starter</TableHead>
+                                            <TableHead className="hidden md:table-cell">Fecha</TableHead>
                                             <TableHead className="w-[80px]">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {registeredUsers.map((user) => (
                                             <TableRow key={user.id}>
-                                                <TableCell className="font-medium">
-                                                    {user.name || "Sin nombre"}
+                                                <TableCell className="font-medium max-w-[120px]">
+                                                    <p className="truncate">{user.name || "Sin nombre"}</p>
                                                 </TableCell>
-                                                <TableCell>{user.email}</TableCell>
+                                                <TableCell className="max-w-[150px]">
+                                                    <p className="truncate">{user.email}</p>
+                                                </TableCell>
                                                 <TableCell>
                                                     <div className="flex gap-1 flex-wrap">
                                                         {user.roles.length === 0 ? (
@@ -250,7 +252,7 @@ const ListUser = () => {
                                                         )}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="hidden md:table-cell">
                                                     {user.invitedBy ? (
                                                         <span className="text-sm">
                                                             {user.invitedBy.name || user.invitedBy.email}
@@ -259,7 +261,7 @@ const ListUser = () => {
                                                         <span className="text-muted-foreground text-sm">-</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="hidden md:table-cell">
                                                     {user.starter_completed ? (
                                                         <Badge variant="default" className="bg-green-600">
                                                             ✓
@@ -268,7 +270,7 @@ const ListUser = () => {
                                                         <Badge variant="outline">-</Badge>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground text-sm">
+                                                <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
                                                     {new Date(user.created_at).toLocaleDateString('es-ES', {
                                                         day: '2-digit',
                                                         month: '2-digit',
