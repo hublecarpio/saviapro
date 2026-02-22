@@ -93,6 +93,8 @@ const Chat = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingTranscriptionRef = useRef(false);
   const dragCounter = useRef(0);
+  // Controla si el próximo scroll debe ser instantáneo (apertura de conversación) o suave (mensaje nuevo)
+  const isInitialLoadRef = useRef(false);
 
   // Hook de grabación de audio
   const {
@@ -115,13 +117,21 @@ const Chat = () => {
       setMessages([]);
     }
   }, [conversationId]);
-  const scrollToBottom = () => {
+  const scrollToBottom = (instant = false) => {
     messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth"
+      behavior: instant ? "instant" : "smooth"
     });
   };
   useEffect(() => {
-    scrollToBottom();
+    if (isInitialLoadRef.current) {
+      // Apertura de conversación: ir al final sin animación
+      isInitialLoadRef.current = false;
+      // Usamos un pequeño delay para asegurar que el DOM terminó de renderizar
+      setTimeout(() => scrollToBottom(true), 50);
+    } else {
+      // Mensaje nuevo en tiempo real: scroll suave
+      scrollToBottom();
+    }
   }, [messages, mindMaps, fichasSets]);
 
   // Combinar mensajes, mapas mentales y fichas en un solo array ordenado
@@ -181,6 +191,8 @@ const Chat = () => {
     setHasPodcastGenerated(false);
     setShowFichas(false);
     setSelectedFichasId(null);
+    // Marcar que la próxima actualización de mensajes es una carga inicial → scroll instantáneo al fondo
+    isInitialLoadRef.current = true;
 
     // Cargar mensajes existentes y verificar si ya hay video/podcast
     const loadInitialMessages = async () => {
