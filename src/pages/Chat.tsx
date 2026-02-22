@@ -89,6 +89,7 @@ const Chat = () => {
   const [hasVideoGenerated, setHasVideoGenerated] = useState(false);
   const [hasPodcastGenerated, setHasPodcastGenerated] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingTranscriptionRef = useRef(false);
@@ -118,18 +119,20 @@ const Chat = () => {
     }
   }, [conversationId]);
   const scrollToBottom = (instant = false) => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: instant ? "instant" : "smooth"
-    });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (instant) {
+      // Scroll directo al contenedor — nunca toca el scroll de la página
+      container.scrollTop = container.scrollHeight;
+    } else {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
   };
   useEffect(() => {
     if (isInitialLoadRef.current) {
-      // Apertura de conversación: ir al final sin animación
       isInitialLoadRef.current = false;
-      // Usamos un pequeño delay para asegurar que el DOM terminó de renderizar
       setTimeout(() => scrollToBottom(true), 50);
     } else {
-      // Mensaje nuevo en tiempo real: scroll suave
       scrollToBottom();
     }
   }, [messages, mindMaps, fichasSets]);
@@ -1055,7 +1058,7 @@ const Chat = () => {
           <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
 
           {/* Messages Area con scroll propio */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden relative w-full" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden relative w-full" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
             {isDragging && <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm z-50 flex items-center justify-center border-2 border-dashed border-primary">
                 <div className="text-center">
                   <Paperclip className="h-12 w-12 mx-auto mb-3 text-primary" />
