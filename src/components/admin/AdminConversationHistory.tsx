@@ -119,10 +119,25 @@ export const AdminConversationHistory = () => {
 
   const loadUsers = async () => {
     try {
+      // Step 1: get IDs of users with 'student' role
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "student");
+
+      if (roleError) throw roleError;
+      if (!roleData || roleData.length === 0) {
+        setUsers([]);
+        return;
+      }
+
+      const studentIds = roleData.map((r) => r.user_id);
+
+      // Step 2: fetch profiles for those IDs
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, name, email, user_roles!inner(role)")
-        .eq("user_roles.role", "student")
+        .select("id, name, email")
+        .in("id", studentIds)
         .order("name");
 
       if (error) throw error;
@@ -138,6 +153,7 @@ export const AdminConversationHistory = () => {
       setLoadingUsers(false);
     }
   };
+
 
 
   const loadConversations = async (userId: string, isBackgroundRefresh = false) => {
