@@ -45,7 +45,7 @@ export function GenerationProgressBar({ isGenerating, type, label, subLabel }: G
     return () => clearInterval(interval);
   }, [internalState]);
 
-  if (internalState === 'idle') return null;
+  if (internalState === 'idle' && !isGenerating) return null;
 
   const getIcon = () => {
     switch (type) {
