@@ -173,7 +173,12 @@ const Chat = () => {
       setSelectedFichasId(null);
       return;
     }
-    // Resetear el panel de fichas al cambiar de conversación
+    // Limpiar datos de la conversación anterior ANTES de cargar los nuevos
+    setMessages([]);
+    setMindMaps([]);
+    setFichasSets([]);
+    setHasVideoGenerated(false);
+    setHasPodcastGenerated(false);
     setShowFichas(false);
     setSelectedFichasId(null);
 
