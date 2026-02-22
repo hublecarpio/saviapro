@@ -14,7 +14,7 @@ export const NavBarUser = ({
     await destroyUser();
     navigate('/');
   };
-  return <header className="border-b bg-card/50 backdrop-blur-sm z-30 shrink-0">
+  return <header className="border-b bg-card/50 backdrop-blur-sm z-30 shrink-0 sticky top-0">
             <div className="max-w-full mx-auto px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 md:gap-3 min-w-0">
                     <SidebarTrigger className="-ml-1" />

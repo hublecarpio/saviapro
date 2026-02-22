@@ -1050,7 +1050,7 @@ const Chat = () => {
       <div className="flex min-h-screen w-full bg-background overflow-hidden">
         <AppSidebar user={user} currentConversationId={currentConversationId} onConversationSelect={handleConversationSelect} onNewConversation={handleNewConversation} />
 
-        <div className="flex flex-col flex-1 w-full overflow-hidden h-screen">
+        <div className="flex flex-col flex-1 w-full overflow-hidden h-[100dvh]">
           {/* Header Fijo */}
           <NavBarUser user={user} setShowProfileEditor={setShowProfileEditor} isSigningOut={isSigningOut} />
 
