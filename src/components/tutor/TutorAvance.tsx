@@ -121,9 +121,9 @@ export const TutorAvance = ({ students, tutorId }: TutorAvanceProps) => {
   // Determinar nivel basado en actividad
   const getLevel = () => {
     const total = progress?.totalMessages || 0;
-    if (total >= 100) return { level: 3, name: "Avanzado", color: "text-green-600" };
-    if (total >= 30) return { level: 2, name: "Intermedio", color: "text-blue-600" };
-    return { level: 1, name: "Principiante", color: "text-orange-600" };
+    if (total >= 100) return { level: 3, name: "Avanzado", badgeClass: "bg-green-100 text-green-800 border border-green-200" };
+    if (total >= 30) return { level: 2, name: "Intermedio", badgeClass: "bg-blue-100 text-blue-800 border border-blue-200" };
+    return { level: 1, name: "Principiante", badgeClass: "bg-orange-100 text-orange-800 border border-orange-200" };
   };
 
   const levelInfo = getLevel();
@@ -177,7 +177,7 @@ export const TutorAvance = ({ students, tutorId }: TutorAvanceProps) => {
                     <CardDescription>{selectedStudentData?.email}</CardDescription>
                   </div>
                 </div>
-                <Badge className={`${levelInfo.color} bg-opacity-10`}>
+                <Badge variant="outline" className={levelInfo.badgeClass}>
                   Nivel {levelInfo.level}: {levelInfo.name}
                 </Badge>
               </div>

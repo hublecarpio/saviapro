@@ -115,13 +115,20 @@ export const TutorResumen = ({ students, tutorId }: TutorResumenProps) => {
     const lastDate = new Date(activity.lastActivity);
     const now = new Date();
     const hoursDiff = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+    const quizAccuracy = activity.totalQuizzes > 0
+      ? (activity.correctAnswers / activity.totalQuizzes) * 100
+      : null;
 
-    if (hoursDiff < 24) {
-      return <Badge className="bg-green-100 text-green-700 border-green-200">Va excelente</Badge>;
-    } else if (hoursDiff < 72) {
+    if (hoursDiff >= 72) {
+      return <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200">Necesita apoyo</Badge>;
+    } else if (hoursDiff >= 24) {
       return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">Normal</Badge>;
     } else {
-      return <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200">Necesita apoyo</Badge>;
+      // Activo en las últimas 24h: evaluar rendimiento
+      if (quizAccuracy !== null && quizAccuracy < 60) {
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Necesita refuerzo</Badge>;
+      }
+      return <Badge className="bg-green-100 text-green-700 border-green-200">Va excelente</Badge>;
     }
   };
 
