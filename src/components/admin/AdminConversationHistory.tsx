@@ -121,7 +121,8 @@ export const AdminConversationHistory = () => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, name, email")
+        .select("id, name, email, user_roles!inner(role)")
+        .eq("user_roles.role", "student")
         .order("name");
 
       if (error) throw error;
@@ -137,6 +138,7 @@ export const AdminConversationHistory = () => {
       setLoadingUsers(false);
     }
   };
+
 
   const loadConversations = async (userId: string, isBackgroundRefresh = false) => {
     if (!isBackgroundRefresh) {
