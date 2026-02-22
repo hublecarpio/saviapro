@@ -62,11 +62,11 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen w-full bg-background">
+            <div className="flex min-h-screen w-full bg-background overflow-hidden">
                 <AppSidebarBeta user={user} role={user?.roles[0]} />
-                <div className="flex flex-col flex-1">
+                <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
                     <NavBarUser user={user} setShowProfileEditor={null} isSigningOut={isSigningOut} />
-                    <div className="h-full bg-gradient-to-br from-background via-background to-muted/20">
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-background via-background to-muted/20">
                         {children}
                     </div>
                 </div>

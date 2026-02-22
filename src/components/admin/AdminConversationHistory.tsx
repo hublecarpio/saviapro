@@ -544,12 +544,12 @@ export const AdminConversationHistory = () => {
                               {conversationContent.messages.slice(0, visibleMessagesCount).map((msg) => (
                                 <div
                                   key={msg.id}
-                                  className={`p-2 rounded text-xs overflow-hidden ${
+                                  className={`p-2 rounded text-xs min-w-0 ${
                                     msg.role === "user" ? "bg-blue-50" : "bg-gray-50"
                                   }`}
                                 >
                                   <p className="font-medium">{msg.role === "user" ? "Usuario" : "Asistente"}</p>
-                                  <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+                                  <p className="whitespace-pre-wrap break-all">{msg.message}</p>
                                 </div>
                               ))}
                               {conversationContent.messages.length > visibleMessagesCount && (
