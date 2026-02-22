@@ -421,11 +421,11 @@ export const AdminConversationHistory = () => {
                 <SelectContent>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span>{user.name || user.email || "Sin nombre"}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <User className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{user.name || user.email || "Sin nombre"}</span>
                         {user.email && user.name && (
-                          <span className="text-muted-foreground text-xs">({user.email})</span>
+                          <span className="text-muted-foreground text-xs truncate">({user.email})</span>
                         )}
                       </div>
                     </SelectItem>
@@ -483,7 +483,7 @@ export const AdminConversationHistory = () => {
               </div>
 
               {/* Vista previa del contenido */}
-              <div>
+              <div className="overflow-hidden min-w-0">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-medium flex items-center gap-2">
                     <FileText className="h-4 w-4" />
@@ -511,7 +511,7 @@ export const AdminConversationHistory = () => {
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                   ) : selectedConversation && conversationContent ? (
-                    <div className="p-4 space-y-4">
+                    <div className="p-4 space-y-4 overflow-hidden">
                       <div className="space-y-2">
                         <h4 className="font-medium text-sm">{selectedConversation.title}</h4>
                         <div className="flex gap-2 flex-wrap">
@@ -540,7 +540,7 @@ export const AdminConversationHistory = () => {
                             Mensajes ({conversationContent.messages.length})
                           </AccordionTrigger>
                           <AccordionContent>
-                            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                            <div className="space-y-2 max-h-[400px] overflow-y-auto overflow-x-hidden">
                               {conversationContent.messages.slice(0, visibleMessagesCount).map((msg) => (
                                 <div
                                   key={msg.id}

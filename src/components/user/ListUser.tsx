@@ -218,7 +218,7 @@ const ListUser = () => {
                                             <TableHead>Email</TableHead>
                                             <TableHead>Roles</TableHead>
                                             <TableHead className="hidden md:table-cell">Invitado por</TableHead>
-                                            <TableHead className="hidden md:table-cell">Starter</TableHead>
+                                            <TableHead>Starter</TableHead>
                                             <TableHead className="hidden md:table-cell">Fecha</TableHead>
                                             <TableHead className="w-[80px]">Acciones</TableHead>
                                         </TableRow>
@@ -261,7 +261,7 @@ const ListUser = () => {
                                                         <span className="text-muted-foreground text-sm">-</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="hidden md:table-cell">
+                                                <TableCell>
                                                     {user.starter_completed ? (
                                                         <Badge variant="default" className="bg-green-600">
                                                             ✓

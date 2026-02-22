@@ -407,9 +407,9 @@ const RegisterUser = () => {
                                         key={user.id}
                                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                                     >
-                                        <div className="flex-1">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                                <p className="font-medium truncate min-w-0">{user.email}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="font-medium text-sm break-all">{user.email}</p>
                                                 <Badge variant={
                                                     user.inviteType === "admin" ? "default" :
                                                     user.inviteType === "tutor" ? "secondary" : 
