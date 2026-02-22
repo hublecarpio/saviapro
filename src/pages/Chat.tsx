@@ -169,8 +169,13 @@ const Chat = () => {
       setFichasSets([]);
       setHasVideoGenerated(false);
       setHasPodcastGenerated(false);
+      setShowFichas(false);
+      setSelectedFichasId(null);
       return;
     }
+    // Resetear el panel de fichas al cambiar de conversación
+    setShowFichas(false);
+    setSelectedFichasId(null);
 
     // Cargar mensajes existentes y verificar si ya hay video/podcast
     const loadInitialMessages = async () => {

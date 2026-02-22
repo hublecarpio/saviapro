@@ -189,8 +189,8 @@ export function AppSidebar({
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div> : <SidebarMenu>
                 {conversations.map(conversation => <SidebarMenuItem key={conversation.id}>
-                    <SidebarMenuButton onClick={() => editingId !== conversation.id && onConversationSelect(conversation.id)} isActive={currentConversationId === conversation.id} className="group relative w-full">
-                      <MessageSquare className="h-4 w-4 shrink-0" />
+                    <SidebarMenuButton onClick={() => editingId !== conversation.id && onConversationSelect(conversation.id)} isActive={currentConversationId === conversation.id} className={`group relative w-full ${currentConversationId === conversation.id ? 'bg-primary/10 border-l-2 border-primary font-medium' : ''}`}>
+                      <MessageSquare className={`h-4 w-4 shrink-0 ${currentConversationId === conversation.id ? 'text-primary' : ''}`} />
                       <div className="flex-1 min-w-0 flex items-center gap-1">
                         {editingId === conversation.id ? <>
                             <Input ref={editInputRef} value={editTitle} onChange={e => setEditTitle(e.target.value)} onClick={e => e.stopPropagation()} onKeyDown={e => {
