@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Brain, Video, Podcast, BookOpen, FileText } from 'lucide-react';
 
 interface GenerationProgressBarProps {
@@ -11,21 +11,44 @@ interface GenerationProgressBarProps {
 export function GenerationProgressBar({ isGenerating, type, label, subLabel }: GenerationProgressBarProps) {
   const [internalState, setInternalState] = useState<'idle' | 'generating' | 'completing'>('idle');
   const [progress, setProgress] = useState(0);
+  // Ref para rastrear el estado actual sin causar re-ejecuciones del efecto
+  const internalStateRef = useRef<'idle' | 'generating' | 'completing'>('idle');
+  // Ref para el timer de completado — nos permite cancelarlo al desmontar pero NO al cambiar isGenerating
+  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 1. Manejo del estado interno para poder mostrar el 100% antes de desaparecer
+  const updateState = (s: 'idle' | 'generating' | 'completing') => {
+    internalStateRef.current = s;
+    setInternalState(s);
+  };
+
+  // Cancelar el timer al desmontar el componente
   useEffect(() => {
-    if (isGenerating && internalState === 'idle') {
-      setInternalState('generating');
+    return () => {
+      if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
+    };
+  }, []);
+
+  // 1. Manejo del estado interno — solo depende de isGenerating
+  useEffect(() => {
+    if (isGenerating) {
+      // Cancelar cualquier timer de completado previo si se vuelve a generar
+      if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
+      updateState('generating');
       setProgress(0);
-    } else if (!isGenerating && internalState === 'generating') {
-      setInternalState('completing');
-      setProgress(100);
-      const timer = setTimeout(() => {
-        setInternalState('idle');
-      }, 2000); // 2 segundos mostrando el 100% para que se aprecie
-      return () => clearTimeout(timer);
+    } else {
+      // Solo transiciona a 'completing' si estaba generando
+      if (internalStateRef.current === 'generating') {
+        updateState('completing');
+        setProgress(100);
+        // Guardamos el timer en ref para que el efecto no lo cancele al re-ejecutarse
+        completionTimerRef.current = setTimeout(() => {
+          updateState('idle');
+          completionTimerRef.current = null;
+        }, 2000);
+      }
     }
-  }, [isGenerating, internalState]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGenerating]);
 
   // 2. Simulador de progreso
   useEffect(() => {
@@ -33,11 +56,11 @@ export function GenerationProgressBar({ isGenerating, type, label, subLabel }: G
 
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 98) return prev; // Se queda en 98% hasta que llegue el evento
-        if (prev < 30) return prev + Math.random() * 6; // Rápido al inicio
+        if (prev >= 98) return prev;
+        if (prev < 30) return prev + Math.random() * 6;
         if (prev < 60) return prev + Math.random() * 3;
         if (prev < 85) return prev + Math.random() * 1.2;
-        if (prev < 98) return prev + Math.random() * 0.4; // Muy lento al final
+        if (prev < 98) return prev + Math.random() * 0.4;
         return prev;
       });
     }, 400);
