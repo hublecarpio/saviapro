@@ -349,32 +349,222 @@ const Starter = () => {
   const questions: Question[] = ageGroup === "7-12" ? questions712 : questions1217;
   const currentQuestion = questions[step];
 
-  const getInteractionMessage = (questionId: string, answer: any) => {
-    const interactions: Record<string, string[]> = {
-      description: [
-        "¡Genial conocerte! 🌟 Cada persona es única y especial.",
-        "¡Qué interesante! 🎉 Me encanta saber más sobre ti.",
-        "¡Excelente! 👏 Vamos a aprender muchísimo juntos.",
-      ],
-      interests: [
-        "¡Wow! Esos temas son fascinantes 🚀 Hay tanto por descubrir.",
-        "¡Excelente elección! 🌟 Vamos a explorar juntos esos temas.",
-        "¡Me encanta! 🎯 Aprenderemos cosas increíbles.",
-      ],
-      learningStyle: [
-        "¡Perfecto! 📚 Ahora sé cómo ayudarte mejor a aprender.",
-        "¡Genial! 🎨 Vamos a usar tu forma favorita de aprender.",
-        "¡Excelente! 🎯 Tu estilo de aprendizaje es único.",
-      ],
-    };
+  // ─── Rich context-aware interaction messages ────────────────────────────────
 
-    const messages = interactions[questionId] || [
-      "¡Muy bien! ✨ Sigamos conociendonos.",
-      "¡Perfecto! 🎯 Cada respuesta me ayuda a conocerte mejor.",
-      "¡Genial! 🌟 Vamos avanzando.",
-    ];
+  // 7-12: playful, emoji-rich, reacts to the specific selected value
+  const messages712: Record<string, Record<string, string>> = {
+    age: {
+      _default: "¡Genial! 🎂 ¡Ahora sé cuántos años tienes!",
+    },
+    description: {
+      _default: "¡Qué bueno conocerte! 🌟 Me alegra mucho que te hayas presentado.",
+      _alt1: "¡Eso es súper interesante! 🎉 Ya tenemos un buen punto de partida.",
+      _alt2: "¡Wow, qué genial! 👋 Ahora ya somos amigos.",
+    },
+    uniqueData: {
+      _default: "¡Gracias por contarme eso! ⭐ Lo tendré muy en cuenta para ayudarte mejor.",
+      _alt1: "¡Eso es muy valioso saberlo! 💡 Prometo recordarlo siempre.",
+    },
+    learningStyle: {
+      audio:    "¡Eso es genial! 🔊 Me encantan las historias y los audio-cuentos.",
+      visual:   "¡Wow, visual! 🎨 Vamos a usar muchos dibujos, colores y videos.",
+      hands:    "¡Me encanta! ✋ Aprenderemos haciendo cosas, no solo mirando.",
+      reading:  "¡Excelente! 📖 Los libros guardan secretos increíbles.",
+      games:    "¡Perfecto! 🎮 ¡Los juegos son mi forma favorita de enseñar!",
+      friends:  "¡Qué bueno! 👫 Trabajar en equipo hace todo más divertido.",
+      _default: "¡Excelente! 📚 Ahora sé exactamente cómo enseñarte mejor.",
+    },
+    challenges: {
+      ask:     "¡Es súper inteligente pedir ayuda! ❓ Nunca tengas miedo de preguntar.",
+      solo:    "¡Eres muy valiente! 🧠 Intentarlo solo hace que tu cerebro crezca.",
+      clues:   "¡Eso es increíble! 🔍 Buscar pistas te convierte en un detective del aprendizaje.",
+      rest:    "¡Muy sabio! ⏸️ A veces descansar es la mejor estrategia.",
+      _default: "¡Genial! 💪 Esa actitud te va a llevar muy lejos.",
+    },
+    contentPreference: {
+      videos:  "¡Videos al poder! 🎥 Los usaremos muchísimo juntos.",
+      games:   "¡Juegos! 🎯 ¡Sabía que íbamos a llevarnos bien!",
+      audio:   "¡Auditivo! 🎧 Las historias y los audios van a ser tus mejores aliados.",
+      texts:   "¡Excelente! 📝 Los textos con imágenes son una combinación poderosa.",
+      _default: "¡Perfecto! 🎯 Ya sé qué tipo de contenido vas a disfrutar más.",
+    },
+    studyTime: {
+      "15-20":   "¡Sesiones cortas y potentes! ⏱️ Vamos a aprovechar cada minuto al máximo.",
+      "25-35":   "¡Un tiempo perfecto! ⏱️ Como una clase en el colegio, pero mucho más divertida.",
+      "40-50":   "¡Impresionante! ⏱️ Tienes mucha concentración para tu edad.",
+      depends:   "¡Me encanta eso! 🎉 Lo más importante es que sea divertido, ¿verdad?",
+      _default:  "¡Genial! ⏱️ Ajustaré las sesiones justo para ti.",
+    },
+    interests: {
+      ships:     "¡Los barcos y el mar son fascinantes! ⚓ Hay tanto por descubrir.",
+      countries: "¡El mundo es enorme! 🌍 Vamos a viajar juntos por él.",
+      animals:   "¡Los animales son increíbles! 🐠 La naturaleza guarda secretos asombrosos.",
+      stories:   "¡Las historias son magia! 📚 Juntos crearemos aventuras increíbles.",
+      how:       "¡Qué curiosidad tan genial! 🔧 Descubrir cómo funcionan las cosas es lo mejor.",
+      puzzles:   "¡Los acertijos me encantan! 🧩 ¡Seremos un gran equipo!",
+      _default:  "¡Qué intereses tan geniales! 🌟 Hay tanto por explorar juntos.",
+    },
+    learningGoal: {
+      interesting: "¡Me encanta tu curiosidad! 🌟 Juntos vamos a descubrir cosas increíbles.",
+      school:      "¡Vamos a hacer que el colegio sea más fácil y más divertido! 📚",
+      smart:       "¡Ya eres muy listo! 🧠 Pero juntos podemos llegar más lejos todavía.",
+      enjoy:       "¡Esa es la mejor razón para aprender! 🎉 El aprendizaje es una aventura.",
+      friends:     "¡Genial! 👫 Sorprenderás a todos con lo que vamos a aprender.",
+      _default:    "¡Perfecto! 🎓 Tengo muchas ganas de ayudarte a lograr tus metas.",
+    },
+    feelings: {
+      calm:      "¡Eso es fantástico! 😊 Esa calma te va a ayudar a aprender muchísimo.",
+      confused:  "¡Es normal sentirse así! 😐 Para eso estoy yo, para aclarar todo.",
+      frustrated:"¡Gracias por ser honesto! 😟 Juntos vamos a cambiar esa sensación.",
+      help:      "¡Pedir ayuda es una superpotencia! 😊 Me alegra que cuentes conmigo.",
+      _default:  "¡Gracias por contarme! 💭 Así puedo ayudarte de la mejor manera.",
+    },
+    explanationStyle: {
+      examples:  "¡Con ejemplos todo se entiende mejor! 🎈 Usaré muchos, te lo prometo.",
+      direct:    "¡Me gusta tu estilo! 🎯 Directo y al grano, sin rodeos.",
+      game:      "¡Genial! 🎮 Convertiremos cada explicación en un juego.",
+      adventure: "¡Excelente! 🗺️ ¡Cada tema será una nueva aventura por descubrir!",
+      _default:  "¡Perfecto! 🎈 Ahora sé exactamente cómo explicarte las cosas.",
+    },
+    language: {
+      english: "¡Excellent! 🌐 We'll learn together in English!",
+      spanish: "¡Perfecto! 🌐 El español es nuestro idioma.",
+      both:    "¡Genial! 🌐 Lo mejor de dos mundos. ¡Hablaremos en los dos!",
+      _default:"¡Entendido! 🌐 Hablaremos en el idioma que más te guste.",
+    },
+  };
 
-    return messages[Math.floor(Math.random() * messages.length)];
+  // 12-17: mature, reflective, no baby-talk
+  const messages1217: Record<string, Record<string, string>> = {
+    age: {
+      _default: "¡Genial! Ahora ya sé con quién estoy hablando 🚀",
+    },
+    description: {
+      _default: "Gracias por presentarte. Cada detalle me ayuda a entenderte mejor. 👤",
+      _alt1: "Me parece muy bien conocerte así. Vamos a trabajar muy bien juntos. ✨",
+    },
+    uniqueCharacteristics: {
+      _default: "Valoro mucho tu apertura. Esa información es clave para personalizar tu experiencia. ✨",
+      _alt1: "Gracias por compartir eso. Lo tendré muy presente en cada interacción. 💡",
+    },
+    learningStyle: {
+      auditory:    "Interesante. El aprendizaje auditivo activa tus capacidades de síntesis de forma poderosa. 🎧",
+      visual:      "El pensamiento visual es una fortaleza cognitiva enorme. Aprovecharemos eso. 🗺️",
+      kinesthetic: "Aprender haciendo es una de las metodologías más efectivas. Excelente elección. 🎯",
+      reading:     "La lectura y la escritura consolidan el conocimiento de manera profunda. Perfecto. 📚",
+      social:      "El aprendizaje colaborativo amplía perspectivas de forma notable. Muy bien. 💬",
+      reflective:  "La reflexión individual es clave para el pensamiento crítico. Excelente. 🧠",
+      _default:    "Muy bien. Ahora sé cómo estructurar mejor nuestras sesiones para ti. 📊",
+    },
+    problemApproach: {
+      analytical:    "El pensamiento analítico es una herramienta muy poderosa. Lo potenciaremos juntos. 🔬",
+      global:       "Ver el panorama completo antes de los detalles es una ventaja estratégica. 🌐",
+      methodical:   "El enfoque metódico minimiza errores y maximiza resultados. Excelente base. 📋",
+      intuitive:    "La intuición bien entrenada es sorprendentemente precisa. La desarrollaremos. 💡",
+      collaborative:"Buscar perspectivas externas enriquece cualquier solución. Muy bien. 🤝",
+      experimental: "Probar hipótesis es el corazón del pensamiento científico. Me encanta. 🧪",
+      _default:     "Muy interesante. Ese enfoque nos dará mucho con qué trabajar. 🎯",
+    },
+    contentPreference: {
+      videos:      "Los tutoriales visuales son muy efectivos para conceptos complejos. 🎥",
+      exercises:   "Los ejercicios prácticos consolidan el aprendizaje de forma duradera. 🎯",
+      audio:       "Los podcasts desarrollan la capacidad de síntesis auditiva. Excelente elección. 🎧",
+      texts:       "Los textos especializados son la base del conocimiento riguroso. 📚",
+      infographics:"Las infografías conectan conceptos de forma que el cerebro retiene mejor. 🗺️",
+      dialogues:   "El debate socrático es una de las herramientas más poderosas del aprendizaje. 💬",
+      _default:    "Muy bien. Estructuraré los contenidos según tus preferencias. 📊",
+    },
+    challengeTolerance: {
+      low:      "Empezaremos con una progresión gradual y bien acompañada. Sin prisa. 🌱",
+      medium:   "Perfecto equilibrio. Iremos avanzando con apoyo justo cuando lo necesites. ⚖️",
+      high:     "Excelente. Disfruto trabajar con personas que no le temen a lo difícil. 💪",
+      variable: "Totalmente válido. Adaptaré la dificultad según cómo estés en cada sesión. 🔄",
+      _default: "Entendido. Calibraré los desafíos para mantenerte en la zona de crecimiento óptimo. 🎯",
+    },
+    sessionDuration: {
+      "25-35":   "Corto e intenso. La concentración focalizada es muy efectiva. ⏱️",
+      "40-55":   "Duración ideal para trabajar en profundidad sin saturarte. Perfecto. ⏱️",
+      "60-80":   "Excelente capacidad de concentración sostenida. Lo aprovecharemos bien. ⏱️",
+      flexible:  "Me parece bien. Ajustaremos según la complejidad de cada tema. 🔄",
+      _default:  "Entendido. Organizaré las sesiones en función de ese tiempo. ⏱️",
+    },
+    learningGoals: {
+      _default: "Objetivos claros. Eso hace toda la diferencia en el progreso. 🎯",
+      _alt1:    "Excelente claridad sobre lo que querés lograr. Trabajaremos en esa dirección. 🚀",
+    },
+    passionateTopics: {
+      law:         "El derecho internacional moldea el mundo. Un área fascinante para explorar. ⚖️",
+      politics:    "La geopolítica explica por qué el mundo es como es. Gran elección. 🌐",
+      history:     "Quien entiende la historia tiene ventaja para interpretar el presente. 📜",
+      tech:        "La tecnología está rediseñando todo. Estar al día es una ventaja enorme. 💻",
+      environment: "La sostenibilidad será el desafío central del siglo. Muy relevante. 🌱",
+      economy:     "La economía conecta todo lo demás. Un área estratégicamente poderosa. 📈",
+      security:    "La seguridad global es uno de los temas más complejos y urgentes. 🛡️",
+      cultures:    "Entender culturas distintas desarrolla una perspectiva única y valiosa. 🌏",
+      _default:    "Excelentes temas. Hay mucha profundidad por explorar en cada uno. 🌟",
+    },
+    knowledgeContext: {
+      academic:    "Perfecto. Orientaré los contenidos hacia la excelencia académica. 📚",
+      professional:"Excelente visión a futuro. El conocimiento aplicado es el más valioso. 💼",
+      personal:    "El crecimiento personal es la base de todo lo demás. Muy bien. 🌱",
+      projects:    "Aprender con un proyecto concreto acelera enormemente el progreso. 🚀",
+      mixed:       "Versatilidad total. Adaptaré el enfoque según lo que necesites en cada momento. 🔄",
+      _default:    "Entendido. Ese contexto me ayuda a darte contenidos más relevantes. 🎯",
+    },
+    communicationStyle: {
+      direct:       "Directo y preciso. Así me gusta. Sin rodeos innecesarios. ✅",
+      narrative:    "El contexto narrativo hace que los conceptos queden mucho más grabados. 📖",
+      collaborative:"Me gusta esa dinámica. Aprenderemos juntos, no yo para vos. 🤝",
+      structured:   "El orden y la metodología son la base de cualquier aprendizaje sólido. 📋",
+      _default:     "Entendido. Ajustaré mi comunicación a lo que te resulte más natural. 💬",
+    },
+    autonomyLevel: {
+      guided:       "Perfecto. Estaré presente en cada paso para orientarte cuando lo necesites. 🧭",
+      collaborative:"Me encanta esa dinámica de co-construcción. Aprendemos juntos. 🤝",
+      autonomous:   "Excelente. Confío en tu criterio. Estaré cuando me necesites. 🚀",
+      adaptive:     "Lo mejor de todos los mundos. Me adaptaré a tu ritmo y evolución. 🔄",
+      _default:     "Muy bien. Respetaré tu nivel de autonomía en todo momento. 🎯",
+    },
+    language: {
+      spanish: "Perfecto. Nuestras conversaciones serán en español. 🌐",
+      english: "Great choice. We'll conduct our sessions in English. 🌐",
+      both:    "Excelente. Mezclaremos idiomas según el tema. Una ventaja enorme. 🌐",
+      _default:"Entendido. Me comunicaré en el idioma que prefieras. 🌐",
+    },
+    interests: {
+      law:         "El derecho da estructura al mundo. Una perspectiva muy valiosa. ⚖️",
+      tech:        "La tecnología está rediseñando las reglas. Buena elección estratégica. 💻",
+      environment: "El medio ambiente es el desafío más urgente del siglo. Importante tenerlo en cuenta. 🌱",
+      history:     "La historia es la clave para entender el presente. Excelente. 📜",
+      politics:    "La política moldea el contexto en el que vivimos. Muy relevante. 🌐",
+      economy:     "La economía conecta todo. Una lente poderosa para interpretar el mundo. 📈",
+      _default:    "Muy bien. Esos intereses nos darán mucho material de calidad para trabajar. 🌟",
+    },
+  };
+
+  const getInteractionMessage = (questionId: string, answer: any, group: "7-12" | "12-17" | null): string => {
+    const table = group === "7-12" ? messages712 : messages1217;
+    const questionMap = table[questionId];
+
+    if (!questionMap) {
+      return group === "7-12"
+        ? "¡Genial! 🌟 Cada respuesta me ayuda a conocerte mejor."
+        : "Muy bien. Cada respuesta me permite personalizar mejor tu experiencia.";
+    }
+
+    // For textarea questions, rotate through _default / _alt keys
+    const textareaDefault = questionMap["_default"] ?? "¡Genial!"
+    if (!answer || (typeof answer === "string" && !questionMap[answer])) {
+      const altKeys = Object.keys(questionMap).filter((k) => k.startsWith("_alt"));
+      if (altKeys.length > 0 && Math.random() > 0.5) {
+        return questionMap[altKeys[Math.floor(Math.random() * altKeys.length)]];
+      }
+      return textareaDefault;
+    }
+
+    // For single/multiple/ranking: use first selected value, fall back to _default
+    const firstValue = Array.isArray(answer) ? answer[0] : answer;
+    return questionMap[firstValue] ?? questionMap["_default"] ?? "¡Muy bien! ✨";
   };
 
   const handleNext = async () => {
@@ -408,7 +598,7 @@ const Starter = () => {
 
     // Mostrar interacción
     setShowInteraction(true);
-    setInteractionMessage(getInteractionMessage(currentQuestion.id, value));
+    setInteractionMessage(getInteractionMessage(currentQuestion.id, value, currentQuestion.id === "age" ? (parseInt(String(value)) >= 7 && parseInt(String(value)) <= 12 ? "7-12" : "12-17") : ageGroup));
 
     setTimeout(() => {
       setShowInteraction(false);
@@ -544,11 +734,11 @@ const Starter = () => {
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary transition-all duration-500"
-                style={{ width: `${((step + 1) / questions.length) * 100}%` }}
+                style={{ width: ageGroup ? `${((step + 1) / questions.length) * 100}%` : "4%" }}
               />
             </div>
             <p className="text-sm text-muted-foreground mt-2 text-center">
-              Pregunta {step + 1} de {questions.length}
+              {ageGroup ? `Pregunta ${step + 1} de ${questions.length}` : "Paso 1 — Cuéntame tu edad"}
             </p>
           </div>
           <div className="text-center mb-8">
