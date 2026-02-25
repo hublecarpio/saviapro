@@ -69,7 +69,7 @@ serve(async (req) => {
     // Búsqueda por similitud vectorial usando RPC
     const { data: results, error: searchError } = await supabase
       .rpc('search_documents', {
-        query_embedding: embeddingString,
+        query_embedding: queryEmbedding,
         match_threshold: match_threshold,
         match_count: match_count
       });

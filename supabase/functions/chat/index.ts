@@ -320,12 +320,11 @@ serve(async (req) => {
           const queryEmbedding = embData.embedding?.values;
           
           if (queryEmbedding && queryEmbedding.length > 0) {
-            const embeddingString = `[${queryEmbedding.join(',')}]`;
             
-            // Búsqueda vectorial con RPC
+            // Búsqueda vectorial con RPC (pasando el array directamente, supabase-js se encarga de formatear)
             const { data: ragResults, error: ragError } = await supabaseAdmin
               .rpc('search_documents', {
-                query_embedding: embeddingString,
+                query_embedding: queryEmbedding,
                 match_threshold: 0.3,
                 match_count: 5
               });
