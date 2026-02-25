@@ -474,64 +474,50 @@ serve(async (req) => {
     console.log('STEP 3: Generating visual descriptions...');
     const pageVisualDescriptions = new Map<number, VisualElement[]>();
 
-    for (const pageNum of pagesWithVisuals) {
-      console.log(`Describing visuals on page ${pageNum}...`);
-      let pageFileUri = '';
-      try {
-        const pageBytes = await splitPdfPages(pdfBytes, pageNum, pageNum);
-        if (pageBytes.length === 0) continue;
+    // Process in parallel batches to avoid hitting Supabase 150s wall clock limit or CPU limit
+    const visualPagesArray = Array.from(pagesWithVisuals);
+    const PARALLEL_BATCH_SIZE = 5;
 
-        pageFileUri = await uploadToGeminiFiles(pageBytes, `${fileName}_p${pageNum}`, geminiApiKey);
+    for (let i = 0; i < visualPagesArray.length; i += PARALLEL_BATCH_SIZE) {
+      const batch = visualPagesArray.slice(i, i + PARALLEL_BATCH_SIZE);
+      console.log(`Processing visuals batch: pages [${batch.join(', ')}]...`);
 
-        let prompt = getDescriptionPrompt(pageNum);
+      await Promise.all(batch.map(async (pageNum) => {
+        let pageFileUri = '';
+        try {
+          const pageBytes = await splitPdfPages(pdfBytes, pageNum, pageNum);
+          if (pageBytes.length === 0) return;
 
-        // If scanned page (no text from unpdf), also ask Gemini to extract the text
-        const hasText = (pageTexts.get(pageNum)?.length || 0) > 30;
-        if (!hasText) {
-          prompt = `# ROLE
-You are a specialist document content extractor.
+          pageFileUri = await uploadToGeminiFiles(pageBytes, `${fileName}_p${pageNum}`, geminiApiKey);
 
-# TASK
-This page appears to be a scanned document. Extract ALL text content AND describe ANY visual elements.
+          let prompt = getDescriptionPrompt(pageNum);
 
-# OUTPUT FORMAT
-Respond with ONLY a valid JSON object:
-{
-  "page_text": "All the text content on this page, in reading order",
-  "visuals": [
-    {
-      "anchor_text": "__PAGE_END__",
-      "description": "Descripción de imagen: [detailed description]"
-    }
-  ]
-}
-
-If there are no visual elements, set "visuals" to an empty array.
-If there is no readable text, set "page_text" to an empty string.`;
-        }
-
-        const descResult = await callGemini(pageFileUri, prompt, geminiApiKey, 45000);
-        const parsed = parseJsonFromGemini(descResult);
-
-        if (parsed) {
-          // Handle scanned page: update page text from Gemini
-          if (!hasText && parsed.page_text) {
-            pageTexts.set(pageNum, parsed.page_text);
+          const hasText = (pageTexts.get(pageNum)?.length || 0) > 30;
+          if (!hasText) {
+            prompt = `# ROLE\nYou are a specialist document content extractor.\n# TASK\nThis page appears to be a scanned document. Extract ALL text content AND describe ANY visual elements.\n# OUTPUT FORMAT\nRespond with ONLY a valid JSON object:\n{\n  "page_text": "All text content",\n  "visuals": [{ "anchor_text": "__PAGE_END__", "description": "Descripción de imagen: [detail]" }]\n}`;
           }
 
-          if (parsed.visuals && Array.isArray(parsed.visuals) && parsed.visuals.length > 0) {
-            pageVisualDescriptions.set(pageNum, parsed.visuals);
-            console.log(`Page ${pageNum}: ${parsed.visuals.length} visual(s) described`);
-          } else {
-            console.log(`Page ${pageNum}: no visuals found (false positive in detection)`);
+          // Use shorter timeout for parallel description calls
+          const descResult = await callGemini(pageFileUri, prompt, geminiApiKey, 30000);
+          const parsed = parseJsonFromGemini(descResult);
+
+          if (parsed) {
+            if (!hasText && parsed.page_text) {
+              pageTexts.set(pageNum, parsed.page_text);
+            }
+            if (parsed.visuals && Array.isArray(parsed.visuals) && parsed.visuals.length > 0) {
+              pageVisualDescriptions.set(pageNum, parsed.visuals);
+              console.log(`Page ${pageNum}: ${parsed.visuals.length} visual(s) described`);
+            } else {
+              console.log(`Page ${pageNum}: no visuals found`);
+            }
           }
+        } catch (e) {
+          console.warn(`Visual description failed for page ${pageNum}:`, e instanceof Error ? e.message : e);
+        } finally {
+          if (pageFileUri) deleteGeminiFile(pageFileUri, geminiApiKey);
         }
-      } catch (e) {
-        console.warn(`Visual description failed for page ${pageNum}:`, e instanceof Error ? e.message : e);
-        // Page uses unpdf text only
-      } finally {
-        if (pageFileUri) deleteGeminiFile(pageFileUri, geminiApiKey);
-      }
+      }));
     }
 
     // STEP 4: Merge all pages in order
