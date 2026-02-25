@@ -161,13 +161,42 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             let fileType = "";
 
             if (mode === "file" && file) {
-                setUploadStage("Extrayendo texto del documento...");
-                const extractedTextResult = await extractTextFromFile(file, user.id);
-                content = extractedTextResult.text;
-                generatedDocumentId = extractedTextResult.document_id;
-                extractedContentUrl = extractedTextResult.content_url;
-                originalFileName = file.name;
-                fileType = file.type;
+                // Simulación de logs de procesamiento de IA para dar feedback al usuario
+                const simulatedLogs = [
+                    "Iniciando motor de IA...",
+                    "Analizando estructura y metadatos del documento...",
+                    "Identificando bloques de texto y tablas...",
+                    "Aplicando OCR avanzado a elementos complejos...",
+                    "Extrayendo y consolidando la información...",
+                    "Optimizando resultados para mejor comprensión...",
+                    "Finalizando extracción (esto puede tomar unos segundos)..."
+                ];
+                
+                let currentLogIndex = 0;
+                setUploadStage(simulatedLogs[0]);
+                
+                const logInterval = setInterval(() => {
+                    currentLogIndex++;
+                    if (currentLogIndex < simulatedLogs.length) {
+                        setUploadStage(simulatedLogs[currentLogIndex]);
+                    } else {
+                        setUploadStage("Por favor espera, finalizando procesamiento...");
+                        clearInterval(logInterval);
+                    }
+                }, 4000); // Cambiar mensaje cada 4 segundos
+
+                try {
+                    const extractedTextResult = await extractTextFromFile(file, user.id);
+                    clearInterval(logInterval);
+                    content = extractedTextResult.text;
+                    generatedDocumentId = extractedTextResult.document_id;
+                    extractedContentUrl = extractedTextResult.content_url;
+                    originalFileName = file.name;
+                    fileType = file.type;
+                } catch (error) {
+                    clearInterval(logInterval);
+                    throw error;
+                }
             } else {
                 content = textContent;
                 originalFileName = `texto_${Date.now()}.txt`;
