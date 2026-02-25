@@ -12,7 +12,7 @@ interface FileUploaderProps {
 }
 
 // Función para extraer texto de archivos usando AI para PDFs
-async function extractTextFromFile(file: File): Promise<string> {
+async function extractTextFromFile(file: File, userId?: string): Promise<string> {
     if (file.type === "text/plain") {
         return await file.text();
     }
@@ -24,6 +24,7 @@ async function extractTextFromFile(file: File): Promise<string> {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('file_name', file.name);
+            if (userId) formData.append('user_id', userId);
             
             const { data, error } = await supabase.functions.invoke('extract-pdf-text', {
                 body: formData,
@@ -35,7 +36,7 @@ async function extractTextFromFile(file: File): Promise<string> {
             }
             
             if (data?.success && data?.extracted_text) {
-                console.log(`Extracted ${data.text_length || data.extracted_text.length} characters from ${file.name}`);
+                console.log(`Extracted ${data.text_length || data.extracted_text.length} characters from ${file.name} (method: ${data.extraction_method})`);
                 return data.extracted_text;
             }
             
@@ -146,7 +147,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
 
             if (mode === "file" && file) {
                 setUploadStage("Extrayendo texto del documento...");
-                content = await extractTextFromFile(file);
+                content = await extractTextFromFile(file, user.id);
                 originalFileName = file.name;
                 fileType = file.type;
             } else {

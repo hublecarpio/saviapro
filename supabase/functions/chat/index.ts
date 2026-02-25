@@ -292,31 +292,73 @@ serve(async (req) => {
     
     console.log('Detected response type:', tipo_respuesta);
 
-    // === CONSULTAR BASE DE CONOCIMIENTO RAG ===
+    // === CONSULTAR BASE DE CONOCIMIENTO RAG (Búsqueda Semántica Real) ===
     let ragContext = '';
     try {
-      console.log('Querying knowledge base for context...');
-      const { data: knowledgeResults, error: ragError } = await supabaseAdmin
-        .from('document_embeddings')
-        .select('content_chunk, metadata')
-        .limit(3);
+      const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
       
-      if (!ragError && knowledgeResults && knowledgeResults.length > 0) {
-        // Búsqueda simple por palabras clave del mensaje (limitado para no romper regex)
-        const searchMessage = safeMessage.substring(0, 1000); // Limitar a 1000 chars para la búsqueda RAG
-        const keywords = searchMessage.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
-        const relevantDocs = knowledgeResults.filter((doc: any) => {
-          const chunk = doc.content_chunk.toLowerCase();
-          return keywords.some((kw: string) => chunk.includes(kw));
-        });
+      if (GEMINI_API_KEY) {
+        console.log('Generating query embedding with gemini-embedding-001...');
         
-        if (relevantDocs.length > 0) {
-          ragContext = relevantDocs.map((d: any) => d.content_chunk).join('\n\n---\n\n');
-          console.log(`Found ${relevantDocs.length} relevant documents for context`);
+        // Generar embedding real del mensaje del usuario
+        const embeddingResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "models/gemini-embedding-001",
+              content: { parts: [{ text: safeMessage.substring(0, 2000) }] },
+              outputDimensionality: 768,
+              taskType: "RETRIEVAL_QUERY"
+            }),
+          }
+        );
+        
+        if (embeddingResponse.ok) {
+          const embData = await embeddingResponse.json();
+          const queryEmbedding = embData.embedding?.values;
+          
+          if (queryEmbedding && queryEmbedding.length > 0) {
+            const embeddingString = `[${queryEmbedding.join(',')}]`;
+            
+            // Búsqueda vectorial con RPC
+            const { data: ragResults, error: ragError } = await supabaseAdmin
+              .rpc('search_documents', {
+                query_embedding: embeddingString,
+                match_threshold: 0.3,
+                match_count: 5
+              });
+            
+            if (!ragError && ragResults && ragResults.length > 0) {
+              ragContext = ragResults.map((r: any) => r.content_chunk).join('\n\n---\n\n');
+              console.log(`RAG: Found ${ragResults.length} relevant docs (top similarity: ${ragResults[0]?.similarity?.toFixed(4)})`);
+            } else if (ragError) {
+              console.warn('RAG vector search error, trying text fallback:', ragError.message);
+              
+              // Fallback a búsqueda de texto
+              const searchTerms = safeMessage.split(/\s+/).filter((w: string) => w.length > 2).slice(0, 10).join(' | ');
+              const { data: textResults } = await supabaseAdmin
+                .from('document_embeddings')
+                .select('content_chunk')
+                .textSearch('content_chunk', searchTerms)
+                .limit(3);
+              
+              if (textResults && textResults.length > 0) {
+                ragContext = textResults.map((r: any) => r.content_chunk).join('\n\n---\n\n');
+                console.log(`RAG text fallback: Found ${textResults.length} results`);
+              }
+            } else {
+              console.log('RAG: No relevant documents found for this query');
+            }
+          }
+        } else {
+          console.warn('Failed to generate query embedding:', embeddingResponse.status);
         }
       }
     } catch (ragErr) {
-      console.error('Error querying knowledge base:', ragErr);
+      console.error('Error in RAG search:', ragErr);
+      // RAG failure should not block the chat response
     }
     
     const webhookResponse = await fetch(
