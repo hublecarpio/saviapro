@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, UploadCloud, FileText, FileImage } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FileUploaderProps {
@@ -58,6 +59,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [uploadStage, setUploadStage] = useState("");
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [textContent, setTextContent] = useState("");
     const [mode, setMode] = useState<"file" | "text">("file");
     const [isDragging, setIsDragging] = useState(false);
@@ -147,6 +149,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
 
             setUploading(true);
             setUploadStage("Iniciando...");
+            setUploadProgress(0);
 
             setUploadStage("Autenticando...");
             const { data: { user } } = await supabase.auth.getUser();
@@ -172,22 +175,35 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                     "Finalizando extracción (esto puede tomar unos segundos)..."
                 ];
                 
-                let currentLogIndex = 0;
                 setUploadStage(simulatedLogs[0]);
+                setUploadProgress(5); // Start with a small progress
                 
                 const logInterval = setInterval(() => {
-                    currentLogIndex++;
-                    if (currentLogIndex < simulatedLogs.length) {
-                        setUploadStage(simulatedLogs[currentLogIndex]);
-                    } else {
-                        setUploadStage("Por favor espera, finalizando procesamiento...");
-                        clearInterval(logInterval);
-                    }
-                }, 4000); // Cambiar mensaje cada 4 segundos
+                    setUploadProgress((prev) => {
+                        let next = prev;
+                        if (prev < 30) next = prev + Math.random() * 6;
+                        else if (prev < 60) next = prev + Math.random() * 3;
+                        else if (prev < 85) next = prev + Math.random() * 1.5;
+                        else if (prev < 98) next = prev + Math.random() * 0.4;
+                        else next = prev;
+                        
+                        // Update text based on progress
+                        if (next < 15) setUploadStage(simulatedLogs[0]);
+                        else if (next < 30) setUploadStage(simulatedLogs[1]);
+                        else if (next < 45) setUploadStage(simulatedLogs[2]);
+                        else if (next < 60) setUploadStage(simulatedLogs[3]);
+                        else if (next < 75) setUploadStage(simulatedLogs[4]);
+                        else if (next < 90) setUploadStage(simulatedLogs[5]);
+                        else setUploadStage(simulatedLogs[6]);
+                        
+                        return next;
+                    });
+                }, 400); // More frequent updates for a smooth progress bar
 
                 try {
                     const extractedTextResult = await extractTextFromFile(file, user.id);
                     clearInterval(logInterval);
+                    setUploadProgress(99);
                     content = extractedTextResult.text;
                     generatedDocumentId = extractedTextResult.document_id;
                     extractedContentUrl = extractedTextResult.content_url;
@@ -363,6 +379,16 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 </div>
             )}
 
+            {uploading && (
+                <div className="space-y-2 mb-2">
+                    <div className="flex justify-between text-xs font-medium text-muted-foreground mb-1">
+                        <span className="truncate mr-4">{uploadStage || (mode === "file" ? "Procesando documento..." : "Procesando texto...")}</span>
+                        <span className="shrink-0">{Math.min(Math.round(uploadProgress), 100)}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="h-2 w-full transition-all duration-300" />
+                </div>
+            )}
+
             <Button
                 onClick={handleUpload}
                 disabled={(mode === "file" && !file) || (mode === "text" && !textContent.trim()) || uploading}
@@ -371,7 +397,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 {uploading ? (
                     <>
                         <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        {uploadStage || "Procesando..."}
+                        {mode === "file" ? "Procesando..." : "Enviando..."}
                     </>
                 ) : (
                     mode === "file" ? "Subir archivo" : "Enviar texto"
