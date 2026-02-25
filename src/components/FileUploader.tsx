@@ -56,7 +56,7 @@ async function extractTextFromFile(file: File, userId?: string): Promise<{ text:
 }
 
 export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderProps) => {
-    const [file, setFile] = useState<File | null>(null);
+    const [files, setFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const [uploadStage, setUploadStage] = useState("");
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -66,24 +66,29 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
     const { toast } = useToast();
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selected = e.target.files?.[0];
+        const selectedFiles = Array.from(e.target.files || []);
 
-        if (!selected) return;
+        if (selectedFiles.length === 0) return;
 
-        if (![
+        const validFiles = selectedFiles.filter(f => [
             "application/pdf",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "text/plain"
-        ].includes(selected.type)) {
+        ].includes(f.type));
+
+        if (validFiles.length !== selectedFiles.length) {
             toast({
-                title: "Formato no permitido",
-                description: "Solo se aceptan archivos .pdf, .docx y .txt",
+                title: "Algunos formatos no permitidos",
+                description: "Solo se aceptan archivos .pdf, .docx y .txt. Se han ignorado los archivos no compatibles.",
                 variant: "destructive",
             });
-            return;
         }
 
-        setFile(selected);
+        if (validFiles.length > 0) {
+            setFiles(prev => [...prev, ...validFiles]);
+        }
+        
+        e.target.value = "";
     };
 
     const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -99,31 +104,38 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
     const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
         e.preventDefault();
         setIsDragging(false);
-        const selected = e.dataTransfer.files?.[0];
+        const droppedFiles = Array.from(e.dataTransfer.files || []);
 
-        if (!selected) return;
+        if (droppedFiles.length === 0) return;
 
-        if (![
+        const validFiles = droppedFiles.filter(f => [
             "application/pdf",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "text/plain"
-        ].includes(selected.type)) {
+        ].includes(f.type));
+
+        if (validFiles.length !== droppedFiles.length) {
             toast({
-                title: "Formato no permitido",
-                description: "Solo se aceptan archivos .pdf, .docx y .txt",
+                title: "Algunos formatos no permitidos",
+                description: "Solo se aceptan archivos .pdf, .docx y .txt. Se han ignorado los archivos no compatibles.",
                 variant: "destructive",
             });
-            return;
         }
 
-        setFile(selected);
+        if (validFiles.length > 0) {
+            setFiles(prev => [...prev, ...validFiles]);
+        }
+    };
+    
+    const removeFile = (indexToRemove: number) => {
+        setFiles(prev => prev.filter((_, index) => index !== indexToRemove));
     };
 
     const handleUpload = async () => {
-        if (mode === "file" && !file) {
+        if (mode === "file" && files.length === 0) {
             toast({
-                title: "Sin archivo",
-                description: "Selecciona un archivo antes de subir",
+                title: "Sin archivos",
+                description: "Selecciona al menos un archivo antes de subir",
                 variant: "destructive",
             });
             return;
@@ -137,16 +149,8 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             });
             return;
         }
+        
         try {
-            if (!file && !textContent.trim()) {
-                toast({
-                    title: "Error",
-                    description: "Por favor selecciona un archivo o escribe texto",
-                    variant: "destructive",
-                });
-                return;
-            }
-
             setUploading(true);
             setUploadStage("Iniciando...");
             setUploadProgress(0);
@@ -157,132 +161,171 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 throw new Error("Usuario no autenticado");
             }
 
-            let content = "";
-            let generatedDocumentId: string | undefined = undefined;
-            let extractedContentUrl: string | undefined = undefined;
-            let originalFileName = "";
-            let fileType = "";
+            if (mode === "file" && files.length > 0) {
+                let successCount = 0;
+                let totalProcessedChunks = 0;
+                
+                for (let i = 0; i < files.length; i++) {
+                    const currentFile = files[i];
+                    
+                    const simulatedLogs = [
+                        `(${i+1}/${files.length}) Iniciando motor de IA para ${currentFile.name}...`,
+                        `(${i+1}/${files.length}) Analizando estructura y metadatos...`,
+                        `(${i+1}/${files.length}) Identificando bloques de texto y tablas...`,
+                        `(${i+1}/${files.length}) Aplicando OCR avanzado...`,
+                        `(${i+1}/${files.length}) Extrayendo información...`,
+                        `(${i+1}/${files.length}) Optimizando resultados...`,
+                        `(${i+1}/${files.length}) Finalizando extracción...`
+                    ];
+                    
+                    setUploadStage(simulatedLogs[0]);
+                    setUploadProgress(5);
+                    
+                    const logInterval = setInterval(() => {
+                        setUploadProgress((prev) => {
+                            let next = prev;
+                            if (prev < 30) next = prev + Math.random() * 6;
+                            else if (prev < 60) next = prev + Math.random() * 3;
+                            else if (prev < 85) next = prev + Math.random() * 1.5;
+                            else if (prev < 98) next = prev + Math.random() * 0.4;
+                            else next = prev;
+                            
+                            if (next < 15) setUploadStage(simulatedLogs[0]);
+                            else if (next < 30) setUploadStage(simulatedLogs[1]);
+                            else if (next < 45) setUploadStage(simulatedLogs[2]);
+                            else if (next < 60) setUploadStage(simulatedLogs[3]);
+                            else if (next < 75) setUploadStage(simulatedLogs[4]);
+                            else if (next < 90) setUploadStage(simulatedLogs[5]);
+                            else setUploadStage(simulatedLogs[6]);
+                            
+                            return next;
+                        });
+                    }, 400);
 
-            if (mode === "file" && file) {
-                // Simulación de logs de procesamiento de IA para dar feedback al usuario
-                const simulatedLogs = [
-                    "Iniciando motor de IA...",
-                    "Analizando estructura y metadatos del documento...",
-                    "Identificando bloques de texto y tablas...",
-                    "Aplicando OCR avanzado a elementos complejos...",
-                    "Extrayendo y consolidando la información...",
-                    "Optimizando resultados para mejor comprensión...",
-                    "Finalizando extracción (esto puede tomar unos segundos)..."
-                ];
-                
-                setUploadStage(simulatedLogs[0]);
-                setUploadProgress(5); // Start with a small progress
-                
-                const logInterval = setInterval(() => {
-                    setUploadProgress((prev) => {
-                        let next = prev;
-                        if (prev < 30) next = prev + Math.random() * 6;
-                        else if (prev < 60) next = prev + Math.random() * 3;
-                        else if (prev < 85) next = prev + Math.random() * 1.5;
-                        else if (prev < 98) next = prev + Math.random() * 0.4;
-                        else next = prev;
+                    try {
+                        const extractedTextResult = await extractTextFromFile(currentFile, user.id);
+                        clearInterval(logInterval);
+                        setUploadProgress(99);
+                        const content = extractedTextResult.text;
+                        const generatedDocumentId = extractedTextResult.document_id;
+                        const extractedContentUrl = extractedTextResult.content_url;
+                        const originalFileName = currentFile.name;
+                        const fileType = currentFile.type;
                         
-                        // Update text based on progress
-                        if (next < 15) setUploadStage(simulatedLogs[0]);
-                        else if (next < 30) setUploadStage(simulatedLogs[1]);
-                        else if (next < 45) setUploadStage(simulatedLogs[2]);
-                        else if (next < 60) setUploadStage(simulatedLogs[3]);
-                        else if (next < 75) setUploadStage(simulatedLogs[4]);
-                        else if (next < 90) setUploadStage(simulatedLogs[5]);
-                        else setUploadStage(simulatedLogs[6]);
+                        const fileName = originalFileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+
+                        setUploadStage(`(${i+1}/${files.length}) Subiendo archivo original...`);
+                        const s3FormData = new FormData();
+                        s3FormData.append('file', currentFile);
+                        s3FormData.append('userId', user.id);
+                        s3FormData.append('conversationId', conversationId || 'global_prompt');
+
+                        const s3Response = await supabase.functions.invoke('upload-to-s3', {
+                            body: s3FormData
+                        });
+
+                        if (s3Response.error) {
+                            console.warn("S3 upload error:", s3Response.error);
+                        }
+
+                        setUploadStage(`(${i+1}/${files.length}) Generando embeddings...`);
+                        const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
+                            body: {
+                                content: content,
+                                file_name: fileName,
+                                user_id: user.id,
+                                conversation_id: conversationId || null,
+                                file_type: fileType,
+                                upload_mode: mode,
+                                document_id: generatedDocumentId,
+                                content_url: extractedContentUrl
+                            }
+                        });
+
+                        if (processError || !processResult?.success) {
+                            console.error(`Error processing document ${fileName}:`, processError || processResult?.error);
+                            toast({
+                                title: "Error procesando archivo",
+                                description: `Hubo un error al procesar ${fileName}`,
+                                variant: "destructive",
+                            });
+                            continue;
+                        }
+
+                        if (onFileProcessed && processResult) {
+                            onFileProcessed({
+                                fileName,
+                                fileType,
+                                documentId: processResult.document_id,
+                                chunksProcessed: processResult.chunks_processed
+                            });
+                        }
                         
-                        return next;
+                        successCount++;
+                        totalProcessedChunks += (processResult.chunks_processed || 0);
+
+                    } catch (error) {
+                        clearInterval(logInterval);
+                        console.error(`Error uploading file ${currentFile.name}:`, error);
+                        toast({
+                            title: "Error procesando archivo",
+                            description: `Hubo un error al procesar ${currentFile.name}`,
+                            variant: "destructive",
+                        });
+                    }
+                }
+
+                if (successCount > 0) {
+                    toast({
+                        title: "Archivos procesados",
+                        description: `Se procesaron correctamente ${successCount} de ${files.length} archivos (${totalProcessedChunks} fragmentos).`,
                     });
-                }, 400); // More frequent updates for a smooth progress bar
-
-                try {
-                    const extractedTextResult = await extractTextFromFile(file, user.id);
-                    clearInterval(logInterval);
-                    setUploadProgress(99);
-                    content = extractedTextResult.text;
-                    generatedDocumentId = extractedTextResult.document_id;
-                    extractedContentUrl = extractedTextResult.content_url;
-                    originalFileName = file.name;
-                    fileType = file.type;
-                } catch (error) {
-                    clearInterval(logInterval);
-                    throw error;
+                    setFiles([]);
                 }
-            } else {
-                content = textContent;
-                originalFileName = `texto_${Date.now()}.txt`;
-                fileType = "text/plain";
-            }
-            
-            // Sanitize file name
-            const fileName = originalFileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-
-            if (mode === "file" && file) {
-                setUploadStage("Subiendo archivo original...");
-                const s3FormData = new FormData();
-                s3FormData.append('file', file);
-                s3FormData.append('userId', user.id);
-                s3FormData.append('conversationId', conversationId || 'global_prompt');
-
-                const s3Response = await supabase.functions.invoke('upload-to-s3', {
-                    body: s3FormData
+            } else if (mode === "text") {
+                const content = textContent;
+                const originalFileName = `texto_${Date.now()}.txt`;
+                const fileType = "text/plain";
+                const fileName = originalFileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+                
+                setUploadStage("Generando embeddings...");
+                const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
+                    body: {
+                        content: content,
+                        file_name: fileName,
+                        user_id: user.id,
+                        conversation_id: conversationId || null,
+                        file_type: fileType,
+                        upload_mode: mode,
+                        document_id: undefined,
+                        content_url: undefined
+                    }
                 });
 
-                if (s3Response.error) {
-                    console.warn("S3 upload error:", s3Response.error);
-                    // Decide whether to fail the whole process or continue...
-                    // Here we continue for robustness as the original behavior didn't have S3 upload at all
+                if (processError) {
+                    throw new Error(processError.message || "Error al procesar el documento");
                 }
-            }
 
-            setUploadStage("Generando embeddings...");
-            // Llamar a la edge function para procesar el documento con embeddings
-            const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
-                body: {
-                    content: content,
-                    file_name: fileName,
-                    user_id: user.id,
-                    conversation_id: conversationId || null,
-                    file_type: fileType,
-                    upload_mode: mode,
-                    document_id: generatedDocumentId,
-                    content_url: extractedContentUrl
+                if (!processResult?.success) {
+                    throw new Error(processResult?.error || "Error al procesar el documento");
                 }
-            });
 
-            if (processError) {
-                console.error("Error processing document:", processError);
-                throw new Error(processError.message || "Error al procesar el documento");
-            }
-
-            if (!processResult?.success) {
-                throw new Error(processResult?.error || "Error al procesar el documento");
-            }
-
-            // Callback con la respuesta para procesar en el chat
-            if (onFileProcessed && processResult) {
-                onFileProcessed({
-                    fileName,
-                    fileType,
-                    documentId: processResult.document_id,
-                    chunksProcessed: processResult.chunks_processed
+                if (onFileProcessed && processResult) {
+                    onFileProcessed({
+                        fileName,
+                        fileType,
+                        documentId: processResult.document_id,
+                        chunksProcessed: processResult.chunks_processed
+                    });
+                }
+                
+                toast({
+                    title: "Contenido procesado",
+                    description: `El texto fue procesado correctamente (${processResult.chunks_processed} fragmentos)`,
                 });
+
+                setTextContent("");
             }
-
-            toast({
-                title: "Contenido procesado",
-                description: mode === "file" 
-                    ? `${fileName} fue procesado correctamente (${processResult.chunks_processed} fragmentos)`
-                    : `El texto fue procesado correctamente (${processResult.chunks_processed} fragmentos)`,
-            });
-
-            setFile(null);
-            setTextContent("");
         } catch (error) {
             console.error("Error uploading file:", error);
             toast({
@@ -293,13 +336,8 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
         } finally {
             setUploading(false);
             setUploadStage("");
+            setUploadProgress(0);
         }
-    };
-
-    const getFileIcon = () => {
-        if (!file) return <UploadCloud className="w-10 h-10 opacity-70 mb-2" />;
-        if (file.type === "application/pdf") return <FileText className="w-10 h-10 text-red-500 mb-2" />;
-        return <FileImage className="w-10 h-10 text-blue-500 mb-2" />;
     };
 
     return (
@@ -311,7 +349,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                     onClick={() => setMode("file")}
                     className="flex-1"
                 >
-                    Subir Archivo
+                    Subir Archivos
                 </Button>
                 <Button
                     variant={mode === "text" ? "default" : "ghost"}
@@ -325,40 +363,48 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
 
             {mode === "file" ? (
                 <>
-                    {!file && (
-                        <label 
-                            className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isDragging ? "border-primary bg-primary/10 scale-[1.02]" : "hover:border-primary hover:bg-primary/5 border-border"}`}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                        >
-                            <input
-                                type="file"
-                                accept=".pdf,.docx,.txt"
-                                className="hidden"
-                                onChange={handleFileSelect}
-                            />
-                            {getFileIcon()}
-                            <p className="text-sm text-muted-foreground">
-                                Arrastra tu archivo aquí o haz clic
-                            </p>
-                            <p className="text-xs mt-1 opacity-70">Formatos permitidos: .pdf, .docx, .txt</p>
-                        </label>
-                    )}
+                    <label 
+                        className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isDragging ? "border-primary bg-primary/10 scale-[1.02]" : "hover:border-primary hover:bg-primary/5 border-border"}`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
+                        <input
+                            type="file"
+                            multiple
+                            accept=".pdf,.docx,.txt"
+                            className="hidden"
+                            onChange={handleFileSelect}
+                        />
+                        <UploadCloud className="w-10 h-10 opacity-70 mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                            Arrastra tus archivos aquí o haz clic
+                        </p>
+                        <p className="text-xs mt-1 opacity-70">Formatos permitidos: .pdf, .docx, .txt</p>
+                    </label>
 
-                    {file && (
-                        <div className="text-sm font-medium p-3 bg-muted rounded-lg flex justify-between items-center gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <FileText className="w-5 h-5 text-primary shrink-0" />
-                                <span className="truncate">{file.name}</span>
-                            </div>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => setFile(null)}
-                            >
-                                Quitar
-                            </Button>
+                    {files.length > 0 && (
+                        <div className="space-y-2 mt-4 max-h-48 overflow-y-auto pr-2">
+                            {files.map((file, index) => (
+                                <div key={index} className="text-sm font-medium p-3 bg-muted rounded-lg flex justify-between items-center gap-2">
+                                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                                        {file.type === "application/pdf" ? (
+                                            <FileText className="w-5 h-5 text-red-500 shrink-0" />
+                                        ) : (
+                                            <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+                                        )}
+                                        <span className="truncate">{file.name}</span>
+                                    </div>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="shrink-0"
+                                        onClick={() => removeFile(index)}
+                                    >
+                                        Quitar
+                                    </Button>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </>
@@ -382,7 +428,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             {uploading && (
                 <div className="space-y-2 mb-2">
                     <div className="flex justify-between text-xs font-medium text-muted-foreground mb-1">
-                        <span className="truncate mr-4">{uploadStage || (mode === "file" ? "Procesando documento..." : "Procesando texto...")}</span>
+                        <span className="truncate mr-4">{uploadStage || (mode === "file" ? "Procesando documentos..." : "Procesando texto...")}</span>
                         <span className="shrink-0">{Math.min(Math.round(uploadProgress), 100)}%</span>
                     </div>
                     <Progress value={uploadProgress} className="h-2 w-full transition-all duration-300" />
@@ -391,7 +437,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
 
             <Button
                 onClick={handleUpload}
-                disabled={(mode === "file" && !file) || (mode === "text" && !textContent.trim()) || uploading}
+                disabled={(mode === "file" && files.length === 0) || (mode === "text" && !textContent.trim()) || uploading}
                 className="w-full"
             >
                 {uploading ? (
@@ -400,7 +446,7 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                         {mode === "file" ? "Procesando..." : "Enviando..."}
                     </>
                 ) : (
-                    mode === "file" ? "Subir archivo" : "Enviar texto"
+                    mode === "file" ? `Subir ${files.length > 0 ? files.length : ''} ${files.length === 1 ? 'archivo' : 'archivos'}`.trim() : "Enviar texto"
                 )}
             </Button>
         </div>
