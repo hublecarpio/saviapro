@@ -216,7 +216,8 @@ Analyze ALL pages in this PDF and identify which ones contain NON-TEXTUAL VISUAL
 - Screenshots or UI captures
 - Technical drawings or schematics
 
-# TEXT-ONLY ELEMENTS (do NOT qualify)
+# DO NOT QUALIFY (IGNORE THESE)
+- Purely decorative elements like repeated logos, company branding, headers, and footers
 - Paragraphs, headings, subheadings
 - Bullet points or numbered lists
 - Plain text tables (rows and columns of text only)
@@ -254,8 +255,9 @@ Analyze page ${pageNumber} of this document and describe ONLY the non-textual vi
 
 # CONSTRAINTS
 - Describe ONLY visual elements. Do NOT transcribe or paraphrase surrounding text.
+- IGNORE purely decorative page elements such as recurring logos, company branding, headers, and footers.
 - Do NOT add commentary, summaries, or page-level descriptions.
-- If the page contains NO visual elements, return: {"visuals": []}
+- If the page contains NO visual elements (or only decorative ones), return: {"visuals": []}
 
 # OUTPUT FORMAT
 Respond with ONLY a valid JSON object:
@@ -494,7 +496,7 @@ serve(async (req) => {
 
           const hasText = (pageTexts.get(pageNum)?.length || 0) > 30;
           if (!hasText) {
-            prompt = `# ROLE\nYou are a specialist document content extractor.\n# TASK\nThis page appears to be a scanned document. Extract ALL text content AND describe ANY visual elements.\n# OUTPUT FORMAT\nRespond with ONLY a valid JSON object:\n{\n  "page_text": "All text content",\n  "visuals": [{ "anchor_text": "__PAGE_END__", "description": "Descripción de imagen: [detail]" }]\n}`;
+            prompt = `# ROLE\nYou are a specialist document content extractor.\n# TASK\nThis page appears to be a scanned document. Extract ALL text content AND describe ANY visual elements.\n# CONSTRAINTS\n- IGNORE purely decorative page elements such as recurring logos, company branding, headers, and footers.\n# OUTPUT FORMAT\nRespond with ONLY a valid JSON object:\n{\n  "page_text": "All text content",\n  "visuals": [{ "anchor_text": "__PAGE_END__", "description": "Descripción de imagen: [detail]" }]\n}`;
           }
 
           // Use shorter timeout for parallel description calls
