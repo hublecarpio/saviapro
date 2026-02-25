@@ -131,9 +131,9 @@ serve(async (req) => {
   }
 
   try {
-    const { document_id, content, file_name, user_id, file_type = 'text/plain', upload_mode = 'text' } = await req.json();
+    const { document_id, content, file_name, user_id, file_type = 'text/plain', upload_mode = 'text', content_url } = await req.json();
 
-    console.log('Processing document:', { document_id, file_name, file_type, upload_mode, contentLength: content?.length });
+    console.log('Processing document:', { document_id, file_name, file_type, upload_mode, content_url, contentLength: content?.length });
 
     if (!content || !user_id) {
       throw new Error("Missing required fields: content and user_id are required");
@@ -212,7 +212,8 @@ serve(async (req) => {
           uploaded_by: user_id,
           file_name: file_name || `documento_${Date.now()}.txt`,
           file_type: file_type,
-          upload_mode: upload_mode
+          upload_mode: upload_mode,
+          extracted_content_url: content_url || null
         });
 
       if (docError) {

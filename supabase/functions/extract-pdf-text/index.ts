@@ -416,12 +416,21 @@ serve(async (req) => {
     const totalPages = pageTexts.size > 0 ? pageTexts.size : await getPdfPageCount(pdfBytes);
     console.log(`Total pages: ${totalPages}`);
 
+    // Track execution time to prevent Supabase from killing the function (CPU/Wall limits)
+    const startTime = Date.now();
+    const MAX_WALL_CLOCK_MS = 40000; // 40 seconds max before we gracefully degrade to unpdf text
+
     // STEP 2: Detect visual elements in blocks of 10 pages
     console.log('STEP 2: Detecting visual elements...');
     const pagesWithVisuals = new Set<number>();
     const BLOCK_SIZE = 10;
 
     for (let startPage = 1; startPage <= totalPages; startPage += BLOCK_SIZE) {
+      if (Date.now() - startTime > MAX_WALL_CLOCK_MS) {
+        console.warn('WARNING: Max execution time reached during detection. Gracefully degrading to text-only from here.');
+        break;
+      }
+
       const endPage = Math.min(startPage + BLOCK_SIZE - 1, totalPages);
       console.log(`Detecting visuals in pages ${startPage}-${endPage}...`);
 
@@ -434,8 +443,8 @@ serve(async (req) => {
         // Upload block to Gemini Files API
         blockFileUri = await uploadToGeminiFiles(blockBytes, `${fileName}_p${startPage}-${endPage}`, geminiApiKey);
 
-        // Ask Gemini to detect visual pages
-        const detectionResult = await callGemini(blockFileUri, DETECTION_PROMPT, geminiApiKey, 30000);
+        // Ask Gemini to detect visual pages (fast timeout for detection)
+        const detectionResult = await callGemini(blockFileUri, DETECTION_PROMPT, geminiApiKey, 20000);
         const parsed = parseJsonFromGemini(detectionResult);
 
         if (parsed?.pages_with_visuals && Array.isArray(parsed.pages_with_visuals)) {
@@ -481,8 +490,16 @@ serve(async (req) => {
     const PARALLEL_BATCH_SIZE = 5;
 
     for (let i = 0; i < visualPagesArray.length; i += PARALLEL_BATCH_SIZE) {
+      if (Date.now() - startTime > MAX_WALL_CLOCK_MS) {
+        console.warn(`WARNING: Max execution time reached during description generation. Stopping at page ${visualPagesArray[i-1] || 'start'} and gracefully degrading.`);
+        break;
+      }
+
       const batch = visualPagesArray.slice(i, i + PARALLEL_BATCH_SIZE);
       console.log(`Processing visuals batch: pages [${batch.join(', ')}]...`);
+
+      // Time remaining for this batch
+      const timeRemaining = Math.max(5000, MAX_WALL_CLOCK_MS - (Date.now() - startTime));
 
       await Promise.all(batch.map(async (pageNum) => {
         let pageFileUri = '';
@@ -499,8 +516,9 @@ serve(async (req) => {
             prompt = `# ROLE\nYou are a specialist document content extractor.\n# TASK\nThis page appears to be a scanned document. Extract ALL text content AND describe ANY visual elements.\n# CONSTRAINTS\n- IGNORE purely decorative page elements such as recurring logos, company branding, headers, and footers.\n# OUTPUT FORMAT\nRespond with ONLY a valid JSON object:\n{\n  "page_text": "All text content",\n  "visuals": [{ "anchor_text": "__PAGE_END__", "description": "Descripción de imagen: [detail]" }]\n}`;
           }
 
-          // Use shorter timeout for parallel description calls
-          const descResult = await callGemini(pageFileUri, prompt, geminiApiKey, 30000);
+          // Dynamic timeout based on remaining allowed time, capped at 25s
+          const timeout = Math.min(25000, timeRemaining);
+          const descResult = await callGemini(pageFileUri, prompt, geminiApiKey, timeout);
           const parsed = parseJsonFromGemini(descResult);
 
           if (parsed) {
