@@ -12,9 +12,9 @@ interface FileUploaderProps {
 }
 
 // Función para extraer texto de archivos usando AI para PDFs
-async function extractTextFromFile(file: File, userId?: string): Promise<string> {
+async function extractTextFromFile(file: File, userId?: string): Promise<{ text: string, document_id?: string, content_url?: string }> {
     if (file.type === "text/plain") {
-        return await file.text();
+        return { text: await file.text() };
     }
     
     // Para PDF y DOCX, usar la edge function con AI para extracción real
@@ -32,22 +32,26 @@ async function extractTextFromFile(file: File, userId?: string): Promise<string>
             
             if (error) {
                 console.error("Error extracting PDF text:", error);
-                return `[Error al extraer texto del archivo: ${file.name}]`;
+                return { text: `[Error al extraer texto del archivo: ${file.name}]` };
             }
             
             if (data?.success && data?.extracted_text) {
                 console.log(`Extracted ${data.text_length || data.extracted_text.length} characters from ${file.name} (method: ${data.extraction_method})`);
-                return data.extracted_text;
+                return { 
+                    text: data.extracted_text, 
+                    document_id: data.document_id, 
+                    content_url: data.content_url 
+                };
             }
             
-            return `[No se pudo extraer texto del archivo: ${file.name}]`;
+            return { text: `[No se pudo extraer texto del archivo: ${file.name}]` };
         } catch (err) {
             console.error("PDF extraction error:", err);
-            return `[Error de extracción: ${file.name}]`;
+            return { text: `[Error de extracción: ${file.name}]` };
         }
     }
     
-    return await file.text();
+    return { text: await file.text() };
 }
 
 export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderProps) => {
@@ -131,10 +135,19 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             });
             return;
         }
-
-        setUploading(true);
-
         try {
+            if (!file && !textContent.trim()) {
+                toast({
+                    title: "Error",
+                    description: "Por favor selecciona un archivo o escribe texto",
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            setUploading(true);
+            setUploadStage("Iniciando...");
+
             setUploadStage("Autenticando...");
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -142,12 +155,17 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
             }
 
             let content = "";
+            let generatedDocumentId: string | undefined = undefined;
+            let extractedContentUrl: string | undefined = undefined;
             let originalFileName = "";
             let fileType = "";
 
             if (mode === "file" && file) {
                 setUploadStage("Extrayendo texto del documento...");
-                content = await extractTextFromFile(file, user.id);
+                const extractedTextResult = await extractTextFromFile(file, user.id);
+                content = extractedTextResult.text;
+                generatedDocumentId = extractedTextResult.document_id;
+                extractedContentUrl = extractedTextResult.content_url;
                 originalFileName = file.name;
                 fileType = file.type;
             } else {
@@ -186,7 +204,9 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                     user_id: user.id,
                     conversation_id: conversationId || null,
                     file_type: fileType,
-                    upload_mode: mode
+                    upload_mode: mode,
+                    document_id: generatedDocumentId,
+                    content_url: extractedContentUrl
                 }
             });
 
