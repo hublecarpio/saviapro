@@ -301,13 +301,6 @@ serve(async (req) => {
       if (i > 0) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      
-      // Limpiar markdown de la respuesta (**, ##, listas, etc.)
-      const cleanedMessage = msg
-        .replaceAll('**', '')
-        .replaceAll('##', '')
-        .replace(/^\s*[-*]\s+/gm, '')
-        .replace(/^\s*\d+\.\s+/gm, '');
 
       const { error: insertAssistantError } = await supabaseAdmin
         .from('messages')
@@ -315,7 +308,7 @@ serve(async (req) => {
           user_id: user_id,
           conversation_id: conversation_id,
           role: 'assistant',
-          message: cleanedMessage
+          message: msg
         });
 
       if (insertAssistantError) {
