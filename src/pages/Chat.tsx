@@ -5,15 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Send, LogOut, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, BookOpen, UserCog, FileUp, ExternalLink, Download } from "lucide-react";
+import { Send, Sparkles, Loader2, Paperclip, Mic, MicOff, Video, Podcast, Brain, FileText, BookOpen, FileUp, ExternalLink, Download } from "lucide-react";
 import { ChatToolsSidebar } from "@/components/ChatToolsSidebar";
 import { MobileChatToolsFAB } from "@/components/MobileChatToolsFAB";
-import { User as SupabaseUser } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 import { FichasDidacticas } from "@/components/FichasDidacticas";
-import { destroyUser } from "@/hooks/useLogout";
 import { NavBarUser } from "@/components/NavBarUser";
 import { useUserStore } from "@/store/useUserStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
@@ -64,7 +62,6 @@ const Chat = () => {
     conversationId: string;
   }>();
   const user = useUserStore(s => s.user);
-  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [mindMaps, setMindMaps] = useState<MindMap[]>([]);
   const [fichasSets, setFichasSets] = useState<FichasSet[]>([]);
@@ -155,21 +152,6 @@ const Chat = () => {
     });
     setChatItems(combined);
   }, [messages, mindMaps, fichasSets]);
-
-  // Verificar autenticación una sola vez al montar
-  useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
-      if (session) {
-        setCurrentUser(session.user);
-      }
-    };
-    checkAuth();
-  }, []);
 
   // Cargar mensajes y mapas mentales, suscribirse a realtime cuando hay conversationId
   useEffect(() => {
@@ -821,25 +803,6 @@ const Chat = () => {
     if (files && files.length > 0) {
       await processFile(files[0]);
     }
-  };
-  const pollForMediaUrl = async (webhookUrl: string, maxAttempts: number = 20, interval: number = 3000): Promise<string | null> => {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const response = await fetch(webhookUrl);
-        if (!response.ok) continue;
-        const data = await response.json();
-        const mediaUrl = data?.response || data?.url || data?.data?.url || data?.data?.response;
-        if (mediaUrl) {
-          return mediaUrl;
-        }
-
-        // Esperar antes del siguiente intento
-        await new Promise(resolve => setTimeout(resolve, interval));
-      } catch (error) {
-        console.error("Error polling for media URL:", error);
-      }
-    }
-    return null;
   };
   const handleGenerateResumen = async (type: "video" | "podcast") => {
     if (!currentConversationId || messages.length === 0) {

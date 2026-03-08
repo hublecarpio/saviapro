@@ -241,92 +241,6 @@ serve(async (req) => {
       ? message.replace(/[\x00-\x1F\x7F]/g, "") 
       : String(message);
 
-    // Detectar tipo de respuesta esperada basándose en el mensaje
-    const messageLower = safeMessage.toLowerCase().trim();
-    let tipo_respuesta = 'informativa'; // default
-    
-    // Palabras clave para tipo visual
-    const visualKeywords = ['imagen', 'imágenes', 'foto', 'fotos', 'muestra', 'muéstrame', 'ver', 'visual', 'dibujo', 'ilustra', 'gráfico', 'diagrama', 'ejemplo visual', 'cómo se ve', 'como se ve', 'picture', 'image'];
-    
-    // Palabras clave para tipo auditivo
-    const audioKeywords = ['audio', 'escucha', 'escuchar', 'sonido', 'pronuncia', 'pronunciación', 'lee en voz alta', 'podcast', 'reproduce', 'oír', 'voz'];
-    
-    if (visualKeywords.some(keyword => messageLower.includes(keyword))) {
-      tipo_respuesta = 'visual';
-    } else if (audioKeywords.some(keyword => messageLower.includes(keyword))) {
-      tipo_respuesta = 'auditiva';
-    }
-    
-    console.log('Detected response type:', tipo_respuesta);
-
-    // === CONSULTAR BASE DE CONOCIMIENTO RAG (Búsqueda Semántica Real) ===
-    let ragContext = '';
-    try {
-      const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-      
-      if (GEMINI_API_KEY) {
-        console.log('Generating query embedding with gemini-embedding-001...');
-        
-        // Generar embedding real del mensaje del usuario
-        const embeddingResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "models/gemini-embedding-001",
-              content: { parts: [{ text: safeMessage.substring(0, 2000) }] },
-              outputDimensionality: 768,
-              taskType: "RETRIEVAL_QUERY"
-            }),
-          }
-        );
-        
-        if (embeddingResponse.ok) {
-          const embData = await embeddingResponse.json();
-          const queryEmbedding = embData.embedding?.values;
-          
-          if (queryEmbedding && queryEmbedding.length > 0) {
-            
-            // Búsqueda vectorial con RPC (pasando el array directamente, supabase-js se encarga de formatear)
-            const { data: ragResults, error: ragError } = await supabaseAdmin
-              .rpc('search_documents', {
-                query_embedding: queryEmbedding,
-                match_threshold: 0.3,
-                match_count: 5
-              });
-            
-            if (!ragError && ragResults && ragResults.length > 0) {
-              ragContext = ragResults.map((r: any) => r.content_chunk).join('\n\n---\n\n');
-              console.log(`RAG: Found ${ragResults.length} relevant docs (top similarity: ${ragResults[0]?.similarity?.toFixed(4)})`);
-            } else if (ragError) {
-              console.warn('RAG vector search error, trying text fallback:', ragError.message);
-              
-              // Fallback a búsqueda de texto
-              const searchTerms = safeMessage.split(/\s+/).filter((w: string) => w.length > 2).slice(0, 10).join(' | ');
-              const { data: textResults } = await supabaseAdmin
-                .from('document_embeddings')
-                .select('content_chunk')
-                .textSearch('content_chunk', searchTerms)
-                .limit(3);
-              
-              if (textResults && textResults.length > 0) {
-                ragContext = textResults.map((r: any) => r.content_chunk).join('\n\n---\n\n');
-                console.log(`RAG text fallback: Found ${textResults.length} results`);
-              }
-            } else {
-              console.log('RAG: No relevant documents found for this query');
-            }
-          }
-        } else {
-          console.warn('Failed to generate query embedding:', embeddingResponse.status);
-        }
-      }
-    } catch (ragErr) {
-      console.error('Error in RAG search:', ragErr);
-      // RAG failure should not block the chat response
-    }
-    
     const webhookResponse = await fetch(
       Deno.env.get('WEBHOOK_MESSAGES_URL')!,
       {
@@ -335,9 +249,7 @@ serve(async (req) => {
         body: JSON.stringify({
           mensaje: safeMessage.trim(),
           id_conversation: conversation_id,
-          id_user: user_id,
-          tipo_respuesta: tipo_respuesta,
-          rag_context: ragContext || null
+          id_user: user_id
         })
       }
     );
