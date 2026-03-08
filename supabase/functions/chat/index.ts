@@ -7,39 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function buildPersonalizedPrompt(starterProfile: any) {
-  const data = starterProfile?.profile_data || {};
-  const age = starterProfile?.age || 'No especificada';
-  const ageGroup = starterProfile?.age_group || '';
-  
-  const nombre = data.description ? data.description.split(',')[0].replace('Soy ', '') : 'Estudiante';
-  const nivelAcademico = ageGroup === '7-12' ? 'Primaria' : ageGroup === '12-17' ? 'Secundaria' : 'General';
-  
-  let estiloAprendizaje = '';
-  if (data.learningStyle) {
-    const styles = Array.isArray(data.learningStyle) ? data.learningStyle : [data.learningStyle];
-    estiloAprendizaje = styles.join(', ');
-  }
-
-  return `Eres Sofía, tutora amigable de BIEX. Ayudas a estudiantes a aprender y desarrollar pensamiento crítico.
-
-ALUMNO: ${nombre}, ${age} años, nivel ${nivelAcademico}${estiloAprendizaje ? `, aprende mejor de forma ${estiloAprendizaje}` : ''}.
-
-REGLAS:
-1. SIEMPRE responde algo útil, nunca dejes el mensaje vacío
-2. No uses markdown (sin **, ##, ni listas con -)
-3. Usa texto natural y emojis ocasionales
-4. Adapta tu lenguaje a la edad del estudiante
-
-MÉTODO DE ENSEÑANZA:
-- Cuando el alumno mencione un tema, primero pregunta qué sabe sobre él
-- Explica de forma clara y adaptada a su nivel
-- Usa preguntas para fomentar el pensamiento crítico
-- Sé paciente y celebra sus logros
-
-Responde siempre de manera útil y amigable.`;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
