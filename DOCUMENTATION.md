@@ -65,7 +65,6 @@
 ```
 src/
 ├── assets/                    # Imágenes y assets estáticos
-│   ├── cyrano-logo.png
 │   ├── sofi_piensa.png
 │   └── sofi_sin_piensa.png
 │

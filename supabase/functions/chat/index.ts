@@ -275,73 +275,62 @@ serve(async (req) => {
     let mensajes: string[] = [];
     let images: string[] = [];
     
+    let backendResponse: Record<string, unknown> = {};
     if (Array.isArray(webhookData) && webhookData.length > 0) {
-      const responseObj = webhookData[0];
-      mensajes = responseObj.mensajes || [];
-      images = responseObj.images || [];
-    } else if (webhookData.mensajes) {
-      mensajes = webhookData.mensajes;
-      images = webhookData.images || [];
-    } else if (Array.isArray(webhookData)) {
-      mensajes = webhookData;
+      backendResponse = webhookData[0];
+    } else if (webhookData && typeof webhookData === 'object') {
+      backendResponse = webhookData;
     }
+
+    mensajes = (backendResponse.mensajes as string[]) || [];
+    images  = (backendResponse.images  as string[]) || [];
+
+    const currentPhase      = (backendResponse.current_phase       as string  ) || 'generativa';
+    const imagesPending     = (backendResponse.images_pending       as number  ) || 0;
+    const imagesJobId       = (backendResponse.images_job_id        as string  ) || null;
+    const imagesCount       = (backendResponse.images_count         as number  ) || 0;
+    const suggestedResources= (backendResponse.suggested_resources  as string[]) || [];
     
     if (!Array.isArray(mensajes) || mensajes.length === 0) {
       console.error('Invalid response format from webhook:', webhookData);
       throw new Error('Formato de respuesta inválido del agente');
     }
 
-    console.log('AI response received, saving', mensajes.length, 'messages and', images.length, 'images to database...');
+    console.log('AI response received, saving assistant message with', mensajes.length, 'segments and', images.length, 'images...');
 
-    // Save each message as a separate assistant message with delay
-    for (let i = 0; i < mensajes.length; i++) {
-      const msg = mensajes[i];
-      
-      // Wait 500ms between messages (except for the first one)
-      if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+    // Combine all message segments into one, separated by double newline
+    let combinedMessage = mensajes.join('\n\n');
 
-      const { error: insertAssistantError } = await supabaseAdmin
-        .from('messages')
-        .insert({
-          user_id: user_id,
-          conversation_id: conversation_id,
-          role: 'assistant',
-          message: msg
-        });
-
-      if (insertAssistantError) {
-        console.error('Error saving assistant message:', insertAssistantError);
-        throw new Error('Error guardando respuesta');
-      }
-      
-      console.log(`Message ${i + 1}/${mensajes.length} saved`);
-    }
-
-    // Save images as a separate message if there are any
+    // Append immediately-available images inline at the end of the message
     if (images.length > 0) {
-      // Wait before sending images
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Format: [IMAGES]url1|url2|url3[/IMAGES]
-      const imagesMessage = `[IMAGES]${images.join('|')}[/IMAGES]`;
-      
-      const { error: insertImagesError } = await supabaseAdmin
-        .from('messages')
-        .insert({
-          user_id: user_id,
-          conversation_id: conversation_id,
-          role: 'assistant',
-          message: imagesMessage
-        });
-
-      if (insertImagesError) {
-        console.error('Error saving images message:', insertImagesError);
-      } else {
-        console.log(`${images.length} images saved as message`);
-      }
+      combinedMessage += `\n\n[IMAGES]${images.join('|')}[/IMAGES]`;
+      console.log(`${images.length} images appended inline to assistant message`);
     }
+
+    const assistantMetadata = {
+      current_phase:       currentPhase,
+      images_pending:      imagesPending,
+      images_job_id:       imagesJobId,
+      images_count:        imagesCount,
+      suggested_resources: suggestedResources,
+    };
+
+    const { error: insertAssistantError } = await supabaseAdmin
+      .from('messages')
+      .insert({
+        user_id:         user_id,
+        conversation_id: conversation_id,
+        role:            'assistant',
+        message:         combinedMessage,
+        metadata:        assistantMetadata,
+      });
+
+    if (insertAssistantError) {
+      console.error('Error saving assistant message:', insertAssistantError);
+      throw new Error('Error guardando respuesta');
+    }
+
+    console.log('Assistant message saved with metadata:', JSON.stringify(assistantMetadata));
 
     console.log('All messages saved successfully');
 

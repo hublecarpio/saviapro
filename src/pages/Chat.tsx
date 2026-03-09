@@ -18,12 +18,23 @@ import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { SofiaThinking } from "@/components/SofiaThinking";
 import sofiPiensa from "@/assets/sofi_piensa.png";
 import { GenerationProgressBar } from "@/components/GenerationProgressBar";
+import { ImagePlaceholder } from "@/components/ImagePlaceholder";
+import { ResourceSuggestions } from "@/components/ResourceSuggestions";
 interface Message {
   id: string;
   role: "user" | "assistant";
   message: string;
   created_at: string;
   conversation_id: string;
+  metadata?: {
+    current_phase?: string;
+    images_pending?: number;
+    images_job_id?: string | null;
+    images_count?: number;
+    images_resolved?: boolean;
+    suggested_resources?: string[];
+    [key: string]: any;
+  };
 }
 interface MindMap {
   id: string;
@@ -337,6 +348,16 @@ const Chat = () => {
         // console.log("🤖 Assistant message received, stopping loading");
         setIsLoading(false);
       }
+    }).on("postgres_changes", {
+      event: "UPDATE",
+      schema: "public",
+      table: "messages",
+      filter: `conversation_id=eq.${currentConversationId}`
+    }, payload => {
+      const updatedMessage = payload.new as Message;
+      setMessages(prev =>
+        prev.map(m => m.id === updatedMessage.id ? updatedMessage : m)
+      );
     }).on("postgres_changes", {
       event: "INSERT",
       schema: "public",
@@ -1150,6 +1171,20 @@ const Chat = () => {
                                       </div>
                                     </div>)}
                                 </div>
+                                {/* Sugerencias de recursos multimedia */}
+                                {msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && (
+                                  <ResourceSuggestions
+                                    resources={msg.metadata.suggested_resources}
+                                    hasVideoGenerated={hasVideoGenerated}
+                                    hasPodcastGenerated={hasPodcastGenerated}
+                                    isLoading={isLoading}
+                                    onRequestMindMap={handleRequestMindMap}
+                                    onGenerateFichas={handleGenerateFichas}
+                                    onGenerateVideo={() => handleGenerateResumen("video")}
+                                    onGeneratePodcast={() => handleGenerateResumen("podcast")}
+                                    onRequestInforme={handleRequestInforme}
+                                  />
+                                )}
                               </div>
                             </div>
                           </div>;
@@ -1213,6 +1248,24 @@ const Chat = () => {
                               </div> : <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
                                 {msg.message}
                               </p>}
+                            {/* Placeholders de imágenes pendientes (solo mensajes del asistente sin imágenes aún) */}
+                            {msg.role === "assistant" && !hasImages && (msg.metadata?.images_pending ?? 0) > 0 && !msg.metadata?.images_resolved && (
+                              <ImagePlaceholder count={msg.metadata!.images_pending!} />
+                            )}
+                            {/* Sugerencias de recursos multimedia */}
+                            {msg.role === "assistant" && msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && (
+                              <ResourceSuggestions
+                                resources={msg.metadata.suggested_resources}
+                                hasVideoGenerated={hasVideoGenerated}
+                                hasPodcastGenerated={hasPodcastGenerated}
+                                isLoading={isLoading}
+                                onRequestMindMap={handleRequestMindMap}
+                                onGenerateFichas={handleGenerateFichas}
+                                onGenerateVideo={() => handleGenerateResumen("video")}
+                                onGeneratePodcast={() => handleGenerateResumen("podcast")}
+                                onRequestInforme={handleRequestInforme}
+                              />
+                            )}
                           </div>
                         </div>;
                 } else if (item.type === 'mindmap') {
