@@ -1192,7 +1192,8 @@ const Chat = () => {
 
                   // Renderizado multi-burbuja para mensajes del asistente con múltiples párrafos
                   if (msg.role === "assistant" && !hasFile && !hasImages && !hasPdf && !hasMedia) {
-                    const segments = msg.message.split('\n\n').filter(s => s.trim());
+                    const cleanedMessage = msg.message.replace(/\s*\[IMAGES\]\[\/IMAGES\]\s*/g, '');
+                    const segments = cleanedMessage.split('\n\n').filter(s => s.trim());
                     if (segments.length > 1) {
                       return (
                         <div key={msg.id} className="flex flex-col gap-1.5 items-start">
@@ -1286,7 +1287,7 @@ const Chat = () => {
                                     Tu navegador no soporta audio HTML5.
                                   </audio>}
                               </div> : <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                {msg.message}
+                                {msg.message.replace(/\s*\[IMAGES\]\[\/IMAGES\]\s*/g, '')}
                               </p>}
                             {/* Placeholders de imágenes pendientes (solo mensajes del asistente sin imágenes aún) */}
                             {msg.role === "assistant" && !hasImages && (msg.metadata?.images_pending ?? 0) > 0 && !msg.metadata?.images_resolved && (
