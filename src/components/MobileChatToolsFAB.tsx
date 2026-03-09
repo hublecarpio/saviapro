@@ -74,7 +74,7 @@ export const MobileChatToolsFAB = ({
                   style={{ animationDelay: `${index * 40}ms` }}
                 >
                   <div className="w-6 h-6">
-                    <SofiaThinking />
+                    <SofiaThinking compact />
                   </div>
                   <span className="text-xs font-medium text-primary">Generando</span>
                 </div>

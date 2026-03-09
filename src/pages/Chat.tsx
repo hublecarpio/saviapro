@@ -1172,7 +1172,7 @@ const Chat = () => {
                                     </div>)}
                                 </div>
                                 {/* Sugerencias de recursos multimedia */}
-                                {msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && (
+                                {msg.role === "assistant" && msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && msg.id === messages.filter(m => m.role === "assistant").slice(-1)[0]?.id && (
                                   <ResourceSuggestions
                                     resources={msg.metadata.suggested_resources}
                                     hasVideoGenerated={hasVideoGenerated}
@@ -1253,7 +1253,7 @@ const Chat = () => {
                               <ImagePlaceholder count={msg.metadata!.images_pending!} />
                             )}
                             {/* Sugerencias de recursos multimedia */}
-                            {msg.role === "assistant" && msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && (
+                            {msg.role === "assistant" && msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && msg.id === messages.filter(m => m.role === "assistant").slice(-1)[0]?.id && (
                               <ResourceSuggestions
                                 resources={msg.metadata.suggested_resources}
                                 hasVideoGenerated={hasVideoGenerated}
@@ -1359,11 +1359,8 @@ const Chat = () => {
 
                   {/* Indicador de Sofia pensando - para loading normal */}
                   {isLoading && isGeneratingMindMap !== currentConversationId && isGeneratingVideo !== currentConversationId && isGeneratingPodcast !== currentConversationId && isGeneratingFichas !== currentConversationId && isGeneratingInforme !== currentConversationId && <div className="flex justify-start">
-                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-2 py-2 md:px-3 md:py-2.5 flex items-center gap-2 md:gap-3 shadow-sm">
+                      <div className="bg-card border border-[hsl(var(--chat-assistant-border))] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-4 md:py-3 shadow-sm">
                         <SofiaThinking />
-                        <span className="text-xs md:text-sm text-muted-foreground">
-                          Sofia está analizando...
-                        </span>
                       </div>
                     </div>}
 

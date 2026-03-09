@@ -41,7 +41,7 @@ export const ChatToolsSidebar = ({
         <>
           {isGeneratingVideo ? (
             <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
-              <SofiaThinking />
+              <SofiaThinking compact />
               <span className="text-[8px] font-medium text-primary">Generando</span>
             </div>
           ) : hasVideoGenerated ? (
@@ -65,7 +65,7 @@ export const ChatToolsSidebar = ({
 
           {isGeneratingPodcast ? (
             <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
-              <SofiaThinking />
+              <SofiaThinking compact />
               <span className="text-[8px] font-medium text-primary">Generando</span>
             </div>
           ) : hasPodcastGenerated ? (
@@ -89,7 +89,7 @@ export const ChatToolsSidebar = ({
 
           {isGeneratingMindMap ? (
             <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
-              <SofiaThinking />
+              <SofiaThinking compact />
               <span className="text-[8px] font-medium text-primary">Generando</span>
             </div>
           ) : (
@@ -109,7 +109,7 @@ export const ChatToolsSidebar = ({
 
           {isGeneratingFichas ? (
             <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
-              <SofiaThinking />
+              <SofiaThinking compact />
               <span className="text-[8px] font-medium text-primary">Generando</span>
             </div>
           ) : (
@@ -128,7 +128,7 @@ export const ChatToolsSidebar = ({
 
           {isGeneratingInforme ? (
             <div className="h-12 w-12 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-accent/30">
-              <SofiaThinking />
+              <SofiaThinking compact />
               <span className="text-[8px] font-medium text-primary">Generando</span>
             </div>
           ) : (

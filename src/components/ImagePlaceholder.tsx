@@ -10,51 +10,35 @@ export const ImagePlaceholder = ({ count }: ImagePlaceholderProps) => {
       {Array.from({ length: count }).map((_, idx) => (
         <div
           key={idx}
-          className="relative w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden"
-          style={{
-            // Liquid glass base
-            background:
-              "linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.14) 100%)",
-            backdropFilter: "blur(18px) saturate(160%)",
-            WebkitBackdropFilter: "blur(18px) saturate(160%)",
-            boxShadow:
-              "0 4px 24px 0 rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.08)",
-            border: "1px solid rgba(255,255,255,0.28)",
-          }}
+          className="relative w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden
+                     bg-background/50 dark:bg-white/[0.06] 
+                     border border-border/40 dark:border-white/[0.18]
+                     backdrop-blur-xl saturate-150
+                     shadow-[0_4px_24px_0_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.15)]
+                     dark:shadow-[0_4px_24px_0_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.25),inset_0_-1px_0_rgba(0,0,0,0.08)]"
         >
-          {/* Shimmer sweep animation */}
+          {/* Shimmer sweep */}
           <div
-            className="absolute inset-0 -translate-x-full animate-[shimmer_2.2s_ease-in-out_infinite]"
+            className="absolute inset-0 -translate-x-full"
             style={{
               background:
-                "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)",
+                "linear-gradient(105deg, transparent 30%, hsl(var(--primary) / 0.12) 50%, transparent 70%)",
+              animation: "glass-shimmer 2.2s ease-in-out infinite",
             }}
           />
 
-          {/* Inner highlight top-edge */}
+          {/* Top edge highlight */}
           <div
-            className="absolute inset-x-0 top-0 h-px"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)",
-            }}
+            className="absolute inset-x-0 top-0 h-px 
+                       bg-gradient-to-r from-transparent via-white/30 dark:via-white/50 to-transparent"
           />
 
           {/* Content */}
           <div className="relative z-10 flex flex-col items-center justify-center h-full gap-2">
-            <ImageIcon
-              className="h-6 w-6"
-              style={{ color: "rgba(255,255,255,0.45)" }}
-            />
+            <ImageIcon className="h-6 w-6 text-muted-foreground/30 dark:text-white/[0.35]" />
             <div className="flex items-center gap-1">
-              <Loader2
-                className="h-3 w-3 animate-spin"
-                style={{ color: "rgba(255,255,255,0.5)" }}
-              />
-              <span
-                className="text-[9px] font-semibold tracking-wide"
-                style={{ color: "rgba(255,255,255,0.55)" }}
-              >
+              <Loader2 className="h-3 w-3 animate-spin text-primary/40 dark:text-white/[0.4]" />
+              <span className="text-[9px] font-semibold tracking-wide text-muted-foreground/40 dark:text-white/[0.45]">
                 Generando...
               </span>
             </div>
@@ -62,9 +46,8 @@ export const ImagePlaceholder = ({ count }: ImagePlaceholderProps) => {
         </div>
       ))}
 
-      {/* Shimmer keyframe (injected once via a style tag) */}
       <style>{`
-        @keyframes shimmer {
+        @keyframes glass-shimmer {
           0%   { transform: translateX(-100%); }
           60%  { transform: translateX(100%); }
           100% { transform: translateX(100%); }
