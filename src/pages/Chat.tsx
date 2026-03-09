@@ -1138,56 +1138,66 @@ const Chat = () => {
                           </div>;
                   }
 
-                  // Si es un mensaje de imágenes, renderizar de forma especial
+                  // Si es un mensaje de imágenes, renderizar en multi-burbuja
                   if (hasImages && imageUrls.length > 0) {
                     // Extraer el texto sin las etiquetas de imágenes
                     const textContent = msg.message.replace(/\[IMAGES\].*?\[\/IMAGES\]/, '').trim();
-                    return <div key={msg.id} className="flex justify-start">
-                            <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-4 md:py-3 overflow-hidden bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
-                              <div className="space-y-3">
-                                {/* Mostrar el texto del mensaje si existe */}
-                                {textContent && <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                    {textContent}
-                                  </p>}
-                                {/* Mostrar las imágenes */}
-                                <div className="flex flex-wrap justify-center gap-2">
-                                  {imageUrls.map((url, idx) => <div key={idx} className="relative group cursor-pointer rounded-lg overflow-hidden w-24 h-24 md:w-28 md:h-28" onClick={() => window.open(url, '_blank')}>
-                                      <img
-                                        src={url}
-                                        alt={`Imagen ${idx + 1}`}
-                                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                                        loading="lazy"
-                                        onError={(e) => {
-                                          const target = e.currentTarget;
-                                          target.style.display = 'none';
-                                          const fallback = document.createElement('div');
-                                          fallback.className = 'w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-xs text-center p-2';
-                                          fallback.textContent = 'Error al cargar imagen';
-                                          target.parentElement?.appendChild(fallback);
-                                        }}
-                                      />
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
-                                        <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                                      </div>
-                                    </div>)}
-                                </div>
-                                {/* Sugerencias de recursos multimedia */}
-                                {msg.role === "assistant" && msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && msg.id === messages.filter(m => m.role === "assistant").slice(-1)[0]?.id && (
-                                  <ResourceSuggestions
-                                    resources={msg.metadata.suggested_resources}
-                                    hasVideoGenerated={hasVideoGenerated}
-                                    hasPodcastGenerated={hasPodcastGenerated}
-                                    isLoading={isLoading}
-                                    onRequestMindMap={handleRequestMindMap}
-                                    onGenerateFichas={handleGenerateFichas}
-                                    onGenerateVideo={() => handleGenerateResumen("video")}
-                                    onGeneratePodcast={() => handleGenerateResumen("podcast")}
-                                    onRequestInforme={handleRequestInforme}
+                    const textSegments = textContent ? textContent.split('\n\n').filter(s => s.trim()) : [];
+                    return (
+                      <div key={msg.id} className="flex flex-col gap-1.5 items-start">
+                        {/* Burbujas de texto */}
+                        {textSegments.map((segment, idx) => (
+                          <div key={`${msg.id}-text-${idx}`}
+                               className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
+                            <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                              {segment.trim()}
+                            </p>
+                          </div>
+                        ))}
+                        {/* Burbuja con imágenes */}
+                        <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-4 md:py-3 overflow-hidden bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap justify-center gap-2">
+                              {imageUrls.map((url, idx) => (
+                                <div key={idx} className="relative group cursor-pointer rounded-lg overflow-hidden w-24 h-24 md:w-28 md:h-28" onClick={() => window.open(url, '_blank')}>
+                                  <img
+                                    src={url}
+                                    alt={`Imagen ${idx + 1}`}
+                                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      const target = e.currentTarget;
+                                      target.style.display = 'none';
+                                      const fallback = document.createElement('div');
+                                      fallback.className = 'w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-xs text-center p-2';
+                                      fallback.textContent = 'Error al cargar imagen';
+                                      target.parentElement?.appendChild(fallback);
+                                    }}
                                   />
-                                )}
-                              </div>
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                                    <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          </div>;
+                            {/* Sugerencias de recursos multimedia */}
+                            {msg.role === "assistant" && msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && msg.id === messages.filter(m => m.role === "assistant").slice(-1)[0]?.id && (
+                              <ResourceSuggestions
+                                resources={msg.metadata.suggested_resources}
+                                hasVideoGenerated={hasVideoGenerated}
+                                hasPodcastGenerated={hasPodcastGenerated}
+                                isLoading={isLoading}
+                                onRequestMindMap={handleRequestMindMap}
+                                onGenerateFichas={handleGenerateFichas}
+                                onGenerateVideo={() => handleGenerateResumen("video")}
+                                onGeneratePodcast={() => handleGenerateResumen("podcast")}
+                                onRequestInforme={handleRequestInforme}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
                   }
 
                   // Renderizado multi-burbuja para mensajes del asistente con múltiples párrafos
