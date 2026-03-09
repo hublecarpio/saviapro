@@ -1189,6 +1189,46 @@ const Chat = () => {
                             </div>
                           </div>;
                   }
+
+                  // Renderizado multi-burbuja para mensajes del asistente con múltiples párrafos
+                  if (msg.role === "assistant" && !hasFile && !hasImages && !hasPdf && !hasMedia) {
+                    const segments = msg.message.split('\n\n').filter(s => s.trim());
+                    if (segments.length > 1) {
+                      return (
+                        <div key={msg.id} className="flex flex-col gap-1.5 items-start">
+                          {segments.map((segment, idx) => (
+                            <div key={`${msg.id}-${idx}`}
+                                 className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
+                              <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                {segment.trim()}
+                              </p>
+                              {idx === segments.length - 1 && (
+                                <>
+                                  {!hasImages && (msg.metadata?.images_pending ?? 0) > 0 && !msg.metadata?.images_resolved && (
+                                    <ImagePlaceholder count={msg.metadata!.images_pending!} />
+                                  )}
+                                  {msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && msg.id === messages.filter(m => m.role === "assistant").slice(-1)[0]?.id && (
+                                    <ResourceSuggestions
+                                      resources={msg.metadata.suggested_resources}
+                                      hasVideoGenerated={hasVideoGenerated}
+                                      hasPodcastGenerated={hasPodcastGenerated}
+                                      isLoading={isLoading}
+                                      onRequestMindMap={handleRequestMindMap}
+                                      onGenerateFichas={handleGenerateFichas}
+                                      onGenerateVideo={() => handleGenerateResumen("video")}
+                                      onGeneratePodcast={() => handleGenerateResumen("podcast")}
+                                      onRequestInforme={handleRequestInforme}
+                                    />
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                  }
+
                   return <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                            <div className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 overflow-hidden ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm"}`}>
                             {hasPdf && urlMatch ? <div className="space-y-3">
