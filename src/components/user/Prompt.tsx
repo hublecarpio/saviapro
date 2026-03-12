@@ -10,6 +10,8 @@ import { Loading } from "@/components/ui/loading";
 import { FileUploader } from "../FileUploader";
 import { DocumentsList } from "../DocumentsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 const Prompt = () => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -96,6 +98,7 @@ const Prompt = () => {
         }
     };
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [pedagogicalRefresh, setPedagogicalRefresh] = useState(0);
 
     if (loading) {
         return (
@@ -109,9 +112,10 @@ const Prompt = () => {
         <>
             {loading ? '' : <div className="container mx-auto px-4 py-8 max-w-6xl space-y-4">
                 <Tabs defaultValue="prompt">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="prompt">Prompt maestro</TabsTrigger>
-                        <TabsTrigger value="files">Documentos</TabsTrigger>
+                        <TabsTrigger value="pedagogical">Docs Pedagógicos</TabsTrigger>
+                        <TabsTrigger value="educational">Docs Educativos</TabsTrigger>
                     </TabsList>
                     <TabsContent value="prompt">
                         <Card>
@@ -140,18 +144,60 @@ const Prompt = () => {
                             </CardContent>
                         </Card>
                     </TabsContent>
-                    <TabsContent value="files">
+                    <TabsContent value="pedagogical">
                         <div className="space-y-4">
                             <Card>
                                 <CardContent>
                                     <div className="pt-6">
-                                        <Label className="font-semibold text-lg">Subir Archivos (.pdf / .docx) o Texto</Label>
-                                        <FileUploader onFileProcessed={() => setRefreshTrigger(prev => prev + 1)} />
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Label className="font-semibold text-lg">Subir Documentos Pedagógicos</Label>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="right" className="max-w-xs">
+                                                        <p>Estos documentos contienen lineamientos y metodologías pedagógicas que el agente IA utiliza como base para guiar sus respuestas e interacciones con los estudiantes. Ej: marcos teóricos, protocolos de enseñanza, guías didácticas.</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                        <FileUploader
+                                            uploadTarget="pedagogical"
+                                            onFileProcessed={() => setPedagogicalRefresh(prev => prev + 1)}
+                                        />
                                     </div>
                                 </CardContent>
                             </Card>
-                            
-                            <DocumentsList refreshTrigger={refreshTrigger} />
+                            <DocumentsList source="pedagogical" refreshTrigger={pedagogicalRefresh} />
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="educational">
+                        <div className="space-y-4">
+                            <Card>
+                                <CardContent>
+                                    <div className="pt-6">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Label className="font-semibold text-lg">Subir Documentos Educativos</Label>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="right" className="max-w-xs">
+                                                        <p>Estos son los materiales de estudio que los estudiantes pueden consultar. Se indexan mediante búsqueda semántica (RAG) para que el agente IA pueda buscar información relevante al responder preguntas. Ej: apuntes de clase, libros de texto, guías de ejercicios.</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                        <FileUploader
+                                            uploadTarget="educational"
+                                            onFileProcessed={() => setRefreshTrigger(prev => prev + 1)}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <DocumentsList source="educational" refreshTrigger={refreshTrigger} />
                         </div>
                     </TabsContent>
                 </Tabs>

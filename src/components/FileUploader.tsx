@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface FileUploaderProps {
     conversationId?: string;
     onFileProcessed?: (response: any) => void;
+    uploadTarget: "educational" | "pedagogical";
 }
 
 // Función para extraer texto de archivos usando AI para PDFs
@@ -55,7 +56,7 @@ async function extractTextFromFile(file: File, userId?: string): Promise<{ text:
     return { text: await file.text() };
 }
 
-export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderProps) => {
+export const FileUploader = ({ conversationId, onFileProcessed, uploadTarget }: FileUploaderProps) => {
     const [files, setFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const [uploadStage, setUploadStage] = useState("");
@@ -132,6 +133,8 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
     };
 
     const handleUpload = async () => {
+        console.log(`[FileUploader] handleUpload started. mode=${mode}, uploadTarget=${uploadTarget}, files=${files.length}`);
+
         if (mode === "file" && files.length === 0) {
             toast({
                 title: "Sin archivos",
@@ -214,55 +217,93 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                         
                         const fileName = originalFileName.replace(/[^a-zA-Z0-9.-]/g, '_');
 
-                        setUploadStage(`(${i+1}/${files.length}) Subiendo archivo original...`);
-                        const s3FormData = new FormData();
-                        s3FormData.append('file', currentFile);
-                        s3FormData.append('userId', user.id);
-                        s3FormData.append('conversationId', conversationId || 'global_prompt');
+                        if (uploadTarget === "pedagogical") {
+                            console.log(`[FileUploader] uploadTarget=${uploadTarget}, calling process-pedagogical-doc for ${fileName}`);
+                            setUploadStage(`(${i+1}/${files.length}) Guardando documento pedagógico...`);
 
-                        const s3Response = await supabase.functions.invoke('upload-to-s3', {
-                            body: s3FormData
-                        });
+                            const { data: processResult, error: processError } = await supabase.functions.invoke('process-pedagogical-doc', {
+                                body: {
+                                    content: content,
+                                    file_name: originalFileName,
+                                    user_id: user.id,
+                                    file_type: fileType,
+                                    content_url: extractedContentUrl
+                                }
+                            });
 
-                        if (s3Response.error) {
-                            console.warn("S3 upload error:", s3Response.error);
-                        }
+                            console.log(`[FileUploader] process-pedagogical-doc response:`, { processResult, processError });
 
-                        setUploadStage(`(${i+1}/${files.length}) Generando embeddings...`);
-                        const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
-                            body: {
-                                content: content,
-                                file_name: fileName,
-                                user_id: user.id,
-                                conversation_id: conversationId || null,
-                                file_type: fileType,
-                                upload_mode: mode,
-                                document_id: generatedDocumentId,
-                                content_url: extractedContentUrl
+                            if (processError || !processResult?.success) {
+                                console.error(`[FileUploader] ❌ Error processing pedagogical doc ${fileName}:`, processError || processResult?.error);
+                                toast({
+                                    title: "Error procesando documento",
+                                    description: `Hubo un error al procesar ${fileName}`,
+                                    variant: "destructive",
+                                });
+                                continue;
                             }
-                        });
 
-                        if (processError || !processResult?.success) {
-                            console.error(`Error processing document ${fileName}:`, processError || processResult?.error);
-                            toast({
-                                title: "Error procesando archivo",
-                                description: `Hubo un error al procesar ${fileName}`,
-                                variant: "destructive",
-                            });
-                            continue;
-                        }
+                            if (onFileProcessed && processResult) {
+                                onFileProcessed({
+                                    fileName,
+                                    fileType,
+                                    documentId: processResult.document_id,
+                                    chunksProcessed: 0
+                                });
+                            }
 
-                        if (onFileProcessed && processResult) {
-                            onFileProcessed({
-                                fileName,
-                                fileType,
-                                documentId: processResult.document_id,
-                                chunksProcessed: processResult.chunks_processed
+                            successCount++;
+                        } else {
+                            setUploadStage(`(${i+1}/${files.length}) Subiendo archivo original...`);
+                            const s3FormData = new FormData();
+                            s3FormData.append('file', currentFile);
+                            s3FormData.append('userId', user.id);
+                            s3FormData.append('conversationId', conversationId || 'global_prompt');
+
+                            const s3Response = await supabase.functions.invoke('upload-to-s3', {
+                                body: s3FormData
                             });
+
+                            if (s3Response.error) {
+                                console.warn("S3 upload error:", s3Response.error);
+                            }
+
+                            setUploadStage(`(${i+1}/${files.length}) Generando embeddings...`);
+                            const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
+                                body: {
+                                    content: content,
+                                    file_name: fileName,
+                                    user_id: user.id,
+                                    conversation_id: conversationId || null,
+                                    file_type: fileType,
+                                    upload_mode: mode,
+                                    document_id: generatedDocumentId,
+                                    content_url: extractedContentUrl
+                                }
+                            });
+
+                            if (processError || !processResult?.success) {
+                                console.error(`Error processing document ${fileName}:`, processError || processResult?.error);
+                                toast({
+                                    title: "Error procesando archivo",
+                                    description: `Hubo un error al procesar ${fileName}`,
+                                    variant: "destructive",
+                                });
+                                continue;
+                            }
+
+                            if (onFileProcessed && processResult) {
+                                onFileProcessed({
+                                    fileName,
+                                    fileType,
+                                    documentId: processResult.document_id,
+                                    chunksProcessed: processResult.chunks_processed
+                                });
+                            }
+
+                            successCount++;
+                            totalProcessedChunks += (processResult.chunks_processed || 0);
                         }
-                        
-                        successCount++;
-                        totalProcessedChunks += (processResult.chunks_processed || 0);
 
                     } catch (error) {
                         clearInterval(logInterval);
@@ -278,7 +319,9 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 if (successCount > 0) {
                     toast({
                         title: "Archivos procesados",
-                        description: `Se procesaron correctamente ${successCount} de ${files.length} archivos (${totalProcessedChunks} fragmentos).`,
+                        description: uploadTarget === "pedagogical"
+                            ? `Se procesaron correctamente ${successCount} de ${files.length} archivos como documentos pedagógicos.`
+                            : `Se procesaron correctamente ${successCount} de ${files.length} archivos (${totalProcessedChunks} fragmentos).`,
                     });
                     setFiles([]);
                 }
@@ -287,44 +330,84 @@ export const FileUploader = ({ conversationId, onFileProcessed }: FileUploaderPr
                 const originalFileName = `texto_${Date.now()}.txt`;
                 const fileType = "text/plain";
                 const fileName = originalFileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-                
-                setUploadStage("Generando embeddings...");
-                const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
-                    body: {
-                        content: content,
-                        file_name: fileName,
-                        user_id: user.id,
-                        conversation_id: conversationId || null,
-                        file_type: fileType,
-                        upload_mode: mode,
-                        document_id: undefined,
-                        content_url: undefined
-                    }
-                });
 
-                if (processError) {
-                    throw new Error(processError.message || "Error al procesar el documento");
-                }
+                if (uploadTarget === "pedagogical") {
+                    console.log(`[FileUploader] uploadTarget=${uploadTarget}, calling process-pedagogical-doc for text mode`);
+                    setUploadStage("Guardando documento pedagógico...");
 
-                if (!processResult?.success) {
-                    throw new Error(processResult?.error || "Error al procesar el documento");
-                }
-
-                if (onFileProcessed && processResult) {
-                    onFileProcessed({
-                        fileName,
-                        fileType,
-                        documentId: processResult.document_id,
-                        chunksProcessed: processResult.chunks_processed
+                    const { data: processResult, error: processError } = await supabase.functions.invoke('process-pedagogical-doc', {
+                        body: {
+                            content: content,
+                            file_name: originalFileName,
+                            user_id: user.id,
+                            file_type: fileType,
+                            content_url: undefined
+                        }
                     });
-                }
-                
-                toast({
-                    title: "Contenido procesado",
-                    description: `El texto fue procesado correctamente (${processResult.chunks_processed} fragmentos)`,
-                });
 
-                setTextContent("");
+                    console.log(`[FileUploader] process-pedagogical-doc response:`, { processResult, processError });
+
+                    if (processError) {
+                        throw new Error(processError.message || "Error al procesar el documento pedagógico");
+                    }
+                    if (!processResult?.success) {
+                        throw new Error(processResult?.error || "Error al procesar el documento pedagógico");
+                    }
+
+                    if (onFileProcessed && processResult) {
+                        onFileProcessed({
+                            fileName,
+                            fileType,
+                            documentId: processResult.document_id,
+                            chunksProcessed: 0
+                        });
+                    }
+
+                    toast({
+                        title: "Contenido procesado",
+                        description: "Documento pedagógico procesado correctamente",
+                    });
+
+                    setTextContent("");
+                } else {
+                    setUploadStage("Generando embeddings...");
+                    const { data: processResult, error: processError } = await supabase.functions.invoke('process-document', {
+                        body: {
+                            content: content,
+                            file_name: fileName,
+                            user_id: user.id,
+                            conversation_id: conversationId || null,
+                            file_type: fileType,
+                            upload_mode: mode,
+                            document_id: undefined,
+                            content_url: undefined
+                        }
+                    });
+
+                    if (processError) {
+                        throw new Error(processError.message || "Error al procesar el documento");
+                    }
+
+                    if (!processResult?.success) {
+                        throw new Error(processResult?.error || "Error al procesar el documento");
+                    }
+
+                    if (onFileProcessed && processResult) {
+                        onFileProcessed({
+                            fileName,
+                            fileType,
+                            documentId: processResult.document_id,
+                            chunksProcessed: processResult.chunks_processed
+                        });
+                    }
+
+                    toast({
+                        title: "Contenido procesado",
+                        description: `El texto fue procesado correctamente (${processResult.chunks_processed} fragmentos)`,
+                    });
+
+                    setTextContent("");
+                }
             }
         } catch (error) {
             console.error("Error uploading file:", error);

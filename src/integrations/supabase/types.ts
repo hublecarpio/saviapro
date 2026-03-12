@@ -236,6 +236,42 @@ export type Database = {
           },
         ]
       }
+      pedagogical_docs: {
+        Row: {
+          id: string
+          category: string
+          title: string
+          content: string
+          sort_order: number
+          is_active: boolean
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          category: string
+          title: string
+          content: string
+          sort_order?: number
+          is_active?: boolean
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          category?: string
+          title?: string
+          content?: string
+          sort_order?: number
+          is_active?: boolean
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

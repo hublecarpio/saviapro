@@ -16,31 +16,53 @@ interface Document {
 }
 interface DocumentsListProps {
   refreshTrigger?: number;
+  source: "educational" | "pedagogical";
 }
 
-export const DocumentsList = ({ refreshTrigger = 0 }: DocumentsListProps) => {
+export const DocumentsList = ({ refreshTrigger = 0, source }: DocumentsListProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const loadDocuments = async () => {
     try {
-      // Skip loading if no active session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("uploaded_documents")
-        .select("*")
-        .order("created_at", { ascending: false });
+      console.log(`[DocumentsList] Loading documents. source=${source}`);
 
-      if (error) throw error;
-      setDocuments(data || []);
+      if (source === "pedagogical") {
+        const { data, error } = await supabase
+          .from("pedagogical_docs")
+          .select("id, title, category, is_active, metadata, created_at")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        const mapped = (data || []).map(doc => ({
+          id: doc.id,
+          file_name: doc.title,
+          file_type: (doc.metadata as any)?.file_type || "text/plain",
+          upload_mode: doc.category,
+          created_at: doc.created_at,
+        }));
+        setDocuments(mapped);
+        console.log(`[DocumentsList] Loaded ${mapped.length} pedagogical docs`);
+      } else {
+        const { data, error } = await supabase
+          .from("uploaded_documents")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setDocuments(data || []);
+        console.log(`[DocumentsList] Loaded ${(data || []).length} educational docs`);
+      }
     } catch (error) {
-      console.error("Error loading documents:", error);
+      console.error(`[DocumentsList] ❌ Error loading (source=${source}):`, error);
       toast({
         title: "Error",
         description: "No se pudieron cargar los documentos",
@@ -53,35 +75,50 @@ export const DocumentsList = ({ refreshTrigger = 0 }: DocumentsListProps) => {
 
   const handleDelete = async (id: string) => {
     try {
-      // Optimistic update with rollback
       const previousDocs = documents;
       setDocuments(prev => prev.filter(doc => doc.id !== id));
 
-      // Also delete related embeddings
-      const { error: embError } = await supabase
-        .from("document_embeddings")
-        .delete()
-        .eq("document_id", id);
+      console.log(`[DocumentsList] Deleting document. source=${source}, id=${id}`);
 
-      if (embError) console.warn("Error deleting embeddings:", embError);
+      if (source === "pedagogical") {
+        const { error } = await supabase
+          .from("pedagogical_docs")
+          .delete()
+          .eq("id", id);
 
-      const { error } = await supabase
-        .from("uploaded_documents")
-        .delete()
-        .eq("id", id);
+        if (error) {
+          setDocuments(previousDocs);
+          throw error;
+        }
+        console.log(`[DocumentsList] ✅ Deleted pedagogical doc: ${id}`);
+        toast({
+          title: "Documento eliminado",
+          description: "El documento pedagógico fue eliminado",
+        });
+      } else {
+        const { error: embError } = await supabase
+          .from("document_embeddings")
+          .delete()
+          .eq("document_id", id);
+        if (embError) console.warn("Error deleting embeddings:", embError);
 
-      if (error) {
-        // Rollback on error
-        setDocuments(previousDocs);
-        throw error;
+        const { error } = await supabase
+          .from("uploaded_documents")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          setDocuments(previousDocs);
+          throw error;
+        }
+        console.log(`[DocumentsList] ✅ Deleted educational doc + embeddings: ${id}`);
+        toast({
+          title: "Documento eliminado",
+          description: "El documento y sus embeddings fueron eliminados",
+        });
       }
-
-      toast({
-        title: "Documento eliminado",
-        description: "El documento y sus embeddings fueron eliminados",
-      });
     } catch (error) {
-      console.error("Error deleting document:", error);
+      console.error(`[DocumentsList] ❌ Delete error (source=${source}):`, error);
       toast({
         title: "Error",
         description: "No se pudo eliminar el documento",
@@ -93,22 +130,24 @@ export const DocumentsList = ({ refreshTrigger = 0 }: DocumentsListProps) => {
   useEffect(() => {
     loadDocuments();
 
-    // Debounced realtime subscription to avoid race conditions
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-    
+
+    const tableName = source === "pedagogical" ? "pedagogical_docs" : "uploaded_documents";
+    const channelName = `documents-changes-${source}`;
+
     const channel = supabase
-      .channel("documents-changes")
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "uploaded_documents",
+          table: tableName,
         },
         () => {
-          // Debounce: only reload after 1s of no events
           if (debounceTimer) clearTimeout(debounceTimer);
           debounceTimer = setTimeout(() => {
+            console.log(`[DocumentsList] Realtime change detected on ${tableName}, reloading...`);
             loadDocuments();
           }, 1000);
         }
@@ -134,12 +173,12 @@ export const DocumentsList = ({ refreshTrigger = 0 }: DocumentsListProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Documentos Subidos</CardTitle>
+        <CardTitle>{source === "pedagogical" ? "Documentos Pedagógicos Subidos" : "Documentos Educativos Subidos"}</CardTitle>
       </CardHeader>
       <CardContent>
         {documents.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No hay documentos subidos
+            {source === "pedagogical" ? "No hay documentos pedagógicos subidos" : "No hay documentos educativos subidos"}
           </p>
         ) : (
           <div className="space-y-2">
@@ -157,7 +196,9 @@ export const DocumentsList = ({ refreshTrigger = 0 }: DocumentsListProps) => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{doc.file_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {doc.upload_mode === "text" ? "Texto pegado" : "Archivo subido"} •{" "}
+                      {source === "pedagogical"
+                        ? `Categoría: ${doc.upload_mode}`
+                        : doc.upload_mode === "text" ? "Texto pegado" : "Archivo subido"}{" • "}
                       {format(new Date(doc.created_at), "PPp", { locale: es })}
                     </p>
                   </div>
