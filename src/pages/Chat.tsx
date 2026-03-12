@@ -1139,22 +1139,19 @@ const Chat = () => {
                           </div>;
                   }
 
-                  // Si es un mensaje de imágenes, renderizar en multi-burbuja
+                  // Si es un mensaje de imágenes: una burbuja de texto (si hay) + una burbuja de imágenes
                   if (hasImages && imageUrls.length > 0) {
-                    // Extraer el texto sin las etiquetas de imágenes
                     const textContent = msg.message.replace(/\[IMAGES\].*?\[\/IMAGES\]/, '').trim();
-                    const textSegments = textContent ? textContent.split('\n\n').filter(s => s.trim()) : [];
                     return (
                       <div key={msg.id} className="flex flex-col gap-1.5 items-start">
-                        {/* Burbujas de texto */}
-                        {textSegments.map((segment, idx) => (
-                          <div key={`${msg.id}-text-${idx}`}
-                               className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
+                        {/* Una sola burbuja de texto con saltos de línea */}
+                        {textContent ? (
+                          <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
                             <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                              {segment.trim()}
+                              {textContent}
                             </p>
                           </div>
-                        ))}
+                        ) : null}
                         {/* Burbuja con imágenes */}
                         <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-4 md:py-3 overflow-hidden bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
                           <div className="space-y-3">
@@ -1199,46 +1196,6 @@ const Chat = () => {
                         </div>
                       </div>
                     );
-                  }
-
-                  // Renderizado multi-burbuja para mensajes del asistente con múltiples párrafos
-                  if (msg.role === "assistant" && !hasFile && !hasImages && !hasPdf && !hasMedia) {
-                    const cleanedMessage = msg.message.replace(/\s*\[IMAGES\]\[\/IMAGES\]\s*/g, '');
-                    const segments = cleanedMessage.split('\n\n').filter(s => s.trim());
-                    if (segments.length > 1) {
-                      return (
-                        <div key={msg.id} className="flex flex-col gap-1.5 items-start">
-                          {segments.map((segment, idx) => (
-                            <div key={`${msg.id}-${idx}`}
-                                 className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
-                              <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                {segment.trim()}
-                              </p>
-                              {idx === segments.length - 1 && (
-                                <>
-                                  {!hasImages && (msg.metadata?.images_pending ?? 0) > 0 && !msg.metadata?.images_resolved && (
-                                    <ImagePlaceholder count={msg.metadata!.images_pending!} />
-                                  )}
-                                  {msg.metadata?.suggested_resources && msg.metadata.suggested_resources.length > 0 && msg.id === messages.filter(m => m.role === "assistant").slice(-1)[0]?.id && (
-                                    <ResourceSuggestions
-                                      resources={msg.metadata.suggested_resources}
-                                      hasVideoGenerated={hasVideoGenerated}
-                                      hasPodcastGenerated={hasPodcastGenerated}
-                                      isLoading={isLoading}
-                                      onRequestMindMap={handleRequestMindMap}
-                                      onGenerateFichas={handleGenerateFichas}
-                                      onGenerateVideo={() => handleGenerateResumen("video")}
-                                      onGeneratePodcast={() => handleGenerateResumen("podcast")}
-                                      onRequestInforme={handleRequestInforme}
-                                    />
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
                   }
 
                   return <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
