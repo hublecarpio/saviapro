@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.query-knowledge]
 verify_jwt = false
+
+[functions.process-pedagogical-doc]
+verify_jwt = false
