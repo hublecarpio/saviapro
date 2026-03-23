@@ -172,7 +172,7 @@ async function callGeminiInline(base64Data: string, mimeType: string, prompt: st
               { text: prompt }
             ]
           }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+          generationConfig: { temperature: 0.1, maxOutputTokens: 8192, mediaResolution: 'high' },
         }),
       }
     );
@@ -306,23 +306,43 @@ Respond with ONLY a valid JSON object:
 // ==========================================
 // DOCX image description prompt
 // ==========================================
-const DOCX_IMAGE_DESCRIPTION_PROMPT = `# ROLE
-You are a specialist in describing visual elements from documents for accessibility and semantic indexing purposes.
+const DOCX_IMAGE_DESCRIPTION_PROMPT = `# ROL
+Eres un especialista en describir elementos visuales de documentos para indexación semántica y accesibilidad. Tu objetivo es que alguien que NO puede ver la imagen entienda su contenido completo con absoluto detalle.
 
-# TASK
-Describe the visual element shown in this image in detail.
+# TAREA
+Describe exhaustivamente el elemento visual de esta imagen. No omitas ningún detalle.
 
-# DESCRIPTION GUIDELINES
-- Charts/graphs: State the chart type, what data it represents, axis labels, key values, trends, and any visible legends.
-- Diagrams/flowcharts: Describe the elements, their relationships, direction of flow, and what process/concept is represented.
-- Images/photos: Describe the subject, visible objects, people (if any), colors, and any embedded text.
-- Formulas: Describe what the formula calculates or represents, its variables, and their meaning.
-- Tables with visuals: Describe the visual cells specifically.
+# REGLAS OBLIGATORIAS
+- TRANSCRIBE LITERALMENTE todo el texto visible en la imagen, sin excepción: títulos, etiquetas, nodos, cajas, flechas con texto, leyendas, notas al margen, bullets, porcentajes, números. Si hay texto, debe aparecer en tu descripción tal como está escrito.
+- NO resumas ni parafrasees el texto de la imagen. Cópialo tal cual.
+- Describe la estructura visual completa: posición relativa de cada elemento (arriba, abajo, izquierda, derecha, centro), colores de cada bloque/nodo/caja, tipos de flechas (sólidas, punteadas, direcciones).
 
-# CONSTRAINTS
-- Be detailed and self-contained. Someone who cannot see the image should understand its content fully.
-- Respond in Spanish.
-- Do NOT wrap your response in JSON. Respond with ONLY the plain text description, nothing else.`;
+# SEGÚN EL TIPO DE IMAGEN
+
+**Diagramas de flujo / arquitecturas:**
+1. Título principal y subtítulos
+2. Cada nodo/caja: texto exacto, color, forma, posición
+3. Cada flecha o conector: origen, destino, dirección, texto sobre la flecha si existe
+4. Agrupaciones o secciones diferenciadas
+5. Anotaciones, notas o textos flotantes
+6. Elementos en esquinas o márgenes
+
+**Gráficas/charts:**
+Tipo de gráfica, título, ejes con sus etiquetas y unidades, todos los valores visibles, leyenda completa, tendencias.
+
+**Tablas:**
+Encabezados de todas las columnas y filas, contenido de cada celda.
+
+**Fórmulas:**
+Fórmula exacta, variables y su significado.
+
+**Fotos:**
+Sujeto principal, objetos visibles, texto incrustado, colores dominantes.
+
+# RESTRICCIONES
+- Responde en español.
+- Sin JSON, sin markdown de código, solo texto plano estructurado.
+- Sé exhaustivo: una descripción incompleta es un error.`;
 
 // ==========================================
 // DOCX image extraction helpers
