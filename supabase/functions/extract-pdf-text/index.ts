@@ -140,7 +140,7 @@ async function callGemini(fileUri: string, prompt: string, apiKey: string, timeo
               { text: prompt }
             ]
           }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+          generationConfig: { temperature: 0.1, maxOutputTokens: 8192, mediaResolution: 'MEDIA_RESOLUTION_HIGH' },
         }),
       }
     );
@@ -266,38 +266,58 @@ If no visual elements found: {"pages_with_visuals": []}`;
 // Visual description prompt (per page)
 // ==========================================
 function getDescriptionPrompt(pageNumber: number): string {
-  return `# ROLE
-You are a specialist in describing visual elements from documents for accessibility and semantic indexing purposes.
+  return `# ROL
+Eres un especialista en describir elementos visuales de documentos para indexación semántica y accesibilidad. Tu objetivo es que alguien que NO puede ver la imagen entienda su contenido completo con absoluto detalle.
 
-# TASK
-Analyze page ${pageNumber} of this document and describe ONLY the non-textual visual elements present.
+# TAREA
+Analiza la página ${pageNumber} de este documento e identifica TODOS los elementos visuales no decorativos presentes. Para cada uno, genera una descripción exhaustiva.
 
-# FOR EACH VISUAL ELEMENT, provide:
-1. "anchor_text": The EXACT verbatim text phrase (10-20 words) that appears IMMEDIATELY BEFORE the visual element in the reading flow. This will be used to insert the description at the correct position.
-   - If the visual appears before any text on the page, use: "__PAGE_START__"
-   - If the visual appears after all text on the page, use: "__PAGE_END__"
-2. "description": A detailed, self-contained description prefixed EXACTLY with "Descripción de imagen: "
+# PARA CADA ELEMENTO VISUAL, proporciona:
+1. "anchor_text": La frase de texto EXACTA y LITERAL (10-20 palabras) que aparece INMEDIATAMENTE ANTES del elemento visual en el flujo de lectura. Se usará para insertar la descripción en la posición correcta.
+   - Si el visual aparece antes de cualquier texto en la página, usa: "__PAGE_START__"
+   - Si el visual aparece después de todo el texto de la página, usa: "__PAGE_END__"
+2. "description": Descripción exhaustiva prefijada EXACTAMENTE con "Descripción de imagen: "
 
-# DESCRIPTION GUIDELINES
-- Charts/graphs: State the chart type, what data it represents, axis labels, key values, trends, and any visible legends.
-- Diagrams/flowcharts: Describe the elements, their relationships, direction of flow, and what process/concept is represented.
-- Images/photos: Describe the subject, visible objects, people (if any), colors, and any embedded text.
-- Formulas: Describe what the formula calculates or represents, its variables, and their meaning.
-- Tables with visuals: Describe the visual cells specifically.
+# REGLAS OBLIGATORIAS PARA LA DESCRIPCIÓN
+- TRANSCRIBE LITERALMENTE todo el texto visible dentro del elemento visual, sin excepción: títulos, etiquetas, nodos, cajas, flechas con texto, leyendas, notas, bullets, porcentajes, números. Si hay texto, debe aparecer en la descripción tal como está escrito.
+- NO resumas ni parafrasees el texto de la imagen. Cópialo tal cual.
+- Describe la estructura visual completa: posición relativa de cada elemento (arriba, abajo, izquierda, derecha, centro), colores de cada bloque/nodo/caja, tipos de flechas (sólidas, punteadas, direcciones).
 
-# CONSTRAINTS
-- Describe ONLY visual elements. Do NOT transcribe or paraphrase surrounding text.
-- IGNORE purely decorative page elements such as recurring logos, company branding, headers, and footers.
-- Do NOT add commentary, summaries, or page-level descriptions.
-- If the page contains NO visual elements (or only decorative ones), return: {"visuals": []}
+# SEGÚN EL TIPO DE ELEMENTO VISUAL
 
-# OUTPUT FORMAT
-Respond with ONLY a valid JSON object:
+**Diagramas de flujo / arquitecturas:**
+1. Título principal y subtítulos
+2. Cada nodo/caja: texto exacto, color, forma, posición
+3. Cada flecha o conector: origen, destino, dirección, texto sobre la flecha si existe
+4. Agrupaciones o secciones diferenciadas
+5. Anotaciones, notas o textos flotantes
+6. Elementos en esquinas o márgenes
+
+**Gráficas/charts:**
+Tipo de gráfica, título, ejes con sus etiquetas y unidades, todos los valores visibles, leyenda completa, tendencias.
+
+**Tablas con contenido visual:**
+Encabezados de todas las columnas y filas, contenido de cada celda.
+
+**Fórmulas:**
+Fórmula exacta, variables y su significado.
+
+**Fotos/imágenes:**
+Sujeto principal, objetos visibles, texto incrustado, colores dominantes.
+
+# RESTRICCIONES
+- Describe SOLO elementos visuales. NO transcribas el texto corrido de la página (ese ya se extrae por separado).
+- IGNORA elementos puramente decorativos: logos recurrentes, branding, encabezados y pies de página repetitivos.
+- Si la página NO contiene elementos visuales (o solo decorativos), devuelve: {"visuals": []}
+- Una descripción incompleta es un error.
+
+# FORMATO DE RESPUESTA
+Responde ÚNICAMENTE con un JSON válido:
 {
   "visuals": [
     {
-      "anchor_text": "exact text phrase immediately before the visual",
-      "description": "Descripción de imagen: [detailed description here]"
+      "anchor_text": "frase exacta del texto inmediatamente anterior al visual",
+      "description": "Descripción de imagen: [descripción exhaustiva aquí]"
     }
   ]
 }`;
@@ -751,7 +771,7 @@ serve(async (req) => {
           }
 
           // Description timeout
-          const descResult = await callGemini(pageFileUri, prompt, geminiApiKey, 30000);
+          const descResult = await callGemini(pageFileUri, prompt, geminiApiKey, 90000);
           const parsed = parseJsonFromGemini(descResult);
 
           if (parsed) {
