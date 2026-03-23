@@ -463,7 +463,7 @@ function mergePageContent(pageText: string, visuals: VisualElement[]): string {
     .sort((a, b) => b.pos - a.pos); // reverse: insert from end to preserve indices
 
   for (const v of positioned) {
-    const insertion = `\n\n${v.description}\n\n`;
+    const insertion = `\n\n[INICIO DE IMAGEN]\n${v.description}\n[FIN DE IMAGEN]\n\n`;
     if (v.anchor_text === '__PAGE_START__') {
       result = insertion.trim() + '\n\n' + result;
     } else if (v.anchor_text === '__PAGE_END__' || v.pos < 0) {
@@ -642,7 +642,7 @@ serve(async (req) => {
       console.log('STEP 3: Merging descriptions into text...');
       let finalText = textWithPlaceholders;
       for (const [placeholder, description] of imageDescriptions) {
-        finalText = finalText.replace(placeholder, description);
+        finalText = finalText.replace(placeholder, `\n\n[INICIO DE IMAGEN]\n${description}\n[FIN DE IMAGEN]\n\n`);
       }
 
       // Clean up any unreplaced placeholders
