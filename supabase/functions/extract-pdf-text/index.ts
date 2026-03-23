@@ -155,6 +155,38 @@ async function callGemini(fileUri: string, prompt: string, apiKey: string, timeo
   }
 }
 
+async function callGeminiInline(base64Data: string, mimeType: string, prompt: string, apiKey: string, timeoutMs = 60000): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inlineData: { mimeType, data: base64Data } },
+              { text: prompt }
+            ]
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+        }),
+      }
+    );
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Gemini inline API error: ${response.status} - ${err.substring(0, 300)}`);
+    }
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ==========================================
 // pdf-lib: split PDF into page ranges
 // ==========================================
@@ -272,6 +304,102 @@ Respond with ONLY a valid JSON object:
 }
 
 // ==========================================
+// DOCX image description prompt
+// ==========================================
+const DOCX_IMAGE_DESCRIPTION_PROMPT = `# ROLE
+You are a specialist in describing visual elements from documents for accessibility and semantic indexing purposes.
+
+# TASK
+Describe the visual element shown in this image in detail.
+
+# DESCRIPTION GUIDELINES
+- Charts/graphs: State the chart type, what data it represents, axis labels, key values, trends, and any visible legends.
+- Diagrams/flowcharts: Describe the elements, their relationships, direction of flow, and what process/concept is represented.
+- Images/photos: Describe the subject, visible objects, people (if any), colors, and any embedded text.
+- Formulas: Describe what the formula calculates or represents, its variables, and their meaning.
+- Tables with visuals: Describe the visual cells specifically.
+
+# CONSTRAINTS
+- Be detailed and self-contained. Someone who cannot see the image should understand its content fully.
+- Respond in Spanish.
+- Do NOT wrap your response in JSON. Respond with ONLY the plain text description, nothing else.`;
+
+// ==========================================
+// DOCX image extraction helpers
+// ==========================================
+interface DocxImage {
+  index: number;
+  base64: string;
+  mimeType: string;
+  placeholder: string;
+}
+
+async function extractDocxWithImages(arrayBuffer: ArrayBuffer): Promise<{
+  textWithPlaceholders: string;
+  images: DocxImage[];
+}> {
+  const mammothModule = await import('npm:mammoth');
+  const mammoth = mammothModule.default || mammothModule;
+  const images: DocxImage[] = [];
+  let imgIndex = 0;
+
+  const options = {
+    convertImage: mammoth.images.imgElement(function(image: any) {
+      const placeholder = `%%IMG_PLACEHOLDER_${imgIndex}%%`;
+      const currentIndex = imgIndex++;
+      return image.read("base64").then(function(base64Data: string) {
+        images.push({
+          index: currentIndex,
+          base64: base64Data,
+          mimeType: image.contentType || 'image/png',
+          placeholder
+        });
+        return { src: '', alt: placeholder };
+      });
+    })
+  };
+
+  const result = await mammoth.convertToHtml({ buffer: arrayBuffer }, options);
+  const html = result.value || '';
+
+  // Convert HTML to plain text preserving image placeholder positions
+  const text = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/tr>/gi, '\n')
+    .replace(/<img[^>]*alt="(%%IMG_PLACEHOLDER_\d+%%)"[^>]*>/gi, '\n\n$1\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&ntilde;/g, 'ñ')
+    .replace(/&Ntilde;/g, 'Ñ')
+    .replace(/&aacute;/g, 'á')
+    .replace(/&eacute;/g, 'é')
+    .replace(/&iacute;/g, 'í')
+    .replace(/&oacute;/g, 'ó')
+    .replace(/&uacute;/g, 'ú')
+    .replace(/&Aacute;/g, 'Á')
+    .replace(/&Eacute;/g, 'É')
+    .replace(/&Iacute;/g, 'Í')
+    .replace(/&Oacute;/g, 'Ó')
+    .replace(/&Uacute;/g, 'Ú')
+    .replace(/&uuml;/g, 'ü')
+    .replace(/&Uuml;/g, 'Ü')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return { textWithPlaceholders: text, images };
+}
+
+// ==========================================
 // Merge page text + visual descriptions
 // ==========================================
 interface VisualElement {
@@ -379,22 +507,124 @@ serve(async (req) => {
       );
     }
 
-    // ========== DOCX files: mammoth ==========
+    // ========== DOCX files: mammoth + Gemini image descriptions ==========
     if (mimeType.includes('wordprocessingml') || fileName.endsWith('.docx')) {
-      console.log('DOCX: extracting with mammoth...');
-      const mammoth = await import('npm:mammoth');
-      const result = await mammoth.extractRawText({ buffer: arrayBuffer });
-      const text = result.value || '';
-      console.log(`DOCX extracted: ${text.length} chars`);
+      console.log('=== DOCX EXTRACTION WITH IMAGE DESCRIPTIONS ===');
 
+      // STEP 1: Extract HTML with images, convert to text with placeholders
+      console.log('STEP 1: Extracting DOCX content and images with mammoth...');
+      let textWithPlaceholders: string;
+      let docxImages: DocxImage[];
+
+      try {
+        const extracted = await extractDocxWithImages(arrayBuffer);
+        textWithPlaceholders = extracted.textWithPlaceholders;
+        docxImages = extracted.images;
+        console.log(`DOCX extracted: ${textWithPlaceholders.length} chars, ${docxImages.length} images found`);
+      } catch (extractError) {
+        // FALLBACK: if convertToHtml fails, fall back to extractRawText
+        console.warn('DOCX image extraction failed, falling back to plain text:', extractError);
+        const mammothFallback = await import('npm:mammoth');
+        const mFallback = mammothFallback.default || mammothFallback;
+        const result = await mFallback.extractRawText({ buffer: arrayBuffer });
+        const text = result.value || '';
+        console.log(`DOCX fallback extracted: ${text.length} chars`);
+
+        const s3Key = `processed-documents/${userId}/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}.txt`;
+        let contentUrl = '';
+        try {
+          contentUrl = await uploadToS3(new TextEncoder().encode(text), s3Key, 'text/plain; charset=utf-8');
+        } catch (e) { console.warn('S3 save failed:', e); }
+
+        return new Response(
+          JSON.stringify({ success: true, extracted_text: text, file_name: fileName, extraction_method: 'mammoth_fallback', text_length: text.length, content_url: contentUrl }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // STEP 2: If no images, return text directly (fast path)
+      if (docxImages.length === 0) {
+        console.log('No images in DOCX, returning text directly');
+        const s3Key = `processed-documents/${userId}/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}.txt`;
+        let contentUrl = '';
+        try {
+          contentUrl = await uploadToS3(new TextEncoder().encode(textWithPlaceholders), s3Key, 'text/plain; charset=utf-8');
+        } catch (e) { console.warn('S3 save failed:', e); }
+
+        return new Response(
+          JSON.stringify({ success: true, extracted_text: textWithPlaceholders, file_name: fileName, extraction_method: 'mammoth_no_images', text_length: textWithPlaceholders.length, images_found: 0, content_url: contentUrl }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // STEP 3: Describe images with Gemini in parallel batches
+      console.log(`STEP 2: Describing ${docxImages.length} images with Gemini...`);
+      const DOCX_PARALLEL_BATCH_SIZE = 5;
+      const imageDescriptions = new Map<string, string>();
+
+      // Filter out images that are too large (> 4MB base64)
+      const processableImages = docxImages.filter(img => {
+        if (img.base64.length > 4 * 1024 * 1024) {
+          console.warn(`Image ${img.index}: skipped (too large: ${(img.base64.length / 1024 / 1024).toFixed(1)}MB base64)`);
+          imageDescriptions.set(img.placeholder, 'Descripción de imagen: [Imagen demasiado grande para procesar]');
+          return false;
+        }
+        return true;
+      });
+
+      for (let i = 0; i < processableImages.length; i += DOCX_PARALLEL_BATCH_SIZE) {
+        const batch = processableImages.slice(i, i + DOCX_PARALLEL_BATCH_SIZE);
+        console.log(`Processing image batch ${Math.floor(i / DOCX_PARALLEL_BATCH_SIZE) + 1}/${Math.ceil(processableImages.length / DOCX_PARALLEL_BATCH_SIZE)}...`);
+
+        await Promise.all(batch.map(async (img) => {
+          try {
+            const rawDescription = await callGeminiInline(
+              img.base64, img.mimeType, DOCX_IMAGE_DESCRIPTION_PROMPT, geminiApiKey, 30000
+            );
+            if (rawDescription && rawDescription.trim().length > 0) {
+              const description = rawDescription.trim().startsWith('Descripci')
+                ? rawDescription.trim()
+                : `Descripción de imagen: ${rawDescription.trim()}`;
+              imageDescriptions.set(img.placeholder, description);
+              console.log(`Image ${img.index}: described (${description.length} chars)`);
+            } else {
+              imageDescriptions.set(img.placeholder, 'Descripción de imagen: [No se pudo generar descripción]');
+              console.warn(`Image ${img.index}: empty response from Gemini`);
+            }
+          } catch (e) {
+            console.warn(`Image ${img.index} description failed:`, e instanceof Error ? e.message : e);
+            imageDescriptions.set(img.placeholder, 'Descripción de imagen: [Error al procesar imagen]');
+          }
+        }));
+      }
+
+      // STEP 4: Replace placeholders with descriptions
+      console.log('STEP 3: Merging descriptions into text...');
+      let finalText = textWithPlaceholders;
+      for (const [placeholder, description] of imageDescriptions) {
+        finalText = finalText.replace(placeholder, description);
+      }
+
+      // Clean up any unreplaced placeholders
+      finalText = finalText.replace(/%%IMG_PLACEHOLDER_\d+%%/g, '').replace(/\n{3,}/g, '\n\n').trim();
+
+      console.log(`Final DOCX content: ${finalText.length} chars (${docxImages.length} images, ${imageDescriptions.size} described)`);
+
+      // STEP 5: Save to S3 and return
       const s3Key = `processed-documents/${userId}/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}.txt`;
       let contentUrl = '';
       try {
-        contentUrl = await uploadToS3(new TextEncoder().encode(text), s3Key, 'text/plain; charset=utf-8');
+        contentUrl = await uploadToS3(new TextEncoder().encode(finalText), s3Key, 'text/plain; charset=utf-8');
+        console.log('Saved processed DOCX text to:', contentUrl);
       } catch (e) { console.warn('S3 save failed:', e); }
 
       return new Response(
-        JSON.stringify({ success: true, extracted_text: text, file_name: fileName, extraction_method: 'mammoth', text_length: text.length, content_url: contentUrl }),
+        JSON.stringify({
+          success: true, extracted_text: finalText, file_name: fileName,
+          extraction_method: 'mammoth_gemini_images', text_length: finalText.length,
+          images_found: docxImages.length, images_described: imageDescriptions.size,
+          content_url: contentUrl
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
