@@ -11,7 +11,7 @@ export const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
     <div
       className={
         "prose prose-sm dark:prose-invert max-w-none " +
-        "prose-p:leading-relaxed prose-p:my-1 " +
+        "prose-p:leading-relaxed prose-p:my-3 " +
         "prose-headings:mt-3 prose-headings:mb-1 " +
         "prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 " +
         "prose-pre:bg-muted prose-pre:text-foreground prose-pre:rounded-lg " +
