@@ -172,7 +172,7 @@ async function callGeminiInline(base64Data: string, mimeType: string, prompt: st
               { text: prompt }
             ]
           }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 8192, mediaResolution: 'high' },
+          generationConfig: { temperature: 0.1, maxOutputTokens: 8192, mediaResolution: 'MEDIA_RESOLUTION_HIGH' },
         }),
       }
     );
