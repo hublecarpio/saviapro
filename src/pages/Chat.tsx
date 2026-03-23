@@ -20,6 +20,7 @@ import sofiPiensa from "@/assets/sofi_piensa.png";
 import { GenerationProgressBar } from "@/components/GenerationProgressBar";
 import { ImagePlaceholder } from "@/components/ImagePlaceholder";
 import { ResourceSuggestions } from "@/components/ResourceSuggestions";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -1103,9 +1104,13 @@ const Chat = () => {
                     return <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                             <div className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 overflow-hidden ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm"}`}>
                               <div className="space-y-3">
-                                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                  {cleanMessage}
-                                </p>
+                                {msg.role === "assistant" ? (
+                                  <MarkdownRenderer content={cleanMessage} />
+                                ) : (
+                                  <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                    {cleanMessage}
+                                  </p>
+                                )}
                                 <div className="flex items-center gap-2 p-2 bg-background/50 rounded-lg border border-border/50">
                                   <div className="flex-shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
@@ -1147,9 +1152,7 @@ const Chat = () => {
                         {/* Una sola burbuja de texto con saltos de línea */}
                         {textContent ? (
                           <div className="max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm">
-                            <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                              {textContent}
-                            </p>
+                            <MarkdownRenderer content={textContent} />
                           </div>
                         ) : null}
                         {/* Burbuja con imágenes */}
@@ -1201,9 +1204,13 @@ const Chat = () => {
                   return <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                            <div className={`max-w-[90%] md:max-w-[85%] lg:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2.5 md:px-5 md:py-4 overflow-hidden ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-[hsl(var(--chat-assistant-border))] text-card-foreground shadow-sm"}`}>
                             {hasPdf && urlMatch ? <div className="space-y-3">
-                                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                  {msg.message.split(urlMatch[0])[0]}
-                                </p>
+                                {msg.role === "assistant" ? (
+                                  <MarkdownRenderer content={msg.message.split(urlMatch[0])[0]} />
+                                ) : (
+                                  <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                    {msg.message.split(urlMatch[0])[0]}
+                                  </p>
+                                )}
                                 <Button onClick={async () => {
                           try {
                             toast.info("Descargando PDF...");
@@ -1246,17 +1253,25 @@ const Chat = () => {
                                   </button>
                                 </p>
                               </div> : hasMedia && urlMatch ? <div className="space-y-3 w-full overflow-hidden">
-                                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                  {msg.message.split(urlMatch[0])[0]}
-                                </p>
+                                {msg.role === "assistant" ? (
+                                  <MarkdownRenderer content={msg.message.split(urlMatch[0])[0]} />
+                                ) : (
+                                  <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                    {msg.message.split(urlMatch[0])[0]}
+                                  </p>
+                                )}
                                 {isVideo ? <video controls className="w-full rounded-lg max-h-[400px]" src={urlMatch[0]}>
                                     Tu navegador no soporta video HTML5.
                                   </video> : <audio controls className="w-full" src={urlMatch[0]}>
                                     Tu navegador no soporta audio HTML5.
                                   </audio>}
-                              </div> : <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
-                                {msg.message.replace(/\s*\[IMAGES\]\[\/IMAGES\]\s*/g, '')}
-                              </p>}
+                              </div> : msg.role === "assistant" ? (
+                                <MarkdownRenderer content={msg.message.replace(/\s*\[IMAGES\]\[\/IMAGES\]\s*/g, '')} />
+                              ) : (
+                                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm md:text-[15px]">
+                                  {msg.message.replace(/\s*\[IMAGES\]\[\/IMAGES\]\s*/g, '')}
+                                </p>
+                              )}
                             {/* Placeholders de imágenes pendientes (solo mensajes del asistente sin imágenes aún) */}
                             {msg.role === "assistant" && !hasImages && (msg.metadata?.images_pending ?? 0) > 0 && !msg.metadata?.images_resolved && (
                               <ImagePlaceholder count={msg.metadata!.images_pending!} />
