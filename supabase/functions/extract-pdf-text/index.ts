@@ -599,7 +599,7 @@ serve(async (req) => {
         await Promise.all(batch.map(async (img) => {
           try {
             const rawDescription = await callGeminiInline(
-              img.base64, img.mimeType, DOCX_IMAGE_DESCRIPTION_PROMPT, geminiApiKey, 30000
+              img.base64, img.mimeType, DOCX_IMAGE_DESCRIPTION_PROMPT, geminiApiKey, 90000
             );
             if (rawDescription && rawDescription.trim().length > 0) {
               const description = rawDescription.trim().startsWith('Descripci')
