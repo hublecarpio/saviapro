@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save } from "lucide-react";
+import { Download, Loader2, Save } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import html2pdf from "html2pdf.js";
 
 import { starterSchema, StarterQuestion } from "@/components/data/starterSchema";
 
@@ -64,11 +65,135 @@ const normalizeProfileData = (raw: ProfileData, ageGroup: AgeGroup): ProfileData
   return normalized;
 };
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatAnswerForPdf(q: StarterQuestion, raw: unknown): string {
+  if (q.type === "number") {
+    const v = raw !== undefined && raw !== null && raw !== "" ? String(raw) : "";
+    return v ? escapeHtml(v) : "—";
+  }
+  if (q.type === "textarea") {
+    const v = typeof raw === "string" ? raw.trim() : raw != null ? String(raw).trim() : "";
+    return v ? `<div style="white-space:pre-wrap;">${escapeHtml(v)}</div>` : "—";
+  }
+  if (q.type === "single" && q.options) {
+    const v = typeof raw === "string" ? raw : "";
+    const opt = q.options.find((o) => o.value === v);
+    if (opt?.label) return escapeHtml(opt.label);
+    return v ? escapeHtml(v) : "—";
+  }
+  if (q.type === "multiple" && q.options) {
+    const arr = coerceToArray(raw);
+    if (arr.length === 0) return "—";
+    const items = arr
+      .map((val) => {
+        const opt = q.options!.find((o) => o.value === val);
+        return `<li>${escapeHtml(opt?.label ?? val)}</li>`;
+      })
+      .join("");
+    return `<ul style="margin:0;padding-left:18px;">${items}</ul>`;
+  }
+  if (q.type === "ranking" && q.options) {
+    const arr = coerceToArray(raw);
+    if (arr.length === 0) return "—";
+    const items = arr
+      .map((val, i) => {
+        const opt = q.options!.find((o) => o.value === val);
+        return `<li>${i + 1}. ${escapeHtml(opt?.label ?? val)}</li>`;
+      })
+      .join("");
+    return `<ol style="margin:0;padding-left:18px;">${items}</ol>`;
+  }
+  const fallback = raw != null && String(raw).trim() ? String(raw) : "";
+  return fallback ? escapeHtml(fallback) : "—";
+}
+
+function generateStarterPdfHtml(params: {
+  userId: string;
+  userName: string | null;
+  userEmail: string | null;
+  ageGroup: AgeGroup;
+  profileData: ProfileData;
+}): string {
+  const { userId, userName, userEmail, ageGroup, profileData } = params;
+  const groupLabel =
+    ageGroup === "7-12" ? "7 a 12 años" : ageGroup === "12-17" ? "12 a 17 años" : "No definido";
+  const normalized =
+    ageGroup && starterSchema[ageGroup] ? normalizeProfileData(profileData, ageGroup) : { ...profileData };
+
+  let body = "";
+
+  if (!ageGroup || !starterSchema[ageGroup]) {
+    body += `<p style="color:#666;">El perfil no tiene un grupo de edad (7-12 / 12-17) completo. Datos disponibles:</p>`;
+    const keys = Object.keys(normalized).sort();
+    let any = false;
+    for (const key of keys) {
+      const val = normalized[key];
+      if (val === "" || val == null) continue;
+      any = true;
+      const display = Array.isArray(val) ? val.join(", ") : String(val);
+      body += `<div style="margin-bottom:12px;"><strong>${escapeHtml(key)}</strong><div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(display)}</div></div>`;
+    }
+    if (!any) body += "<p>Sin datos para exportar.</p>";
+  } else {
+    const sections: { title: string; group: StarterQuestion["group"] }[] = [
+      { title: "Básico", group: "basic" },
+      { title: "Aprendizaje", group: "learning" },
+      { title: "Intereses", group: "interests" },
+    ];
+    for (const sec of sections) {
+      const questions = starterSchema[ageGroup].filter((q) => q.group === sec.group);
+      if (questions.length === 0) continue;
+      body += `<h2 style="color:#333;border-bottom:1px solid #ddd;padding-bottom:8px;margin-top:24px;">${escapeHtml(sec.title)}</h2>`;
+      for (const q of questions) {
+        const raw = normalized[q.id];
+        const answerHtml = formatAnswerForPdf(q, raw);
+        body += `
+          <div style="margin-bottom:16px;">
+            <p style="margin:0 0 4px 0;font-weight:bold;color:#222;">${escapeHtml(q.question)}</p>
+            <div style="margin:0;color:#444;line-height:1.5;">${answerHtml}</div>
+          </div>`;
+      }
+    }
+  }
+
+  const displayName = userName || userEmail || userId;
+  return `
+    <div style="font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:24px;border-bottom:2px solid #333;padding-bottom:16px;">
+        <h1 style="margin:0;color:#333;">Perfil Starter (formulario inicial)</h1>
+        <p style="color:#666;margin-top:10px;">
+          <strong>Usuario:</strong> ${escapeHtml(displayName)}<br/>
+          ${userEmail ? `<strong>Email:</strong> ${escapeHtml(userEmail)}<br/>` : ""}
+          <strong>ID:</strong> ${escapeHtml(userId)}<br/>
+          <strong>Grupo de edad:</strong> ${escapeHtml(groupLabel)}<br/>
+          <strong>Generado:</strong> ${escapeHtml(new Date().toLocaleString("es-ES"))}
+        </p>
+      </div>
+      ${body}
+      <div style="text-align:center;margin-top:40px;padding-top:16px;border-top:1px solid #ddd;color:#999;font-size:11px;">
+        SaviaPro · Perfil Starter
+      </div>
+    </div>
+  `;
+}
+
 export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProfileEditorProps) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [ageGroup, setAgeGroup] = useState<AgeGroup>("");
+  const [userMeta, setUserMeta] = useState<{ name: string | null; email: string | null }>({
+    name: null,
+    email: null,
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -81,9 +206,17 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from("starter_profiles").select("*").eq("user_id", userId).maybeSingle();
+      const [{ data, error }, profileRes] = await Promise.all([
+        supabase.from("starter_profiles").select("*").eq("user_id", userId).maybeSingle(),
+        supabase.from("profiles").select("name, email").eq("id", userId).maybeSingle(),
+      ]);
 
       if (error) throw error;
+
+      setUserMeta({
+        name: profileRes.data?.name ?? null,
+        email: profileRes.data?.email ?? null,
+      });
 
       if (data) {
         // Extraer profile_data (contiene todas las respuestas del usuario)
@@ -124,6 +257,52 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadStarterPdf = async () => {
+    if (!profileData) return;
+
+    setDownloading(true);
+    try {
+      const html = generateStarterPdfHtml({
+        userId,
+        userName: userMeta.name,
+        userEmail: userMeta.email,
+        ageGroup,
+        profileData,
+      });
+      const container = document.createElement("div");
+      container.innerHTML = html;
+      document.body.appendChild(container);
+
+      const slug = (userMeta.name || userMeta.email || userId).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
+      const fileName = `starter_${slug}_${new Date().toISOString().split("T")[0]}.pdf`;
+
+      const opt = {
+        margin: 10,
+        filename: fileName,
+        image: { type: "jpeg" as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm" as const, format: "a4" as const, orientation: "portrait" as const },
+      };
+
+      await html2pdf().set(opt).from(container).save();
+      document.body.removeChild(container);
+
+      toast({
+        title: "PDF descargado",
+        description: "El perfil Starter se descargó correctamente.",
+      });
+    } catch (err) {
+      console.error("Error generating starter PDF:", err);
+      toast({
+        title: "Error",
+        description: "No se pudo generar el PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -503,23 +682,43 @@ export const StarterProfileEditor = ({ userId, open, onOpenChange }: StarterProf
           </Tabs>
         </ScrollArea>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleDownloadStarterPdf}
+            disabled={saving || downloading}
+          >
+            {downloading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Guardando...
+                Generando PDF...
               </>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" />
-                Guardar Cambios
+                <Download className="mr-2 h-4 w-4" />
+                Descargar PDF
               </>
             )}
           </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving || downloading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving || downloading}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Guardar Cambios
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

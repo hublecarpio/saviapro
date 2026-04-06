@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
-import { Trash2 } from "lucide-react";
+import { FileText, Trash2 } from "lucide-react";
+import { StarterProfileEditor } from "@/components/StarterProfileEditor";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -26,6 +27,8 @@ const ListUser = () => {
     const [userToDelete, setUserToDelete] = useState<any>(null);
     const [confirmStep, setConfirmStep] = useState(0); // 0: closed, 1: first confirm, 2: second confirm
     const [deleting, setDeleting] = useState(false);
+    const [selectedStarterUserId, setSelectedStarterUserId] = useState<string | null>(null);
+    const [showStarterProfile, setShowStarterProfile] = useState(false);
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -186,6 +189,16 @@ const ListUser = () => {
         setConfirmStep(0);
     };
 
+    const handleOpenStarterProfile = (userId: string) => {
+        setSelectedStarterUserId(userId);
+        setShowStarterProfile(true);
+    };
+
+    const handleStarterProfileOpenChange = (open: boolean) => {
+        setShowStarterProfile(open);
+        if (!open) setSelectedStarterUserId(null);
+    };
+
     if (loading) {
         return <Loading />;
     }
@@ -220,7 +233,7 @@ const ListUser = () => {
                                             <TableHead className="hidden md:table-cell">Invitado por</TableHead>
                                             <TableHead>Starter</TableHead>
                                             <TableHead className="hidden md:table-cell">Fecha</TableHead>
-                                            <TableHead className="w-[80px]">Acciones</TableHead>
+                                            <TableHead className="w-[120px]">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -278,16 +291,29 @@ const ListUser = () => {
                                                     })}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {!user.roles.includes("admin") && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDeleteClick(user)}
-                                                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
-                                                    )}
+                                                    <div className="flex items-center gap-1">
+                                                        {(user.roles.includes("student") || user.starter_completed) && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleOpenStarterProfile(user.id)}
+                                                                title="Ver Starter / descargar PDF"
+                                                                className="text-primary hover:text-primary hover:bg-primary/10"
+                                                            >
+                                                                <FileText className="w-4 h-4" />
+                                                            </Button>
+                                                        )}
+                                                        {!user.roles.includes("admin") && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleDeleteClick(user)}
+                                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -348,6 +374,14 @@ const ListUser = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {selectedStarterUserId && (
+                <StarterProfileEditor
+                    userId={selectedStarterUserId}
+                    open={showStarterProfile}
+                    onOpenChange={handleStarterProfileOpenChange}
+                />
+            )}
         </>
     );
 };
