@@ -24,3 +24,11 @@ dist-ssr
 *.sln
 *.sw?
 .lovable
+
+# Backups and secrets (production data)
+supabase-backup/
+n8n-backup/
+*.dump
+docs/credenciales/
+docs/hardening-servidor.md
+.mcp.json
